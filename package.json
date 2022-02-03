@@ -1,0 +1,19 @@
+{
+  "name": "panasonic-kairos",
+  "version": "1.0.0",
+	"api_version": "1.0.0",
+	"keywords": [
+		"Switcher"
+	],
+	"manufacturer": "Panasonic",
+	"product": "Kairos",
+	"shortname": "Kairos",
+  "main": "index.js",
+  "repository": "https://github.com/bitfocus/companion-module-panasonic-kairos.git",
+  "author": "JeffreyDavidsz <jeffrey.davidsz@vicreo.eu>",
+  "license": "MIT",
+	"bugs": {
+		"url": "https://github.com/bitfocus/companion-module-panasonic-kairos/issues"
+	},
+	"homepage": "https://github.com/bitfocus/companion-module-panasonic-kairos#readme"
+}
