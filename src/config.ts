@@ -22,7 +22,7 @@ export const getConfigFields = (): SomeCompanionConfigField[] => {
       id: 'port',
       label: 'Port',
       width: 6,
-      default: 1234,
+      default: 3005,
       min: 1,
       max: 65535,
       step: 1,
