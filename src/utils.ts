@@ -7,23 +7,23 @@ import {
 
 type TimeFormat = 'hh:mm:ss' | 'hh:mm:ss.ms' | 'mm:ss' | 'mm:ss.ms'
 
-interface NumericDropdownChoice {
-  id: number
-  label: string
-}
+// interface NumericDropdownChoice {
+//   id: number
+//   label: string
+// }
 
-interface NumericInputFieldDropown extends Exclude<CompanionInputFieldDropdown, 'choices'> {
-  choices: NumericDropdownChoice[]
-}
+// interface NumericInputFieldDropown extends Exclude<CompanionInputFieldDropdown, 'choices'> {
+//   choices: NumericDropdownChoice[]
+// }
 
 // Force options to have a default to prevent sending undefined values
 type EnforceDefault<T, U> = Omit<T, 'default'> & { default: U }
 
 export interface Options {
   input: EnforceDefault<CompanionInputFieldTextInput, string>
-  mixSelect: EnforceDefault<NumericInputFieldDropown, number>
-  audioBus: EnforceDefault<CompanionInputFieldDropdown, string>
-  audioBusMaster: EnforceDefault<CompanionInputFieldDropdown, string>
+  sceneSelect: EnforceDefault<CompanionInputFieldDropdown, string>
+  layerSelect: EnforceDefault<CompanionInputFieldDropdown, string>
+  sourceSelect: EnforceDefault<CompanionInputFieldDropdown, string>
   foregroundColor: EnforceDefault<CompanionInputFieldColor, number>
   foregroundColorBlack: EnforceDefault<CompanionInputFieldColor, number>
   backgroundColorPreview: EnforceDefault<CompanionInputFieldColor, number>
@@ -31,35 +31,11 @@ export interface Options {
   backgroundColorYellow: EnforceDefault<CompanionInputFieldColor, number>
   selectedIndex: EnforceDefault<CompanionInputFieldNumber, number>
   comparison: EnforceDefault<CompanionInputFieldDropdown, string>
-  layerTallyIndicator: EnforceDefault<CompanionInputFieldDropdown, string>
-  replayChannel: EnforceDefault<CompanionInputFieldDropdown, string>
 }
 
 // Static Variables
-export const AUDIOBUSSES = ['A', 'B', 'C', 'D', 'E', 'F', 'G'] as const
-export const AUDIOBUSSESMASTER = ['Master', 'Headphones', 'A', 'B', 'C', 'D', 'E', 'F', 'G'] as const
-
-export const TRANSITIONS = [
-  'Cut',
-  'Fade',
-  'Zoom',
-  'Wipe',
-  'Slide',
-  'Fly',
-  'CrossZoom',
-  'FlyRotate',
-  'Cube',
-  'CubeZoom',
-  'VerticalWipe',
-  'VerticalSlide',
-  'Merge',
-  'WipeReverse',
-  'SlideReverse',
-  'VerticalWipeReverse',
-  'VerticalSlideReverse',
-  'BarnDoor',
-  'RollerDoor',
-] as const
+export const TRANSITIONS = ['cut', 'auto'] as const
+export const SOURCES = ['IP1', 'IP2', 'IP3'] as const
 
 /**
  * @param red 0-255
@@ -83,34 +59,36 @@ export const options: Options = {
     tooltip: 'Number, Name, or GUID',
   },
 
-  mixSelect: {
+  sceneSelect: {
     type: 'dropdown',
-    label: 'Mix',
-    id: 'mix',
-    default: 0,
+    label: 'Scene',
+    id: 'scene',
+    default: 'SCENES.Main',
     choices: [
-      { id: 0, label: '1' },
-      { id: 1, label: '2' },
-      { id: 2, label: '3' },
-      { id: 3, label: '4' },
-      { id: -1, label: 'Selected' },
+      { id: 'SCENES.Main', label: 'Main' },
+      { id: 'SCENES.Test1', label: 'Test1' },
+      { id: 'SCENES.New Scene-1', label: 'New Scene-1' },
     ],
   },
 
-  audioBus: {
+  layerSelect: {
     type: 'dropdown',
-    label: 'Bus',
-    id: 'value',
-    default: 'A',
-    choices: AUDIOBUSSES.map((id) => ({ id, label: id })),
+    label: 'Layer',
+    id: 'layer',
+    default: 'Background',
+    choices: [
+      { id: 'Background', label: 'Background' },
+      { id: 'Layer-1', label: 'Layer-1' },
+      { id: 'Layer-2', label: 'Layer-2' },
+    ],
   },
 
-  audioBusMaster: {
+  sourceSelect: {
     type: 'dropdown',
-    label: 'Bus',
-    id: 'value',
-    default: 'Master',
-    choices: ['Master', ...AUDIOBUSSES].map((id) => ({ id, label: id })),
+    label: 'Source',
+    id: 'source',
+    default: 'SDI1',
+    choices: SOURCES.map((id) => ({ id, label: id })),
   },
 
   foregroundColor: {
@@ -170,52 +148,6 @@ export const options: Options = {
       { id: 'gte', label: '>=' },
     ],
   },
-
-  layerTallyIndicator: {
-    type: 'dropdown',
-    label: 'Layer Tally Indicator',
-    id: 'tally',
-    default: '',
-    choices: [
-      { id: '', label: 'None' },
-      { id: 'border', label: 'Border' },
-      { id: 'cornerTL', label: 'Corner Top Left' },
-      { id: 'cornerTR', label: 'Corner Top Right' },
-      { id: 'cornerBL', label: 'Corner Bottom Left' },
-      { id: 'cornerBR', label: 'Corner Bottom Right' },
-      { id: 'full', label: 'Full Background' },
-    ],
-  },
-
-  replayChannel: {
-    type: 'dropdown',
-    label: 'Replay Channel',
-    id: 'channel',
-    default: 'Current',
-    choices: [
-      { id: 'Current', label: 'Current' },
-      { id: 'A', label: 'A' },
-      { id: 'B', label: 'B' },
-    ],
-  },
-}
-
-/**
- * @param volume Amplitude
- * @returns volume dB
- * @description Returns dB of a given volume (if the volume of a meter, multiply by 100 first)
- */
-export const volumeTodB = (volume: number): number => {
-  return 20 * Math.log10(volume / 100)
-}
-
-/**
- * @param volume Amplitude
- * @returns Linear volume
- * @description Returns volume as specified here https://www.vmix.com/knowledgebase/article.aspx/144/vmix-api-audio-levels
- */
-export const volumeToLinear = (volume: number): number => {
-  return Math.round(Math.pow(volume / 100, 0.25) * 100)
 }
 
 /**

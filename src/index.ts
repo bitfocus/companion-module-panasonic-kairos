@@ -15,9 +15,9 @@ import { getConfigFields } from './config'
 // import { getFeedbacks } from './feedback'
 // import { getPresets } from './presets'
 // import { Indicator } from './indicators'
-import { REST } from './http'
+import { TCP } from './tcp'
 // import { getUpgrades } from './upgrade'
-// import { Variables } from './variables'
+import { Variables } from './variables'
 
 
 /**
@@ -25,14 +25,17 @@ import { REST } from './http'
  */
 class KairosInstance extends instance_skel<Config> {
 
-	restClient!: REST
-  
 	constructor(system: CompanionSystem, id: string, config: Config) {
     super(system, id, config)
     this.system = system
     this.config = config
   }
- 
+	public KairosObj!: { main_background_sourceA: string, main_background_sourceB: string, INPUTS: Array<string>; SCENES: Array<string>; AUX: Array<string>} 
+
+  public connected = false
+  public tcp: TCP | null = null
+	public variables: Variables | null = null
+
   /**
    * @description triggered on instance being enabled
    */
@@ -42,16 +45,12 @@ class KairosInstance extends instance_skel<Config> {
       'info',
       `Welcome, Panasonic module is loading`
     )
-
+		this.variables = new Variables(this)
+		this.tcp = new TCP(this)
     this.status(this.STATUS_WARNING, 'Connecting')
-    // this.variables = new Variables(this)
-    this.restClient = new REST(this)
 
     this.updateInstance()
-    // this.setPresetDefinitions(getPresets(this) as CompanionPreset[])
-    // this.variables.updateDefinitions()
-
-    // this.checkFeedbacks('mixSelect', 'buttonText')
+		this.variables.updateDefinitions()
   }
 
   /**
@@ -69,8 +68,8 @@ class KairosInstance extends instance_skel<Config> {
   public updateConfig(config: Config): void {
     this.config = config
     this.updateInstance()
-    // this.setPresetDefinitions(getPresets(this) as CompanionPreset[])
-    // if (this.variables) this.variables.updateDefinitions()
+    if (this.variables) this.variables.updateDefinitions()
+
   }
 
   /**
@@ -80,10 +79,26 @@ class KairosInstance extends instance_skel<Config> {
     this.log('debug', `Instance destroyed: ${this.id}`)
   }
 
+//  /**
+//    * @param option string from text inputs
+//    * @returns array of strings indexed by the button modifier delimiter
+//    * @description first splits the string by the position of the delimiter, then parses any instance variables in each part
+//    */
+//   public readonly parseOption = (option: string): string[] => {
+//     const instanceVariable = RegExp(/\$\(([^:$)]+):([^)$]+)\)/)
+
+//     return option.split(this.config.shiftDelimiter).map((value) => {
+//       if (instanceVariable.test(value)) {
+//         return this.variables ? this.variables.get(value) || '' : ''
+//       } else {
+//         return value
+//       }
+//     })
+//   }
   /**
    * @description sets actions and feedbacks available for this instance
    */
-  private updateInstance(): void {
+  public updateInstance(): void {
     // Cast actions and feedbacks from Kairos types to Companion types
     const actions = getActions(this) as CompanionActions
     // const feedbacks = getFeedbacks(this) as CompanionFeedbacks
