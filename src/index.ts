@@ -1,9 +1,8 @@
 import instance_skel = require('../../../instance_skel')
-// const Client = require('node-rest-client').Client
 import {
   CompanionActions,
   CompanionConfigField,
-  // CompanionFeedbacks,
+  CompanionFeedbacks,
   CompanionSystem,
   // CompanionPreset,
   // CompanionStaticUpgradeScript,
@@ -11,8 +10,7 @@ import {
 import { Config } from './config'
 import { getActions } from './actions'
 import { getConfigFields } from './config'
-// import { VMixData } from './data'
-// import { getFeedbacks } from './feedback'
+import { getFeedbacks } from './feedback'
 // import { getPresets } from './presets'
 // import { Indicator } from './indicators'
 import { TCP } from './tcp'
@@ -101,10 +99,10 @@ class KairosInstance extends instance_skel<Config> {
   public updateInstance(): void {
     // Cast actions and feedbacks from Kairos types to Companion types
     const actions = getActions(this) as CompanionActions
-    // const feedbacks = getFeedbacks(this) as CompanionFeedbacks
+    const feedbacks = getFeedbacks(this) as CompanionFeedbacks
 
     this.setActions(actions)
-    // this.setFeedbackDefinitions(feedbacks)
+    this.setFeedbackDefinitions(feedbacks)
   }
 }
 

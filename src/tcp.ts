@@ -101,10 +101,12 @@ export class TCP {
       if (message[0].split('=')[0] == 'SCENES.Main.Layers.Background.sourceA') {
         this.instance.KairosObj.main_background_sourceA = message[0].split('=')[1]
         this.instance.variables?.updateVariables()
+				this.instance.checkFeedbacks('inputSourceA')
         console.log('Value of Background SourceA', message[0].split('=')[1])
       } else if (message[0].split('=')[0] == 'SCENES.Main.Layers.Background.sourceB') {
-        this.instance.KairosObj.main_background_sourceB = message[0].split('=')[1]
+				this.instance.KairosObj.main_background_sourceB = message[0].split('=')[1]
         this.instance.variables?.updateVariables()
+				this.instance.checkFeedbacks('inputSourceB')
         console.log('Value of Background SourceB', message[0].split('=')[1])
       } else if (message.find((element) => element == 'OK')) {
         //Status message
