@@ -21,7 +21,11 @@ type EnforceDefault<T, U> = Omit<T, 'default'> & { default: U }
 
 export interface Options {
   input: EnforceDefault<CompanionInputFieldTextInput, string>
-  sceneSelect: EnforceDefault<CompanionInputFieldDropdown, string>
+  playerControl: EnforceDefault<CompanionInputFieldDropdown, string>
+  macroControl: EnforceDefault<CompanionInputFieldDropdown, string>
+  mvRecall: EnforceDefault<CompanionInputFieldDropdown, string>
+	mute: EnforceDefault<CompanionInputFieldDropdown, number>
+	channel: EnforceDefault<CompanionInputFieldDropdown, string>
   layerSelect: EnforceDefault<CompanionInputFieldDropdown, string>
   sourceSelect: EnforceDefault<CompanionInputFieldDropdown, string>
   foregroundColor: EnforceDefault<CompanionInputFieldColor, number>
@@ -59,15 +63,85 @@ export const options: Options = {
     tooltip: 'Number, Name, or GUID',
   },
 
-  sceneSelect: {
+  playerControl: {
     type: 'dropdown',
-    label: 'Scene',
-    id: 'scene',
-    default: 'SCENES.Main',
+    label: 'Action',
+    id: 'action',
+    default: 'begin',
     choices: [
-      { id: 'SCENES.Main', label: 'Main' },
-      { id: 'SCENES.Test1', label: 'Test1' },
-      { id: 'SCENES.New Scene-1', label: 'New Scene-1' },
+      { id: 'begin', label: 'Go to Begin' },
+      { id: 'rewind', label: 'Rewind' },
+      { id: 'step_back', label: 'Step back' },
+      { id: 'reverse_play', label: 'Reverse play' },
+      { id: 'play', label: 'Play' },
+      { id: 'pause', label: 'Pause' },
+      { id: 'stop', label: 'Stop' },
+      { id: 'step_forward', label: 'Step forward' },
+      { id: 'fast_forward', label: 'Fast forward' },
+      { id: 'end', label: 'Go to End' },
+      { id: 'repeat=0', label: 'Repeat off' },
+      { id: 'repeat=1', label: 'Repeat on' },
+    ],
+  },
+
+	macroControl: {
+    type: 'dropdown',
+    label: 'Macro',
+    id: 'action',
+    default: 'play',
+    choices: [
+      { id: 'play', label: 'Play' },
+      { id: 'pause', label: 'Pause' },
+      { id: 'stop', label: 'Stop' },
+      { id: 'record', label: 'Record' },
+      { id: 'stop_record', label: 'Stop record' },
+    ],
+  },
+
+	mvRecall: {
+    type: 'dropdown',
+    label: 'Multiviewer',
+    id: 'mv',
+    default: 'recall_mv1',
+    choices: [
+      { id: 'recall_mv1', label: 'Multiviewer 1' },
+      { id: 'recall_mv2', label: 'Multiviewer 2' },
+    ],
+  },
+
+	mute: {
+    type: 'dropdown',
+    label: 'Mute',
+    id: 'mute',
+    default: 0,
+    choices: [
+      { id: 0, label: 'unmute' },
+      { id: 1, label: 'mute' },
+    ],
+  },
+
+	channel: {
+    type: 'dropdown',
+    label: 'Channel',
+    id: 'channel',
+    default: 'Channel1',
+    choices: [
+      { id: 'Channel1', label: 'Channel1' },
+      { id: 'Channel2', label: 'Channel2' },
+      { id: 'Channel3', label: 'Channel3' },
+      { id: 'Channel4', label: 'Channel4' },
+      { id: 'Channel5', label: 'Channel5' },
+      { id: 'Channel6', label: 'Channel6' },
+      { id: 'Channel7', label: 'Channel7' },
+      { id: 'Channel8', label: 'Channel8' },
+      { id: 'Channel9', label: 'Channel9' },
+      { id: 'Channel10', label: 'Channel10' },
+      { id: 'Channel11', label: 'Channel11' },
+      { id: 'Channel12', label: 'Channel12' },
+      { id: 'Channel13', label: 'Channel13' },
+      { id: 'Channel14', label: 'Channel14' },
+      { id: 'Channel15', label: 'Channel15' },
+      { id: 'Channel16', label: 'Channel16' },
     ],
   },
 
