@@ -17,38 +17,45 @@ import { TCP } from './tcp'
 // import { getUpgrades } from './upgrade'
 import { Variables } from './variables'
 
-
 /**
  * Companion instance class for Panasonic Kairos
  */
 class KairosInstance extends instance_skel<Config> {
-
-	constructor(system: CompanionSystem, id: string, config: Config) {
+  constructor(system: CompanionSystem, id: string, config: Config) {
     super(system, id, config)
     this.system = system
     this.config = config
   }
-	public KairosObj!: { main_background_sourceA: string, main_background_sourceB: string, INPUTS: Array<string>; SCENES: Array<string>; AUX: Array<string>} 
+  public KairosObj!: {
+    main_background_sourceA: string
+    main_background_sourceB: string
+		audio_master_mute: number
+    INPUTS: Array<string>
+    SCENES: Array<string>
+    SNAPSHOTS: Array<string>
+    AUX: Array<string>
+		MACROS: Array<string>
+		PLAYERS: { player: string, repeat: number}[]
+		MV_PRESETS: Array<string>
+		AUDIO_CHANNELS: { channel: string, mute: number }[]
+  }
 
   public connected = false
   public tcp: TCP | null = null
-	public variables: Variables | null = null
+  public variables: Variables | null = null
 
   /**
    * @description triggered on instance being enabled
    */
   public init(): void {
     // New Module warning
-    this.log(
-      'info',
-      `Welcome, Panasonic module is loading`
-    )
-		this.variables = new Variables(this)
-		this.tcp = new TCP(this)
+    this.log('info', `Welcome, Panasonic module is loading`)
+    this.variables = new Variables(this)
+    this.tcp = new TCP(this)
     this.status(this.STATUS_WARNING, 'Connecting')
 
     this.updateInstance()
-		this.variables.updateDefinitions()
+    this.variables.updateDefinitions()
   }
 
   /**
@@ -67,7 +74,6 @@ class KairosInstance extends instance_skel<Config> {
     this.config = config
     this.updateInstance()
     if (this.variables) this.variables.updateDefinitions()
-
   }
 
   /**
@@ -77,22 +83,22 @@ class KairosInstance extends instance_skel<Config> {
     this.log('debug', `Instance destroyed: ${this.id}`)
   }
 
-//  /**
-//    * @param option string from text inputs
-//    * @returns array of strings indexed by the button modifier delimiter
-//    * @description first splits the string by the position of the delimiter, then parses any instance variables in each part
-//    */
-//   public readonly parseOption = (option: string): string[] => {
-//     const instanceVariable = RegExp(/\$\(([^:$)]+):([^)$]+)\)/)
+  //  /**
+  //    * @param option string from text inputs
+  //    * @returns array of strings indexed by the button modifier delimiter
+  //    * @description first splits the string by the position of the delimiter, then parses any instance variables in each part
+  //    */
+  //   public readonly parseOption = (option: string): string[] => {
+  //     const instanceVariable = RegExp(/\$\(([^:$)]+):([^)$]+)\)/)
 
-//     return option.split(this.config.shiftDelimiter).map((value) => {
-//       if (instanceVariable.test(value)) {
-//         return this.variables ? this.variables.get(value) || '' : ''
-//       } else {
-//         return value
-//       }
-//     })
-//   }
+  //     return option.split(this.config.shiftDelimiter).map((value) => {
+  //       if (instanceVariable.test(value)) {
+  //         return this.variables ? this.variables.get(value) || '' : ''
+  //       } else {
+  //         return value
+  //       }
+  //     })
+  //   }
   /**
    * @description sets actions and feedbacks available for this instance
    */

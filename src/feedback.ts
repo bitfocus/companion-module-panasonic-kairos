@@ -13,6 +13,9 @@ export interface KairosFeedbacks {
   // Tally
   inputSourceA: KairosFeedback<inputSourceACallback>
   inputSourceB: KairosFeedback<inputSourceBCallback>
+	//Audio
+	audioMuteMaster: KairosFeedback<audioMuteCallback>
+	audioMuteChannel: KairosFeedback<audioMuteChannelCallback>
 
   // Index signature
   [key: string]: KairosFeedback<any>
@@ -34,6 +37,25 @@ interface inputSourceBCallback {
     fg: number
     bg: number
     source: string
+  }>
+}
+
+// Audio
+interface audioMuteCallback {
+	type: ''
+	options: Readonly<{
+    fg: number
+    bg: number
+    mute: number
+  }>
+}
+interface audioMuteChannelCallback {
+	type: ''
+	options: Readonly<{
+    fg: number
+    bg: number
+    mute: number
+		channel: string
   }>
 }
 
@@ -128,7 +150,34 @@ export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
         else return
       },
     },
-
+		audioMuteMaster: {
+			type: 'advanced',
+      label: 'Tally audio master',
+      description: 'Indicates if audio mixer is muted',
+      options: [
+				options.foregroundColor,
+				options.backgroundColorProgram,
+      ],
+      callback: (feedback) => {
+        if (instance.KairosObj.audio_master_mute === 1) return { color: feedback.options.fg, bgcolor: feedback.options.bg }
+        else return
+      },
+		},
+		audioMuteChannel: {
+			type: 'advanced',
+      label: 'Tally audio channel',
+      description: 'Indicates if audio channel is muted',
+      options: [
+				options.channel,
+				options.foregroundColor,
+				options.backgroundColorProgram,
+      ],
+      callback: (feedback) => {
+				let channelNumber = parseInt(feedback.options.channel.slice(7)) - 1
+        if (instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute === 1) return { color: feedback.options.fg, bgcolor: feedback.options.bg }
+        else return
+      },
+		}
 	
   }
 }
