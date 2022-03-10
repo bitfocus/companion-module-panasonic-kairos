@@ -21,7 +21,7 @@ export class Variables {
   /**
    * @param name Instance variable name
    * @returns Value of instance variable or undefined
-   * @description Retrieves instance variable from any vMix instances
+   * @description Retrieves instance variable from any Kairos instances
    */
   public readonly get = (variable: string): string | undefined => {
     let data
