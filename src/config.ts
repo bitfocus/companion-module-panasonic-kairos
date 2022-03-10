@@ -27,19 +27,5 @@ export const getConfigFields = (): SomeCompanionConfigField[] => {
       max: 65535,
       step: 1,
     },
-		{
-      type: 'textinput',
-      id: 'username',
-      label: 'Username',
-      width: 6,
-      default: 'Kairos',
-    },
-		{
-      type: 'textinput',
-      id: 'password',
-      label: 'Password',
-      width: 6,
-      default: 'System ID',
-    },
 	]
 }
