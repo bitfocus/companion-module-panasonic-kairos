@@ -32,9 +32,43 @@ export class TCP {
     this.instance.KairosObj = {
       main_background_sourceA: '',
       main_background_sourceB: '',
+      audio_master_mute: 0,
       INPUTS: [],
       SCENES: [],
+      SNAPSHOTS: [],
       AUX: [],
+      MACROS: [],
+      PLAYERS: [
+				{ player: 'RR1', repeat: 0},
+				{ player: 'RR2', repeat: 0},
+				{ player: 'RR3', repeat: 0},
+				{ player: 'RR4', repeat: 0},
+				{ player: 'RR5', repeat: 0},
+				{ player: 'RR6', repeat: 0},
+				{ player: 'RR7', repeat: 0},
+				{ player: 'RR8', repeat: 0},
+				{ player: 'CP1', repeat: 0},
+				{ player: 'CP2', repeat: 0},
+			],
+      MV_PRESETS: [],
+      AUDIO_CHANNELS: [
+        { channel: 'Channel1', mute: 0 },
+        { channel: 'Channel2', mute: 0 },
+        { channel: 'Channel3', mute: 0 },
+        { channel: 'Channel4', mute: 0 },
+        { channel: 'Channel5', mute: 0 },
+        { channel: 'Channel6', mute: 0 },
+        { channel: 'Channel7', mute: 0 },
+        { channel: 'Channel8', mute: 0 },
+        { channel: 'Channel9', mute: 0 },
+        { channel: 'Channel10', mute: 0 },
+        { channel: 'Channel11', mute: 0 },
+        { channel: 'Channel12', mute: 0 },
+        { channel: 'Channel13', mute: 0 },
+        { channel: 'Channel14', mute: 0 },
+        { channel: 'Channel15', mute: 0 },
+        { channel: 'Channel16', mute: 0 },
+      ],
     }
 
     this.init()
@@ -56,7 +90,7 @@ export class TCP {
     if (this.tcpHost === undefined || this.tcpPort === undefined) {
       this.instance.log(
         'warn',
-        `Unable to connect to vMix, please configure a host and port in the instance configuration`
+        `Unable to connect to Kairos, please configure a host and port in the instance configuration`
       )
       return
     }
@@ -86,9 +120,23 @@ export class TCP {
       this.instance.status(0)
       this.instance.log('debug', 'Connected to mixer')
       delay(200)
-        .then(() => delay(200).then(() => this.sendCommand('list:Mixer.Inputs')))
-        .then(() => delay(200).then(() => this.sendCommand('list:AUX')))
-        .then(() => delay(200).then(() => this.sendCommand('list:SCENES')))
+        .then(() => delay(300).then(() => this.sendCommand('list:Mixer.Inputs')))
+        .then(() => delay(300).then(() => this.sendCommand('list:AUX')))
+        .then(() => delay(300).then(() => this.sendCommand('list:SCENES')))
+        .then(() => delay(300).then(() => this.sendCommand('list:MACROS')))
+        .then(() => delay(300).then(() => this.sendCommand('list:SCENES.Main.Snapshots')))
+        .then(() => delay(300).then(() => this.sendCommand('list:Mixer.MV-Presets')))
+        .then(() => delay(300).then(() => this.sendCommand('Subscribe:Mixer.AudioMixers.AudioMixer.mute')))
+				.then(() => delay(200).then(() => {
+					this.instance.KairosObj.PLAYERS.forEach(element => {
+						this.sendCommand(`subscribe:${element.player}.repeat`)
+					});
+				}))
+				.then(() => delay(200).then(() => {
+					this.instance.KairosObj.AUDIO_CHANNELS.forEach(element => {
+						this.sendCommand(`subscribe:Mixer.AudioMixers.AudioMixer.${element.channel}.mute`)
+					});
+				}))
         .then(() => delay(200).then(() => this.sendCommand('subscribe:SCENES.Main.Layers.Background.sourceA')))
         .then(() => delay(200).then(() => this.sendCommand('subscribe:SCENES.Main.Layers.Background.sourceB')))
         .then(() => delay(200).then(() => this.instance.updateInstance()))
@@ -101,12 +149,12 @@ export class TCP {
       if (message[0].split('=')[0] == 'SCENES.Main.Layers.Background.sourceA') {
         this.instance.KairosObj.main_background_sourceA = message[0].split('=')[1]
         this.instance.variables?.updateVariables()
-				this.instance.checkFeedbacks('inputSourceA')
+        this.instance.checkFeedbacks('inputSourceA')
         console.log('Value of Background SourceA', message[0].split('=')[1])
       } else if (message[0].split('=')[0] == 'SCENES.Main.Layers.Background.sourceB') {
-				this.instance.KairosObj.main_background_sourceB = message[0].split('=')[1]
+        this.instance.KairosObj.main_background_sourceB = message[0].split('=')[1]
         this.instance.variables?.updateVariables()
-				this.instance.checkFeedbacks('inputSourceB')
+        this.instance.checkFeedbacks('inputSourceB')
         console.log('Value of Background SourceB', message[0].split('=')[1])
       } else if (message.find((element) => element == 'OK')) {
         //Status message
@@ -120,9 +168,27 @@ export class TCP {
       } else if (message.find((element) => element == 'IP-AUX1')) {
         //This is an AUX list
         this.instance.KairosObj.AUX = message
+      } else if (message.find((element) => element.includes('MACROS.'))) {
+        //This is an MACRO list
+        this.instance.KairosObj.MACROS = message
+      } else if (message.find((element) => element.includes('Mixer.MV-Presets.'))) {
+        //This is an MACRO list
+        this.instance.KairosObj.MV_PRESETS = message
+      } else if (message.find((element) => element.includes('SCENES.Main.Snapshots'))) {
+        //This is an SCENES list
+        this.instance.KairosObj.SNAPSHOTS = message
       } else if (message.find((element) => element == 'SCENES.Main')) {
         //This is an SCENES list
         this.instance.KairosObj.SCENES = message
+      } else if (message.find((element) => element.includes('Mixer.AudioMixers.AudioMixer.mute'))) {
+        //This is an Audio Master Mixer stuff
+        this.instance.KairosObj.audio_master_mute = parseInt(message[0].split('=')[1])
+        this.instance.checkFeedbacks('audioMuteMaster')
+      } else if (message.find((element) => element.includes('Mixer.AudioMixers.AudioMixer.'))) {
+        //This is an Audio channel Mixer stuff
+				let channelIndex = parseInt(message[0].slice(29, -5)) - 1
+        this.instance.KairosObj.AUDIO_CHANNELS[channelIndex].mute = parseInt(message[0].split('=')[1])
+        this.instance.checkFeedbacks('audioMuteChannel')
       } else {
         console.log(message)
       }
@@ -134,7 +200,7 @@ export class TCP {
 
   /**
    * @param command function and any params
-   * @description Check TCP connection status and format command to send to vMix
+   * @description Check TCP connection status and format command to send to Kairos
    */
   public readonly sendCommand = (command: string): void => {
     // @ts-expect-error Types doesn't include 'connected' property
