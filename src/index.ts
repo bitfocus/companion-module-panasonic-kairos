@@ -4,15 +4,14 @@ import {
   CompanionConfigField,
   CompanionFeedbacks,
   CompanionSystem,
-  // CompanionPreset,
+  CompanionPreset,
   // CompanionStaticUpgradeScript,
 } from '../../../instance_skel_types'
 import { Config } from './config'
 import { getActions } from './actions'
 import { getConfigFields } from './config'
 import { getFeedbacks } from './feedback'
-// import { getPresets } from './presets'
-// import { Indicator } from './indicators'
+import { getPresets } from './presets'
 import { TCP } from './tcp'
 // import { getUpgrades } from './upgrade'
 import { Variables } from './variables'
@@ -30,7 +29,7 @@ class KairosInstance extends instance_skel<Config> {
     main_background_sourceA: string
     main_background_sourceB: string
 		audio_master_mute: number
-    INPUTS: Array<string>
+    INPUTS: { input: string, name: string}[]
     SCENES: Array<string>
     SNAPSHOTS: Array<string>
     AUX: Array<string>
@@ -73,6 +72,7 @@ class KairosInstance extends instance_skel<Config> {
   public updateConfig(config: Config): void {
     this.config = config
     this.updateInstance()
+    this.setPresetDefinitions(getPresets(this) as CompanionPreset[])
     if (this.variables) this.variables.updateDefinitions()
   }
 
@@ -106,9 +106,11 @@ class KairosInstance extends instance_skel<Config> {
     // Cast actions and feedbacks from Kairos types to Companion types
     const actions = getActions(this) as CompanionActions
     const feedbacks = getFeedbacks(this) as CompanionFeedbacks
-
+		const presets = getPresets(this) as CompanionPreset[]
+		
     this.setActions(actions)
     this.setFeedbackDefinitions(feedbacks)
+    this.setPresetDefinitions(presets)
   }
 }
 
