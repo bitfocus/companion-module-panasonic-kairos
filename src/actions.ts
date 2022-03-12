@@ -6,6 +6,8 @@ export interface KairosActions {
   // playerControl
   playerControl: KairosAction<PlayerControlCallback>
   macroControl: KairosAction<MacroControlCallback>
+	// AUX
+	setAUX: KairosAction<SetAUXCallback>
   // mv Recall
   mvRecall: KairosAction<MvRecallCallback>
   // Layer Source Assigment
@@ -37,6 +39,15 @@ interface MacroControlCallback {
     functionID: ''
     macro: string
     action: string
+  }>
+}
+// AUX
+interface SetAUXCallback {
+  action: 'setAux'
+  options: Readonly<{
+    functionID: ''
+    aux: string
+    source: string
   }>
 }
 // MV recall
@@ -93,15 +104,16 @@ interface MuteChannelCallback {
   }>
 }
 export type ActionCallbacks =
-	| MacroControlCallback
+  | MacroControlCallback
   | PlayerControlCallback
-	| MvRecallCallback
+	| SetAUXCallback
+  | MvRecallCallback
   | SetSourceACallback
   | ProgramAutoCallback
-	| ProgramCutCallback
-	| TriggerSnapshotCallback
-	| MuteChannelCallback
-	| MuteChannelCallback
+  | ProgramCutCallback
+  | TriggerSnapshotCallback
+  | MuteChannelCallback
+  | MuteChannelCallback
 
 // Force options to have a default to prevent sending undefined values
 type InputFieldWithDefault = Exclude<SomeCompanionInputField, 'default'> & { default: string | number | boolean | null }
@@ -235,6 +247,39 @@ export function getActions(instance: KairosInstance): KairosActions {
         }
 
         sendBasicCommand(programAuto)
+      },
+    },
+    //AUX
+    setAUX: {
+      label: 'Set AUX',
+      options: [
+        {
+          type: 'dropdown',
+          label: 'AUX',
+          id: 'aux',
+          default: instance.KairosObj.AUX[0].aux,
+          choices: instance.KairosObj.AUX.map((id) => ({ id: id.aux, label: id.aux })),
+        },
+        {
+          type: 'dropdown',
+          label: 'Source',
+          id: 'source',
+          default: instance.KairosObj.INPUTS[0].input,
+          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.input, label: id.name })),
+        },
+      ],
+      callback: (action) => {
+        const setAux: any = {
+          id: 'setAux',
+          options: {
+            functionID: `${action.options.aux}.source=${action.options.source}`,
+          },
+        }
+        // Don't wait for the value to return from the mixer, set it directly
+				let index = instance.KairosObj.AUX.findIndex(x => x.aux === action.options.aux)
+        instance.KairosObj.AUX[index].live = action.options.source
+        instance.checkFeedbacks('aux')
+        sendBasicCommand(setAux)
       },
     },
     //Control

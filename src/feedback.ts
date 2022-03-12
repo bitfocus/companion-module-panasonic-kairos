@@ -152,7 +152,7 @@ export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
     },
 		audioMuteMaster: {
 			type: 'advanced',
-      label: 'Tally audio master',
+      label: 'Mute audio master',
       description: 'Indicates if audio mixer is muted',
       options: [
 				options.foregroundColor,
@@ -165,7 +165,7 @@ export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
 		},
 		audioMuteChannel: {
 			type: 'advanced',
-      label: 'Tally audio channel',
+      label: 'Mute audio channel',
       description: 'Indicates if audio channel is muted',
       options: [
 				options.channel,
@@ -175,6 +175,34 @@ export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
       callback: (feedback) => {
 				let channelNumber = parseInt(feedback.options.channel.slice(7)) - 1
         if (instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute === 1) return { color: feedback.options.fg, bgcolor: feedback.options.bg }
+        else return
+      },
+		},
+		aux: {
+			type: 'advanced',
+      label: 'AUX',
+      description: 'Indicates if an source is in an AUX',
+      options: [
+				{
+          type: 'dropdown',
+          label: 'AUX',
+          id: 'aux',
+          default: instance.KairosObj.AUX[0].aux,
+          choices: instance.KairosObj.AUX.map((id) => ({ id: id.aux, label: id.aux })),
+        },
+				{
+          type: 'dropdown',
+          label: 'Source',
+          id: 'source',
+          default: instance.KairosObj.INPUTS[0].input,
+          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.input, label: id.name })),
+        },
+				options.foregroundColor,
+				options.backgroundColorProgram,
+      ],
+      callback: (feedback) => {
+				let index = instance.KairosObj.AUX.findIndex(x => x.aux === feedback.options.aux)
+        if (instance.KairosObj.AUX[index].live === feedback.options.source) return { color: feedback.options.fg, bgcolor: feedback.options.bg }
         else return
       },
 		}
