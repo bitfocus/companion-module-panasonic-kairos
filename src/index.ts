@@ -29,10 +29,10 @@ class KairosInstance extends instance_skel<Config> {
     main_background_sourceA: string
     main_background_sourceB: string
 		audio_master_mute: number
-    INPUTS: { input: string, name: string}[]
+    INPUTS: { input: string, name: string, live: boolean}[]
     SCENES: Array<string>
     SNAPSHOTS: Array<string>
-    AUX: Array<string>
+    AUX: { aux: string, live: string, sources: Array<string> }[]
 		MACROS: Array<string>
 		PLAYERS: { player: string, repeat: number}[]
 		MV_PRESETS: Array<string>
