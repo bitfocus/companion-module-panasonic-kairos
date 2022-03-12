@@ -93,12 +93,15 @@ interface MuteChannelCallback {
   }>
 }
 export type ActionCallbacks =
-  //Player Control
+	| MacroControlCallback
   | PlayerControlCallback
-  // Layer Source Assignment
+	| MvRecallCallback
   | SetSourceACallback
-  // Transition
-  | ProgramCutCallback
+  | ProgramAutoCallback
+	| ProgramCutCallback
+	| TriggerSnapshotCallback
+	| MuteChannelCallback
+	| MuteChannelCallback
 
 // Force options to have a default to prevent sending undefined values
 type InputFieldWithDefault = Exclude<SomeCompanionInputField, 'default'> & { default: string | number | boolean | null }
@@ -166,8 +169,8 @@ export function getActions(instance: KairosInstance): KairosActions {
           type: 'dropdown',
           label: 'Source',
           id: 'source',
-          default: instance.KairosObj.INPUTS[0],
-          choices: instance.KairosObj.INPUTS.map((id) => ({ id, label: id })),
+          default: instance.KairosObj.INPUTS[0].input,
+          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.input, label: id.name })),
         },
       ],
       callback: (action) => {
