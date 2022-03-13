@@ -38,7 +38,7 @@ export class TCP {
       main_background_sourceB: '',
       audio_master_mute: 0,
       INPUTS: [{ input: '', name: '', live: false }],
-      SCENES: [{ scene: '', snapshots: [], layers: [], transitions: [] }],
+      SCENES: [{ scene: '', snapshots: [], layers: [], transitions: [], next_transition: '' }],
       SNAPSHOTS: [],
       AUX: [{ aux: '', live: '', sources: [], available: 0 }],
       MACROS: [],
@@ -162,6 +162,12 @@ export class TCP {
               if (item.scene !== '') await sendCommandWithDelay(`list:${item.scene}.Transitions`, interval)
             }
           })
+          .then(async () => {
+            // Fetch all transitions per scene
+            for (const item of this.instance.KairosObj.SCENES) {
+              if (item.scene !== '') await sendCommandWithDelay(`${item.scene}.next_transition`, interval)
+            }
+          })
           .then(() =>
             delay(interval).then(() => {
               for (const iterator of this.instance.KairosObj.SCENES) {
@@ -224,6 +230,13 @@ export class TCP {
               })
             })
           )
+          .then(() =>
+            delay(200).then(() => {
+              this.instance.KairosObj.SCENES.forEach((element) => {
+                this.sendCommand(`subscribe:${element.scene}.next_transition`)
+              })
+            })
+          )
           .then(() => delay(200).then(() => this.sendCommand('subscribe:SCENES.Main.Layers.Background.sourceA')))
           .then(() => delay(200).then(() => this.sendCommand('subscribe:SCENES.Main.Layers.Background.sourceB')))
           .then(() => delay(200).then(() => this.instance.status(0)))
@@ -240,9 +253,7 @@ export class TCP {
     this.sockets.main.on('data', (data: Buffer) => {
       //create array from data
       const message = data.toString().split('\r\n')
-			console.log('message',message);
-			
-
+			// console.log('message',message);
       if (message.find((element) => element == 'OK')) {
         //Status message
         this.instance.log('debug', 'Command succeeded')
@@ -288,7 +299,7 @@ export class TCP {
       } else if (message.find((element) => element == 'SCENES.Main')) {
         //This is an SCENES list, only at startup so reset
         message.forEach((element) => {
-          if (element !== '') this.instance.KairosObj.SCENES.push({ scene: element, snapshots: [], layers: [], transitions: [] })
+          if (element !== '') this.instance.KairosObj.SCENES.push({ scene: element, snapshots: [], layers: [], transitions: [], next_transition: '' })
         })
       } else if (message.find((element) => element.includes('.name='))) {
         //This is an name for an Input (BE AWARE THIS CAN CHANGE IN THE FUTURE)
@@ -370,6 +381,13 @@ export class TCP {
         let sceneName = message[0].slice(0, message[0].search('.Transitions.'))
         let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
         if (index != -1) this.instance.KairosObj.SCENES[index].transitions = message.filter(String)
+      } else if (message.find((element) => element.includes('.next_transition='))) {
+        //This is a next transition
+				// SCENES.Main.next_transition=SCENES.Main.Transitions.BgdMix
+				let split = message[0].split('=')
+        let sceneName = split[0].slice(0, message[0].search('.next_transition='))
+        let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
+        if (index != -1) this.instance.KairosObj.SCENES[index].next_transition = split[1]
       } else {
         console.log(message)
       }

@@ -76,6 +76,11 @@ export class Variables {
       { label: 'Mute Channel 15', name: 'mute_channel_15' },
       { label: 'Mute Channel 16', name: 'mute_channel_16' },
     ])
+
+		let sceneNextTransition = []
+		for (const scene of this.instance.KairosObj.SCENES) {
+			sceneNextTransition.push({ label: `${scene.scene} next transition`, name: `${scene.scene}.next_transition` })
+		}
     let auxSources = []
     for (const AUX of this.instance.KairosObj.AUX) {
       auxSources.push({ label: `Source in ${AUX.aux}`, name: AUX.aux })
@@ -89,7 +94,7 @@ export class Variables {
       playerRepeat.push({ label: `${PLAYER.player} in repeat modus`, name: `${PLAYER.player}.${PLAYER.repeat}` })
     }
 
-    let filteredVariables = [...variables, ...auxSources, ...audio, ...playerRepeat, ...auxAvailable]
+    let filteredVariables = [...variables, ...auxSources, ...audio, ...playerRepeat, ...auxAvailable, ...sceneNextTransition]
 
     this.instance.setVariableDefinitions(filteredVariables)
   }
@@ -107,6 +112,10 @@ export class Variables {
     for (const AUX of this.instance.KairosObj.AUX) {
       newVariables[AUX.aux] = AUX.live
       newVariables[`${AUX.aux}.available`] = AUX.available == 0 ? 'disabled' : 'enabled'
+    }
+		//TRANSITION
+		for (const SCENE of this.instance.KairosObj.SCENES) {
+      newVariables[`${SCENE.scene}.next_transition`] = SCENE.next_transition
     }
     // AUDIO
     for (const PLAYER of this.instance.KairosObj.PLAYERS) {
