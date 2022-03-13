@@ -140,13 +140,13 @@ export class TCP {
             for (const iterator of this.instance.KairosObj.INPUTS) {
               if (iterator.input !== '') await sendCommandWithDelay(`${iterator.input}.name`, 300)
             }
-            delay(300).then(() => resolve)
+            delay(300).then(() => resolve('fetch ready'))
           })
       })
     }
 
     this.sockets.main.on('connect', () => {
-      this.instance.status(0)
+      this.instance.status(1)
       this.instance.log('debug', 'Connected to mixer')
       fetchInitialData().then(() => {
         // All data is in, now Subscribe to some stuff
@@ -166,8 +166,9 @@ export class TCP {
           )
           .then(() => delay(200).then(() => this.sendCommand('subscribe:SCENES.Main.Layers.Background.sourceA')))
           .then(() => delay(200).then(() => this.sendCommand('subscribe:SCENES.Main.Layers.Background.sourceB')))
-        this.instance.updateInstance()
-        this.keepAliveInterval = setInterval(keepAlive, 4500) //session expires at 5 seconds
+          .then(() => delay(200).then(() => this.instance.status(0)))
+          .then(() => delay(200).then(() => this.instance.updateInstance()))
+          .then(() => (this.keepAliveInterval = setInterval(keepAlive, 4500))) //session expires at 5 seconds
       })
     })
 
@@ -206,7 +207,6 @@ export class TCP {
         this.instance.checkFeedbacks('audioMuteChannel')
       } else if (message.find((element) => element == 'IP1')) {
         //This is an input list
-        console.log(message)
         if (message.length > 0) {
           this.instance.KairosObj.INPUTS.length = 0
           message.forEach((element) => {
@@ -239,9 +239,17 @@ export class TCP {
 
         // When ready remove the first part so you keep only the options
         auxSourceOptions.shift()
-
+				// Then there is only one item in the array
+				// let newArray = auxSourceOptions[0].trim().split(',').join('').split('')
+				let newArray = auxSourceOptions[0].trim().split(',').filter(String)
+				
         let index = this.instance.KairosObj.AUX.findIndex((x) => x.aux === auxName)
-        if (index != -1) this.instance.KairosObj.AUX[index].sources = auxSourceOptions[0].trim().split(',')
+        if (index != -1) this.instance.KairosObj.AUX[index].sources = newArray
+				for (let index = 0; index < newArray.length; index++) {
+					if (this.instance.KairosObj.INPUTS.find((x) => x.input === newArray[index]) === undefined) {
+						this.instance.KairosObj.INPUTS.push({ input: newArray[index], name: newArray[index], live: false})
+					}
+				}
       } else if (message.find((element) => element == 'IP-AUX1')) {
         //This is an AUX list
         this.instance.KairosObj.AUX.length = 0
