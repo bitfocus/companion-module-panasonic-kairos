@@ -6,11 +6,11 @@ export interface KairosActions {
   // playerControl
   playerControl: KairosAction<PlayerControlCallback>
   macroControl: KairosAction<MacroControlCallback>
-	// AUX
-	setAUX: KairosAction<SetAUXCallback>
+  // AUX
+  setAUX: KairosAction<SetAUXCallback>
   // mv Recall
   mvRecall: KairosAction<MvRecallCallback>
-  // Layer Source Assigment
+  // Layer Source Assignment
   setSource: KairosAction<SetSourceACallback>
   // Transition
   programCut: KairosAction<ProgramCutCallback>
@@ -63,7 +63,6 @@ interface MvRecallCallback {
 interface SetSourceACallback {
   action: 'setSoure'
   options: Readonly<{
-    scene: string
     layer: string
     sourceAB: string
     source: string
@@ -106,7 +105,7 @@ interface MuteChannelCallback {
 export type ActionCallbacks =
   | MacroControlCallback
   | PlayerControlCallback
-	| SetAUXCallback
+  | SetAUXCallback
   | MvRecallCallback
   | SetSourceACallback
   | ProgramAutoCallback
@@ -153,19 +152,19 @@ export function getActions(instance: KairosInstance): KairosActions {
     setSource: {
       label: 'Set Source',
       options: [
-        {
-          type: 'dropdown',
-          label: 'Scene',
-          id: 'scene',
-          default: instance.KairosObj.SCENES[0],
-          choices: instance.KairosObj.SCENES.map((id) => ({ id, label: id.slice(7) })),
-        },
+        // {
+        //   type: 'dropdown',
+        //   label: 'Scene',
+        //   id: 'scene',
+        //   default: instance.KairosObj.SCENES[0].scene,
+        //   choices: instance.KairosObj.SCENES.map((id) => ({ id: id.scene, label: id.scene.slice(7) })),
+        // },
         {
           type: 'dropdown',
           label: 'Layer',
           id: 'layer',
-          default: 'Background',
-          choices: [{ id: 'Background', label: 'Background' }],
+          default: instance.combinedLayerArray[0],
+          choices: instance.combinedLayerArray.map((id) => ({ id, label: id })),
         },
         {
           type: 'dropdown',
@@ -189,7 +188,8 @@ export function getActions(instance: KairosInstance): KairosActions {
         const setSource: any = {
           id: 'setSource',
           options: {
-            functionID: `${action.options.scene}.Layers.${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
+            // functionID: `${action.options.scene}.Layers.${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
+            functionID: `${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
           },
         }
         // Don't wait for the value to return from the mixer, set it directly
@@ -211,8 +211,8 @@ export function getActions(instance: KairosInstance): KairosActions {
           type: 'dropdown',
           label: 'Scene',
           id: 'scene',
-          default: instance.KairosObj.SCENES[0],
-          choices: instance.KairosObj.SCENES.map((id) => ({ id, label: id.slice(7) })),
+          default: instance.KairosObj.SCENES[0].scene,
+          choices: instance.KairosObj.SCENES.map((id) => ({ id: id.scene, label: id.scene.slice(7) })),
         },
       ],
       callback: (action) => {
@@ -233,8 +233,8 @@ export function getActions(instance: KairosInstance): KairosActions {
           type: 'dropdown',
           label: 'Scene',
           id: 'scene',
-          default: instance.KairosObj.SCENES[0],
-          choices: instance.KairosObj.SCENES.map((id) => ({ id, label: id.slice(7) })),
+          default: instance.KairosObj.SCENES[0].scene,
+          choices: instance.KairosObj.SCENES.map((id) => ({ id: id.scene, label: id.scene.slice(7) })),
         },
       ],
       callback: (action) => {
@@ -276,7 +276,7 @@ export function getActions(instance: KairosInstance): KairosActions {
           },
         }
         // Don't wait for the value to return from the mixer, set it directly
-				let index = instance.KairosObj.AUX.findIndex(x => x.aux === action.options.aux)
+        let index = instance.KairosObj.AUX.findIndex((x) => x.aux === action.options.aux)
         instance.KairosObj.AUX[index].live = action.options.source
         instance.checkFeedbacks('aux')
         sendBasicCommand(setAUX)
