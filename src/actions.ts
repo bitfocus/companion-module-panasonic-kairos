@@ -359,6 +359,7 @@ export function getActions(instance: KairosInstance): KairosActions {
         let index = instance.KairosObj.AUX.findIndex((x) => x.aux === action.options.aux)
         instance.KairosObj.AUX[index].live = action.options.source
         instance.checkFeedbacks('aux')
+        instance.variables?.updateVariables()
         sendBasicCommand(setAUX)
       },
     },
@@ -479,6 +480,7 @@ export function getActions(instance: KairosInstance): KairosActions {
         }
         instance.KairosObj.audio_master_mute = action.options.mute
         instance.checkFeedbacks('audioMuteMaster')
+        instance.variables?.updateVariables()
         sendBasicCommand(muteMaster)
       },
     },
@@ -495,6 +497,7 @@ export function getActions(instance: KairosInstance): KairosActions {
         let channelNumber = parseInt(action.options.channel.slice(7)) - 1
         instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute = action.options.mute
         instance.checkFeedbacks('audioMuteChannel')
+        instance.variables?.updateVariables()
         sendBasicCommand(muteChannel)
       },
     },

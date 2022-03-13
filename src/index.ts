@@ -35,7 +35,7 @@ class KairosInstance extends instance_skel<Config> {
     INPUTS: { input: string, name: string, live: boolean}[]
     SCENES: { scene: string, snapshots: Array<string>, layers: Array<string>, transitions: Array<string>}[]
     SNAPSHOTS: Array<string>
-    AUX: { aux: string, live: string, sources: Array<string> }[]
+    AUX: { aux: string, live: string, sources: Array<string>, available: number }[]
 		MACROS: Array<string>
 		PLAYERS: { player: string, repeat: number}[]
 		MV_PRESETS: Array<string>

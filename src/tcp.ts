@@ -40,7 +40,7 @@ export class TCP {
       INPUTS: [{ input: '', name: '', live: false }],
       SCENES: [{ scene: '', snapshots: [], layers: [], transitions: [] }],
       SNAPSHOTS: [],
-      AUX: [{ aux: '', live: '', sources: [] }],
+      AUX: [{ aux: '', live: '', sources: [], available: 0 }],
       MACROS: [],
       PLAYERS: [
         { player: 'RR1', repeat: 0 },
@@ -132,18 +132,18 @@ export class TCP {
           .then(() => delay(interval).then(() => this.sendCommand('list:SCENES')))
           .then(() => delay(interval).then(() => this.sendCommand('list:MACROS')))
           .then(() => delay(interval).then(() => this.sendCommand('list:Mixer.MV-Presets')))
-          .then(async () => {
-            // Fetch all source options for aux
-            for (const item of this.instance.KairosObj.AUX) {
-              if (item.aux !== '') await sendCommandWithDelay(`${item.aux}.sourceOptions`, interval)
-            }
-          })
-          .then(async () => {
-            // Fetch all input names
-            for (const iterator of this.instance.KairosObj.INPUTS) {
-              if (iterator.input !== '') await sendCommandWithDelay(`${iterator.input}.name`, interval)
-            }
-          })
+          // .then(async () => {
+          //   // Fetch all source options for aux
+          //   for (const item of this.instance.KairosObj.AUX) {
+          //     if (item.aux !== '') await sendCommandWithDelay(`${item.aux}.sourceOptions`, interval)
+          //   }
+          // })
+          // .then(async () => {
+          //   // Fetch all input names
+          //   for (const iterator of this.instance.KairosObj.INPUTS) {
+          //     if (iterator.input !== '') await sendCommandWithDelay(`${iterator.input}.name`, interval)
+          //   }
+          // })
           .then(async () => {
             // Fetch all snapshots per scene
             for (const item of this.instance.KairosObj.SCENES) {
@@ -187,6 +187,7 @@ export class TCP {
             delay(interval).then(async () => {
               for (const iterator of this.instance.KairosObj.AUX) {
                 if (iterator.aux !== '') await sendCommandWithDelay(`${iterator.aux}.source`, interval)
+                if (iterator.aux !== '') await sendCommandWithDelay(`${iterator.aux}.available`, interval)
               }
             })
           )
@@ -239,6 +240,8 @@ export class TCP {
     this.sockets.main.on('data', (data: Buffer) => {
       //create array from data
       const message = data.toString().split('\r\n')
+			console.log('message',message);
+			
 
       if (message.find((element) => element == 'OK')) {
         //Status message
@@ -260,17 +263,20 @@ export class TCP {
         //This is an Audio Master Mixer stuff
         this.instance.KairosObj.audio_master_mute = parseInt(message[0].split('=')[1])
         this.instance.checkFeedbacks('audioMuteMaster')
+        this.instance.variables?.updateVariables()
       } else if (message.find((element) => element.includes('.source='))) {
         //This is an AUX source
 				let split = message[0].split('=')
         let index = this.instance.KairosObj.AUX.findIndex((x) => x.aux === split[0].slice(0,7))
 				if(index != -1) this.instance.KairosObj.AUX[index].live = split[1]
         this.instance.checkFeedbacks('aux')
+        this.instance.variables?.updateVariables()
       } else if (message.find((element) => element.includes('Mixer.AudioMixers.AudioMixer.'))) {
         //This is an Audio channel Mixer stuff
         let channelIndex = parseInt(message[0].slice(29, -5)) - 1
         this.instance.KairosObj.AUDIO_CHANNELS[channelIndex].mute = parseInt(message[0].split('=')[1])
         this.instance.checkFeedbacks('audioMuteChannel')
+        this.instance.variables?.updateVariables()
       } else if (message.find((element) => element == 'IP1')) {
         //This is an input list
         if (message.length > 0) {
@@ -325,11 +331,23 @@ export class TCP {
         //This is an AUX list
         this.instance.KairosObj.AUX.length = 0
         message.forEach((element) => {
-          if (element !== '') this.instance.KairosObj.AUX.push({ aux: element, live: '', sources: [] })
+          if (element !== '') this.instance.KairosObj.AUX.push({ aux: element, live: '', sources: [], available: 1 })
         })
       } else if (message.find((element) => element.includes('MACROS.'))) {
         //This is an MACRO list
         this.instance.KairosObj.MACROS = message.filter(String)
+      } else if (message.find((element) => element.includes('.available='))) {
+        //This is an AUX available check
+				let split = message[0].split('=')
+        let index = this.instance.KairosObj.AUX.findIndex((x) => x.aux === split[0].slice(0,10))
+        if (index != -1) this.instance.KairosObj.AUX[index].available = parseInt(split[1])
+        this.instance.variables?.updateVariables()
+      } else if (message.find((element) => element.includes('.repeat='))) {
+        //This is an PLAYER repeat check
+				let split = message[0].split('=')
+        let index = this.instance.KairosObj.PLAYERS.findIndex((x) => x.player === split[0].slice(0,7))
+        if (index != -1) this.instance.KairosObj.PLAYERS[index].repeat = parseInt(split[1])
+        this.instance.variables?.updateVariables()
       } else if (message.find((element) => element.includes('Mixer.MV-Presets.'))) {
         //This is an MV Preset list
         this.instance.KairosObj.MV_PRESETS = message.filter(String)

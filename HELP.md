@@ -52,8 +52,18 @@ This module is for the Panasonic Kairos switcher.
 * Set mute/unmute for 16 audio busses
 
 **Available feedback in this module**
-Main background layer Source A
-Main background layer Source B
-AUX sources
-Audio master mute
-Audio 16-channels mute
+
+* Main background layer Source A
+* Main background layer Source B
+* AUX sources
+* Audio master mute
+* Audio 16-channels mute
+
+**Available variables in this module**
+
+* main.background.sourceA
+* main.background.sourceB
+* AUX with sources
+* PLAYER repeat modus
+* MUTE master
+* MUTE channel 1 t/m 16
