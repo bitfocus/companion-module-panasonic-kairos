@@ -34,7 +34,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 				bank: {
 					style: 'text',
 					text: element.aux + '\\n' + source,
-					size: '18',
+					size: 'auto',
 					color: instance.rgb(255, 255, 255),
 					bgcolor: instance.rgb(0, 0, 0),
 				},
@@ -54,7 +54,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
       bank: {
         style: 'text',
         text: element.player + '\\nplay',
-        size: '24',
+        size: 'auto',
         color: instance.rgb(255, 255, 255),
         bgcolor: instance.rgb(0, 0, 0),
       },
@@ -63,20 +63,22 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
     })
   })
   // Snapshots
-  instance.KairosObj.SNAPSHOTS.forEach((element) => {
-    presets.push({
-      category: 'Snapshots',
-      label: element,
-      bank: {
-        style: 'text',
-        text: element,
-        size: '24',
-        color: instance.rgb(255, 255, 255),
-        bgcolor: instance.rgb(0, 0, 0),
-      },
-      actions: [{ action: 'triggerSnapshot', options: { snapshot: element } }],
-      feedbacks: [],
-    })
+  instance.KairosObj.SCENES.forEach((element) => {
+		element.snapshots.forEach(el => {
+			presets.push({
+				category: 'Snapshots',
+				label: el,
+				bank: {
+					style: 'text',
+					text: el,
+					size: 'auto',
+					color: instance.rgb(255, 255, 255),
+					bgcolor: instance.rgb(0, 0, 0),
+				},
+				actions: [{ action: 'triggerSnapshot', options: { snapshot: el } }],
+				feedbacks: [],
+			})
+		})
   })
   return presets
 }
