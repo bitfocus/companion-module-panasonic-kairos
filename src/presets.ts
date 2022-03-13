@@ -11,6 +11,7 @@ export type PresetCategory =
   | 'Transition'
   | 'Snapshots'
   | 'Audio Mute'
+	| 'AUX'
 
 interface KairosPresetAdditions {
   category: PresetCategory
@@ -24,6 +25,27 @@ export type KairosPreset = Exclude<CompanionPreset, 'category' | 'actions' | 're
 
 export function getPresets(instance: KairosInstance): KairosPreset[] {
   let presets: KairosPreset[] = []
+	// AUX
+	instance.KairosObj.AUX.forEach((element) => {
+		element.sources.forEach(source => {
+			presets.push({
+				category: 'AUX',
+				label: element.aux,
+				bank: {
+					style: 'text',
+					text: element.aux + '\\n' + source,
+					size: '18',
+					color: instance.rgb(255, 255, 255),
+					bgcolor: instance.rgb(0, 0, 0),
+				},
+				actions: [{ action: 'setAUX', options: { functionID: '', aux: element.aux, source } }],
+				feedbacks: [{
+          type: 'aux',
+          options: { aux: element.aux, source, fg: instance.rgb(255, 255, 255), bg: instance.rgb(0, 255, 0) },
+        },],
+			})
+		})
+	})
   // Player
   instance.KairosObj.PLAYERS.forEach((element) => {
     presets.push({
