@@ -26,12 +26,14 @@ class KairosInstance extends instance_skel<Config> {
     this.config = config
   }
 	public combinedLayerArray!: Array<string>
+	public combinedTransitionsArray!: Array<string>
+	public combinedSnapshotsArray!: Array<string>
   public KairosObj!: {
     main_background_sourceA: string
     main_background_sourceB: string
 		audio_master_mute: number
     INPUTS: { input: string, name: string, live: boolean}[]
-    SCENES: { scene: string, snapshots: Array<string>, layers: Array<string>}[]
+    SCENES: { scene: string, snapshots: Array<string>, layers: Array<string>, transitions: Array<string>}[]
     SNAPSHOTS: Array<string>
     AUX: { aux: string, live: string, sources: Array<string> }[]
 		MACROS: Array<string>

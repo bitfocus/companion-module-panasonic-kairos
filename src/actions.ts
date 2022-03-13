@@ -15,6 +15,9 @@ export interface KairosActions {
   // Transition
   programCut: KairosAction<ProgramCutCallback>
   programAuto: KairosAction<ProgramAutoCallback>
+	nextTransition: KairosAction<NextTransitionCallback>
+	autoTransition: KairosAction<AutoTransitionCallback>
+	cutTransition: KairosAction<CutTransitionCallback>
   // Snapshots
   triggerSnapshot: KairosAction<TriggerSnapshotCallback>
   // Audio mixer control
@@ -81,6 +84,24 @@ interface ProgramAutoCallback {
     scene: string
   }>
 }
+interface NextTransitionCallback {
+  action: 'nextTransition'
+  options: Readonly<{
+		transition: string
+  }>
+}
+interface AutoTransitionCallback {
+  action: 'nextTransition'
+  options: Readonly<{
+		transition: string
+  }>
+}
+interface CutTransitionCallback {
+  action: 'nextTransition'
+  options: Readonly<{
+		transition: string
+  }>
+}
 // Snapshots
 interface TriggerSnapshotCallback {
   action: 'triggerSnapshot'
@@ -113,6 +134,9 @@ export type ActionCallbacks =
   | TriggerSnapshotCallback
   | MuteChannelCallback
   | MuteChannelCallback
+	| NextTransitionCallback
+	| AutoTransitionCallback
+	| CutTransitionCallback
 
 // Force options to have a default to prevent sending undefined values
 type InputFieldWithDefault = Exclude<SomeCompanionInputField, 'default'> & { default: string | number | boolean | null }
@@ -152,13 +176,6 @@ export function getActions(instance: KairosInstance): KairosActions {
     setSource: {
       label: 'Set Source',
       options: [
-        // {
-        //   type: 'dropdown',
-        //   label: 'Scene',
-        //   id: 'scene',
-        //   default: instance.KairosObj.SCENES[0].scene,
-        //   choices: instance.KairosObj.SCENES.map((id) => ({ id: id.scene, label: id.scene.slice(7) })),
-        // },
         {
           type: 'dropdown',
           label: 'Layer',
@@ -249,6 +266,69 @@ export function getActions(instance: KairosInstance): KairosActions {
         sendBasicCommand(programAuto)
       },
     },
+		nextTransition: {
+			label: 'Transition - NEXT selected scene',
+      options: [
+				{
+          type: 'dropdown',
+          label: 'Set next transition',
+          id: 'transition',
+          default: instance.combinedTransitionsArray[0],
+          choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
+        },
+      ],
+      callback: (action) => {
+        const nextTransition: any = {
+          id: 'nextTransition',
+          options: {
+            functionID: `${action.options.transition.slice(0,11)}.next_transition=${action.options.transition.slice(24)}`,
+          },
+        }
+        sendBasicCommand(nextTransition)
+      },
+		},
+		autoTransition: {
+			label: 'Transition per scene - AUTO',
+      options: [
+        {
+          type: 'dropdown',
+          label: 'Transition per scene',
+          id: 'transition',
+          default: instance.combinedTransitionsArray[0],
+          choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
+        },
+      ],
+      callback: (action) => {
+        const autoTransition: any = {
+          id: 'autoTransition',
+          options: {
+            functionID: `${action.options.transition}.transition_auto`,
+          },
+        }
+        sendBasicCommand(autoTransition)
+      },
+		},
+		cutTransition: {
+			label: 'Transition per scene - CUT',
+      options: [
+        {
+          type: 'dropdown',
+          label: 'Transition per scene',
+          id: 'transition',
+          default: instance.combinedTransitionsArray[0],
+          choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
+        },
+      ],
+      callback: (action) => {
+        const cutTransition: any = {
+          id: 'cutTransition',
+          options: {
+            functionID: `${action.options.transition}.transition_auto`,
+          },
+        }
+        sendBasicCommand(cutTransition)
+      },
+		},
     //AUX
     setAUX: {
       label: 'Set AUX',
@@ -358,8 +438,8 @@ export function getActions(instance: KairosInstance): KairosActions {
           type: 'dropdown',
           label: 'snapshot name',
           id: 'snapshot',
-          default: instance.KairosObj.SNAPSHOTS[0],
-          choices: instance.KairosObj.SNAPSHOTS.map((id) => ({ id, label: id })),
+          default: instance.combinedSnapshotsArray[0],
+          choices: instance.combinedSnapshotsArray.map((id) => ({ id, label: id })),
         },
       ],
       callback: (action) => {

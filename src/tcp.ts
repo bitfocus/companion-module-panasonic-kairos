@@ -30,12 +30,15 @@ export class TCP {
     // 	return 0;
     // })
     this.instance.combinedLayerArray = []
+    this.instance.combinedTransitionsArray = []
+		this.instance.combinedSnapshotsArray = []
+
     this.instance.KairosObj = {
       main_background_sourceA: '',
       main_background_sourceB: '',
       audio_master_mute: 0,
       INPUTS: [{ input: '', name: '', live: false }],
-      SCENES: [{ scene: '', snapshots: [], layers: [] }],
+      SCENES: [{ scene: '', snapshots: [], layers: [], transitions: [] }],
       SNAPSHOTS: [],
       AUX: [{ aux: '', live: '', sources: [] }],
       MACROS: [],
@@ -153,10 +156,37 @@ export class TCP {
               if (item.scene !== '') await sendCommandWithDelay(`list:${item.scene}.Layers`, interval)
             }
           })
+          .then(async () => {
+            // Fetch all transitions per scene
+            for (const item of this.instance.KairosObj.SCENES) {
+              if (item.scene !== '') await sendCommandWithDelay(`list:${item.scene}.Transitions`, interval)
+            }
+          })
           .then(() =>
             delay(interval).then(() => {
               for (const iterator of this.instance.KairosObj.SCENES) {
                 this.instance.combinedLayerArray = this.instance.combinedLayerArray.concat(iterator.layers)
+              }
+            })
+          )
+          .then(() =>
+            delay(interval).then(() => {
+              for (const iterator of this.instance.KairosObj.SCENES) {
+                this.instance.combinedTransitionsArray = this.instance.combinedTransitionsArray.concat(iterator.transitions)
+              }
+            })
+          )
+          .then(() =>
+            delay(interval).then(() => {
+              for (const iterator of this.instance.KairosObj.SCENES) {
+                this.instance.combinedSnapshotsArray = this.instance.combinedSnapshotsArray.concat(iterator.snapshots)
+              }
+            })
+          )
+          .then(() =>
+            delay(interval).then(async () => {
+              for (const iterator of this.instance.KairosObj.AUX) {
+                if (iterator.aux !== '') await sendCommandWithDelay(`${iterator.aux}.source`, interval)
               }
             })
           )
@@ -186,12 +216,19 @@ export class TCP {
               })
             })
           )
+          .then(() =>
+            delay(200).then(() => {
+              this.instance.KairosObj.AUX.forEach((element) => {
+                this.sendCommand(`subscribe:${element.aux}.source`)
+              })
+            })
+          )
           .then(() => delay(200).then(() => this.sendCommand('subscribe:SCENES.Main.Layers.Background.sourceA')))
           .then(() => delay(200).then(() => this.sendCommand('subscribe:SCENES.Main.Layers.Background.sourceB')))
           .then(() => delay(200).then(() => this.instance.status(0)))
           .then(() => delay(200).then(() => this.instance.updateInstance()))
           .then(() => (this.keepAliveInterval = setInterval(keepAlive, 4500))) //session expires at 5 seconds
-          // .then(() => console.log(this.instance.combinedLayerArray))
+          .then(() => console.log(this.instance.KairosObj))
       })
     })
 
@@ -223,6 +260,12 @@ export class TCP {
         //This is an Audio Master Mixer stuff
         this.instance.KairosObj.audio_master_mute = parseInt(message[0].split('=')[1])
         this.instance.checkFeedbacks('audioMuteMaster')
+      } else if (message.find((element) => element.includes('.source='))) {
+        //This is an AUX source
+				let split = message[0].split('=')
+        let index = this.instance.KairosObj.AUX.findIndex((x) => x.aux === split[0].slice(0,7))
+				if(index != -1) this.instance.KairosObj.AUX[index].live = split[1]
+        this.instance.checkFeedbacks('aux')
       } else if (message.find((element) => element.includes('Mixer.AudioMixers.AudioMixer.'))) {
         //This is an Audio channel Mixer stuff
         let channelIndex = parseInt(message[0].slice(29, -5)) - 1
@@ -239,7 +282,7 @@ export class TCP {
       } else if (message.find((element) => element == 'SCENES.Main')) {
         //This is an SCENES list, only at startup so reset
         message.forEach((element) => {
-          if (element !== '') this.instance.KairosObj.SCENES.push({ scene: element, snapshots: [], layers: [] })
+          if (element !== '') this.instance.KairosObj.SCENES.push({ scene: element, snapshots: [], layers: [], transitions: [] })
         })
       } else if (message.find((element) => element.includes('.name='))) {
         //This is an name for an Input (BE AWARE THIS CAN CHANGE IN THE FUTURE)
@@ -286,10 +329,10 @@ export class TCP {
         })
       } else if (message.find((element) => element.includes('MACROS.'))) {
         //This is an MACRO list
-        this.instance.KairosObj.MACROS = message
+        this.instance.KairosObj.MACROS = message.filter(String)
       } else if (message.find((element) => element.includes('Mixer.MV-Presets.'))) {
         //This is an MV Preset list
-        this.instance.KairosObj.MV_PRESETS = message
+        this.instance.KairosObj.MV_PRESETS = message.filter(String)
       } else if (message.find((element) => element.includes('.Snapshots.'))) {
         //This is an SNAPSHOT list
         // SCENES.Main.Snapshots.SNP1, extract scene name
@@ -299,10 +342,16 @@ export class TCP {
         if (index != -1) this.instance.KairosObj.SCENES[index].snapshots = message.filter(String)
       } else if (message.find((element) => element.includes('.Layers.'))) {
         //This is an Layer list
-        // SCENES.Main.Layers.Background, extract scene name
+        // SCENES.Main.Layers.Background
         let sceneName = message[0].slice(0, message[0].search('.Layers.'))
         let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
         if (index != -1) this.instance.KairosObj.SCENES[index].layers = message.filter(String)
+      } else if (message.find((element) => element.includes('.Transitions.'))) {
+        //This is an Transition list
+        // SCENES.Main.Transitions.BgdMix
+        let sceneName = message[0].slice(0, message[0].search('.Transitions.'))
+        let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
+        if (index != -1) this.instance.KairosObj.SCENES[index].transitions = message.filter(String)
       } else {
         console.log(message)
       }
