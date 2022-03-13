@@ -16,6 +16,8 @@ export interface KairosFeedbacks {
 	//Audio
 	audioMuteMaster: KairosFeedback<audioMuteCallback>
 	audioMuteChannel: KairosFeedback<audioMuteChannelCallback>
+	//AUX
+	aux: KairosFeedback<auxCallback>
 
   // Index signature
   [key: string]: KairosFeedback<any>
@@ -42,7 +44,7 @@ interface inputSourceBCallback {
 
 // Audio
 interface audioMuteCallback {
-	type: ''
+	type: 'audioMuteMaster'
 	options: Readonly<{
     fg: number
     bg: number
@@ -50,7 +52,7 @@ interface audioMuteCallback {
   }>
 }
 interface audioMuteChannelCallback {
-	type: ''
+	type: 'audioMuteChannel'
 	options: Readonly<{
     fg: number
     bg: number
@@ -58,11 +60,23 @@ interface audioMuteChannelCallback {
 		channel: string
   }>
 }
-
+//AUX
+interface auxCallback {
+	type: 'aux'
+	options: Readonly<{
+		fg: number
+    bg: number
+    aux: string
+		source: string
+	}>
+}
 // Callback type for Presets
 export type FeedbackCallbacks =
-  // Tally
-  inputSourceACallback | inputSourceBCallback
+  | inputSourceACallback 
+	| inputSourceBCallback 
+	| auxCallback
+	| audioMuteCallback
+	| audioMuteChannelCallback
 
 // Force options to have a default to prevent sending undefined values
 type InputFieldWithDefault = Exclude<SomeCompanionInputField, 'default'> & { default: string | number | boolean | null }

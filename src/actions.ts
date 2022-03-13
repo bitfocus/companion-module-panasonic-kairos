@@ -43,7 +43,7 @@ interface MacroControlCallback {
 }
 // AUX
 interface SetAUXCallback {
-  action: 'setAux'
+  action: 'setAUX'
   options: Readonly<{
     functionID: ''
     aux: string
@@ -269,8 +269,8 @@ export function getActions(instance: KairosInstance): KairosActions {
         },
       ],
       callback: (action) => {
-        const setAux: any = {
-          id: 'setAux',
+        const setAUX: any = {
+          id: 'setAUX',
           options: {
             functionID: `${action.options.aux}.source=${action.options.source}`,
           },
@@ -279,7 +279,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 				let index = instance.KairosObj.AUX.findIndex(x => x.aux === action.options.aux)
         instance.KairosObj.AUX[index].live = action.options.source
         instance.checkFeedbacks('aux')
-        sendBasicCommand(setAux)
+        sendBasicCommand(setAUX)
       },
     },
     //Control
