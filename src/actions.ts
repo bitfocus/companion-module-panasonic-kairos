@@ -209,14 +209,12 @@ export function getActions(instance: KairosInstance): KairosActions {
             functionID: `${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
           },
         }
-        // Don't wait for the value to return from the mixer, set it directly
-        if (action.options.sourceAB == 'sourceA') {
-          instance.KairosObj.main_background_sourceA = action.options.source
-          instance.checkFeedbacks('inputSourceA')
-        } else if (action.options.sourceAB == 'sourceB') {
-          instance.KairosObj.main_background_sourceB = action.options.source
-          instance.checkFeedbacks('inputSourceB')
-        }
+				// Don't wait for the value to return from the mixer, set it directly
+				let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
+				if(index != -1) {
+					action.options.sourceAB == 'sourceA' ? instance.combinedLayerArray[index].sourceA = action.options.source : instance.combinedLayerArray[index].sourceB = action.options.source
+				}
+				instance.checkFeedbacks('inputSource')
         sendBasicCommand(setSource)
       },
     },
