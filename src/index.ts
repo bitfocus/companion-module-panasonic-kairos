@@ -25,7 +25,7 @@ class KairosInstance extends instance_skel<Config> {
     this.system = system
     this.config = config
   }
-	public combinedLayerArray!: Array<string>
+	public combinedLayerArray!: { name: string, sourceA: string, sourceB: string}[]
 	public combinedTransitionsArray!: Array<string>
 	public combinedSnapshotsArray!: Array<string>
   public KairosObj!: {
@@ -33,9 +33,9 @@ class KairosInstance extends instance_skel<Config> {
     main_background_sourceB: string
 		audio_master_mute: number
     INPUTS: { input: string, name: string, live: boolean}[]
-    SCENES: { scene: string, snapshots: Array<string>, layers: Array<string>, transitions: Array<string>, next_transition: string}[]
+    SCENES: { scene: string, snapshots: Array<string>, layers: { layer: string, sourceA: string, sourceB: string, options: Array<string>}[], transitions: Array<string>, next_transition: string}[]
     SNAPSHOTS: Array<string>
-    AUX: { aux: string, live: string, sources: Array<string>, available: number }[]
+    AUX: { aux: string, liveSource: string, sources: Array<string>, available: number }[]
 		MACROS: Array<string>
 		PLAYERS: { player: string, repeat: number}[]
 		MV_PRESETS: Array<string>
