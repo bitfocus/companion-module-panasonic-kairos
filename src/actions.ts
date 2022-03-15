@@ -64,7 +64,7 @@ interface MvRecallCallback {
 }
 // Layer Source Assignment
 interface SetSourceACallback {
-  action: 'setSoure'
+  action: 'setSource'
   options: Readonly<{
     layer: string
     sourceAB: string
@@ -180,8 +180,8 @@ export function getActions(instance: KairosInstance): KairosActions {
           type: 'dropdown',
           label: 'Layer',
           id: 'layer',
-          default: instance.combinedLayerArray[0],
-          choices: instance.combinedLayerArray.map((id) => ({ id, label: id })),
+          default: instance.combinedLayerArray[0].name,
+          choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
         },
         {
           type: 'dropdown',
@@ -357,7 +357,7 @@ export function getActions(instance: KairosInstance): KairosActions {
         }
         // Don't wait for the value to return from the mixer, set it directly
         let index = instance.KairosObj.AUX.findIndex((x) => x.aux === action.options.aux)
-        instance.KairosObj.AUX[index].live = action.options.source
+        instance.KairosObj.AUX[index].liveSource = action.options.source
         instance.checkFeedbacks('aux')
         instance.variables?.updateVariables()
         sendBasicCommand(setAUX)
