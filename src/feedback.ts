@@ -11,8 +11,7 @@ import { options } from './utils'
 
 export interface KairosFeedbacks {
   // Tally
-  inputSourceA: KairosFeedback<inputSourceACallback>
-  inputSourceB: KairosFeedback<inputSourceBCallback>
+  inputSource: KairosFeedback<inputSourceCallback>
 	//Audio
 	audioMuteMaster: KairosFeedback<audioMuteCallback>
 	audioMuteChannel: KairosFeedback<audioMuteChannelCallback>
@@ -24,21 +23,15 @@ export interface KairosFeedbacks {
 }
 
 // Tally
-interface inputSourceACallback {
+interface inputSourceCallback {
   type: 'inputSourceA'
   options: Readonly<{
     fg: number
     bg: number
+		bg_pvw: number
     source: string
-  }>
-}
-
-interface inputSourceBCallback {
-  type: 'inputSourceA'
-	options: Readonly<{
-    fg: number
-    bg: number
-    source: string
+		layer: string
+		sourceAB: string
   }>
 }
 
@@ -72,8 +65,7 @@ interface auxCallback {
 }
 // Callback type for Presets
 export type FeedbackCallbacks =
-  | inputSourceACallback 
-	| inputSourceBCallback 
+  | inputSourceCallback 
 	| auxCallback
 	| audioMuteCallback
 	| audioMuteChannelCallback
@@ -120,11 +112,18 @@ export type KairosFeedback<T> = KairosFeedbackBoolean<T> | KairosFeedbackAdvance
 export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
   return {
     // Tally
-    inputSourceA: {
+    inputSource: {
       type: 'advanced',
-      label: 'Tally - Program state',
-      description: 'Indicates if an source is in Program',
+      label: 'Switched state',
+      description: 'Indicates if an source is in Program/Preview',
       options: [
+				{
+          type: 'dropdown',
+          label: 'Layer',
+          id: 'layer',
+          default: instance.combinedLayerArray[0].name,
+          choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+        },
         {
           type: 'dropdown',
           label: 'Source',
@@ -134,34 +133,16 @@ export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
         },
 				options.foregroundColor,
 				options.backgroundColorProgram,
+				options.backgroundColorPreview,
       ],
       callback: (feedback) => {
+				let layer = feedback.options.layer
         let source = feedback.options.source
-
-        if (instance.KairosObj.main_background_sourceA === source) return { color: feedback.options.fg, bgcolor: feedback.options.bg }
-        else return
-      },
-    },
-    inputSourceB: {
-      type: 'advanced',
-      label: 'Tally - Preview state',
-      description: 'Indicates if an source is in Program',
-      options: [
-        {
-          type: 'dropdown',
-          label: 'Source',
-          id: 'source',
-          default: instance.KairosObj.INPUTS[0].input,
-          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.input, label: id.name })),
-        },
-				options.foregroundColor,
-				options.backgroundColorProgram,
-      ],
-      callback: (feedback) => {
-        let source = feedback.options.source
-
-        if (instance.KairosObj.main_background_sourceB === source) return { color: feedback.options.fg, bgcolor: feedback.options.bg }
-        else return
+				for (const LAYER of instance.combinedLayerArray) {
+					if (LAYER.name == layer && LAYER.sourceA === source) return { color: feedback.options.fg, bgcolor: feedback.options.bg }
+					if (LAYER.name == layer && LAYER.sourceB === source) return { color: feedback.options.fg, bgcolor: feedback.options.bg_pvw }
+				}
+        return
       },
     },
 		audioMuteMaster: {
@@ -216,7 +197,7 @@ export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
       ],
       callback: (feedback) => {
 				let index = instance.KairosObj.AUX.findIndex(x => x.aux === feedback.options.aux)
-        if (instance.KairosObj.AUX[index].live === feedback.options.source) return { color: feedback.options.fg, bgcolor: feedback.options.bg }
+        if (instance.KairosObj.AUX[index].liveSource === feedback.options.source) return { color: feedback.options.fg, bgcolor: feedback.options.bg }
         else return
       },
 		}
