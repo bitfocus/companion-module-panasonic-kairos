@@ -15,9 +15,9 @@ export interface KairosActions {
   // Transition
   programCut: KairosAction<ProgramCutCallback>
   programAuto: KairosAction<ProgramAutoCallback>
-	nextTransition: KairosAction<NextTransitionCallback>
-	autoTransition: KairosAction<AutoTransitionCallback>
-	cutTransition: KairosAction<CutTransitionCallback>
+  nextTransition: KairosAction<NextTransitionCallback>
+  autoTransition: KairosAction<AutoTransitionCallback>
+  cutTransition: KairosAction<CutTransitionCallback>
   // Snapshots
   triggerSnapshot: KairosAction<TriggerSnapshotCallback>
   // Audio mixer control
@@ -87,19 +87,19 @@ interface ProgramAutoCallback {
 interface NextTransitionCallback {
   action: 'nextTransition'
   options: Readonly<{
-		transition: string
+    transition: string
   }>
 }
 interface AutoTransitionCallback {
   action: 'nextTransition'
   options: Readonly<{
-		transition: string
+    transition: string
   }>
 }
 interface CutTransitionCallback {
   action: 'nextTransition'
   options: Readonly<{
-		transition: string
+    transition: string
   }>
 }
 // Snapshots
@@ -134,9 +134,9 @@ export type ActionCallbacks =
   | TriggerSnapshotCallback
   | MuteChannelCallback
   | MuteChannelCallback
-	| NextTransitionCallback
-	| AutoTransitionCallback
-	| CutTransitionCallback
+  | NextTransitionCallback
+  | AutoTransitionCallback
+  | CutTransitionCallback
 
 // Force options to have a default to prevent sending undefined values
 type InputFieldWithDefault = Exclude<SomeCompanionInputField, 'default'> & { default: string | number | boolean | null }
@@ -197,8 +197,8 @@ export function getActions(instance: KairosInstance): KairosActions {
           type: 'dropdown',
           label: 'Source',
           id: 'source',
-          default: instance.KairosObj.INPUTS[0].input,
-          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.input, label: id.name })),
+          default: instance.KairosObj.INPUTS[0].shortcut,
+          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
         },
       ],
       callback: (action) => {
@@ -209,12 +209,15 @@ export function getActions(instance: KairosInstance): KairosActions {
             functionID: `${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
           },
         }
-				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
-				if(index != -1) {
-					action.options.sourceAB == 'sourceA' ? instance.combinedLayerArray[index].sourceA = action.options.source : instance.combinedLayerArray[index].sourceB = action.options.source
-				}
-				instance.checkFeedbacks('inputSource')
+        // Don't wait for the value to return from the mixer, set it directly
+        let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
+        if (index != -1) {
+          action.options.sourceAB == 'sourceA'
+            ? (instance.combinedLayerArray[index].sourceA = action.options.source)
+            : (instance.combinedLayerArray[index].sourceB = action.options.source)
+        }
+        instance.checkFeedbacks('inputSource')
+
         sendBasicCommand(setSource)
       },
     },
@@ -264,10 +267,10 @@ export function getActions(instance: KairosInstance): KairosActions {
         sendBasicCommand(programAuto)
       },
     },
-		nextTransition: {
-			label: 'Transition - NEXT selected scene',
+    nextTransition: {
+      label: 'Transition - NEXT selected scene',
       options: [
-				{
+        {
           type: 'dropdown',
           label: 'Set next transition',
           id: 'transition',
@@ -279,14 +282,16 @@ export function getActions(instance: KairosInstance): KairosActions {
         const nextTransition: any = {
           id: 'nextTransition',
           options: {
-            functionID: `${action.options.transition.slice(0,11)}.next_transition=${action.options.transition.slice(24)}`,
+            functionID: `${action.options.transition.slice(0, 11)}.next_transition=${action.options.transition.slice(
+              24
+            )}`,
           },
         }
         sendBasicCommand(nextTransition)
       },
-		},
-		autoTransition: {
-			label: 'Transition per scene - AUTO',
+    },
+    autoTransition: {
+      label: 'Transition per scene - AUTO',
       options: [
         {
           type: 'dropdown',
@@ -305,9 +310,9 @@ export function getActions(instance: KairosInstance): KairosActions {
         }
         sendBasicCommand(autoTransition)
       },
-		},
-		cutTransition: {
-			label: 'Transition per scene - CUT',
+    },
+    cutTransition: {
+      label: 'Transition per scene - CUT',
       options: [
         {
           type: 'dropdown',
@@ -326,7 +331,7 @@ export function getActions(instance: KairosInstance): KairosActions {
         }
         sendBasicCommand(cutTransition)
       },
-		},
+    },
     //AUX
     setAUX: {
       label: 'Set AUX',
@@ -342,8 +347,8 @@ export function getActions(instance: KairosInstance): KairosActions {
           type: 'dropdown',
           label: 'Source',
           id: 'source',
-          default: instance.KairosObj.INPUTS[0].input,
-          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.input, label: id.name })),
+          default: instance.KairosObj.INPUTS[0].shortcut,
+          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
         },
       ],
       callback: (action) => {
@@ -452,19 +457,6 @@ export function getActions(instance: KairosInstance): KairosActions {
         sendBasicCommand(triggerSnapshot)
       },
     },
-    // Custom
-    custom: {
-      label: 'Send custom command',
-      options: [
-        {
-          label: 'command',
-          type: 'textinput',
-          id: 'functionID',
-          default: '',
-        },
-      ],
-      callback: sendBasicCommand,
-    },
     //Audio
     muteMaster: {
       label: 'Mute Master',
@@ -498,6 +490,19 @@ export function getActions(instance: KairosInstance): KairosActions {
         instance.variables?.updateVariables()
         sendBasicCommand(muteChannel)
       },
+    },
+    // Custom
+    custom: {
+      label: 'Send custom command',
+      options: [
+        {
+          label: 'command',
+          type: 'textinput',
+          id: 'functionID',
+          default: '',
+        },
+      ],
+      callback: sendBasicCommand,
     },
   }
 }

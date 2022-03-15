@@ -37,10 +37,11 @@ export class TCP {
       main_background_sourceA: '',
       main_background_sourceB: '',
       audio_master_mute: 0,
-      INPUTS: [{ input: '', name: '', live: false }],
+      INPUTS: [],
+      MEDIA_STILLS: [],
       SCENES: [{ scene: '', snapshots: [], layers: [], transitions: [], next_transition: '' }],
       SNAPSHOTS: [],
-      AUX: [{ aux: '', liveSource: '', sources: [], available: 0 }],
+      AUX: [{ aux: '', liveSource: '', available: 0 }],
       MACROS: [],
       PLAYERS: [
         { player: 'RR1', repeat: 0 },
@@ -97,7 +98,6 @@ export class TCP {
       return
     }
 
-    // The functions socket is primary and controls the module status and startup of activator and xml sockets
     this.sockets.main = new tcp(this.tcpHost, this.tcpPort)
 
     this.sockets.main.on('status_change', (status: TCPStatus, message: string) => {
@@ -117,37 +117,48 @@ export class TCP {
     const delay = (time: number) => {
       return new Promise((resolve) => setTimeout(resolve, time))
     }
-
+    const addInternalSourceGroup = () => {
+      this.instance.KairosObj.INPUTS.push({ shortcut: 'MV2', name: 'MV1' })
+      this.instance.KairosObj.INPUTS.push({ shortcut: 'MV2', name: 'MV2' })
+      this.instance.KairosObj.INPUTS.push({ shortcut: 'BLACK', name: 'BLACK' })
+      this.instance.KairosObj.INPUTS.push({ shortcut: 'WHITE', name: 'WHITE' })
+      this.instance.KairosObj.INPUTS.push({ shortcut: 'ColorBar', name: 'ColorBar' })
+      this.instance.KairosObj.INPUTS.push({
+        shortcut: 'ColorCircle',
+        name: 'ColorCircle',
+      })
+    }
     const sendCommandWithDelay = async (command: string, milisec: number) => {
       // We can await a function that returns a promise
       this.sendCommand(command)
       await delay(milisec)
     }
 
-    let fetchInitialData = (interval: number) => {
+    const fetchInitialData = (interval: number) => {
       return new Promise((resolve) => {
         delay(10)
           .then(() => this.sendCommand('list:AUX'))
-          .then(() => delay(interval).then(() => this.sendCommand('list:Mixer.Inputs')))
           .then(() => delay(interval).then(() => this.sendCommand('list:SCENES')))
           .then(() => delay(interval).then(() => this.sendCommand('list:MACROS')))
           .then(() => delay(interval).then(() => this.sendCommand('list:Mixer.MV-Presets')))
-          .then(async () => {
-            // Fetch all source options for aux
-            for (const item of this.instance.KairosObj.AUX) {
-              if (item.aux !== '') await sendCommandWithDelay(`${item.aux}.sourceOptions`, interval)
-            }
-          })
-          .then(async () => {
-            // Fetch all input names
-            for (const iterator of this.instance.KairosObj.INPUTS) {
-              if (iterator.input !== '') await sendCommandWithDelay(`${iterator.input}.name`, 250)
-            }
-          })
+          .then(() => delay(interval).then(() => this.sendCommand('list:Mixer.Inputs')))
+          .then(() => delay(interval).then(() => this.sendCommand('list:Mixer.RamRecorders')))
+          .then(() => delay(interval).then(() => this.sendCommand('list:Mixer.ClipPlayers')))
+          .then(() => delay(interval).then(() => this.sendCommand('list:Mixer.GfxChannels')))
+          .then(() => delay(interval).then(() => this.sendCommand('list:Mixer.SourceGroup.FxInputs')))
+          .then(() => delay(interval).then(() => this.sendCommand('list:Mixer.SourceGroup.ColorMattes')))
+          .then(() => delay(interval).then(() => addInternalSourceGroup()))
+          .then(() => delay(interval).then(() => this.sendCommand('list:MEDIA.stills')))
           .then(async () => {
             // Fetch all snapshots per scene
             for (const item of this.instance.KairosObj.SCENES) {
               if (item.scene !== '') await sendCommandWithDelay(`list:${item.scene}.Snapshots`, interval)
+            }
+          })
+          .then(async () => {
+            // Fetch all input names
+            for (const INPUT of this.instance.KairosObj.INPUTS) {
+              if (INPUT.shortcut !== '') await sendCommandWithDelay(`${INPUT.shortcut}.name`, interval)
             }
           })
           .then(async () => {
@@ -168,100 +179,79 @@ export class TCP {
               if (item.scene !== '') await sendCommandWithDelay(`${item.scene}.next_transition`, interval)
             }
           })
-          .then(() =>
-            delay(interval).then(async () => {
-              for (const iterator of this.instance.KairosObj.AUX) {
-                if (iterator.aux !== '') await sendCommandWithDelay(`${iterator.aux}.source`, 250)
-              }
-            })
-          )
-          .then(() =>
-            delay(interval).then(async () => {
-              for (const iterator of this.instance.KairosObj.AUX) {
-                if (iterator.aux !== '') await sendCommandWithDelay(`${iterator.aux}.available`, 250)
-              }
-            })
-          )
-          .then(() =>
-            delay(interval).then(() => {
-              for (const SCENE of this.instance.KairosObj.SCENES) {
-                this.instance.combinedLayerArray = this.instance.combinedLayerArray.concat(
-                  SCENE.layers.map((x) => ({ name: x.layer, sourceA: x.sourceA, sourceB: x.sourceB }))
-                )
-              }
-            })
-          )
-          .then(() => {
-            delay(interval).then(async () => {
-              for (const LAYER of this.instance.combinedLayerArray) {
-                await sendCommandWithDelay(`${LAYER.name}.sourceA`, 350)
-              }
-            })
-          })
-          .then(() => {
-            delay(interval).then(async () => {
-              for (const LAYER of this.instance.combinedLayerArray) {
-                await sendCommandWithDelay(`${LAYER.name}.sourceB`, 350)
-              }
-            })
-          })
-          .then(() =>
-            delay(200).then(() => {
-              for (const iterator of this.instance.KairosObj.SCENES) {
-                this.instance.combinedTransitionsArray = this.instance.combinedTransitionsArray.concat(
-                  iterator.transitions
-                )
-              }
-            })
-          )
-          .then(() =>
-            delay(200).then(() => {
-              for (const iterator of this.instance.KairosObj.SCENES) {
-                this.instance.combinedSnapshotsArray = this.instance.combinedSnapshotsArray.concat(iterator.snapshots)
-              }
-            })
-          )
+          // Fetch all live sources for AUX
           .then(async () => {
-            // Fetch all LayerSourceOptions
-            for (const item of this.instance.combinedLayerArray) {
-              if (item.name !== '') await sendCommandWithDelay(`${item.name}.sourceOptions`, 350)
+            for (const iterator of this.instance.KairosObj.AUX) {
+              if (iterator.aux !== '') await sendCommandWithDelay(`${iterator.aux}.source`, 250)
+            }
+          })
+          // Get live source for each layer
+          .then(async () => {
+            for (const LAYER of this.instance.combinedLayerArray) {
+              await sendCommandWithDelay(`${LAYER.name}.sourceA`, interval)
+            }
+          })
+          // Get live source for each layer
+          .then(async () => {
+            for (const LAYER of this.instance.combinedLayerArray) {
+              await sendCommandWithDelay(`${LAYER.name}.sourceB`, interval)
             }
           })
           .then(() => delay(interval).then(() => resolve('fetch ready')))
       })
     }
+    // .then(() =>
+    //   // Check if AUX is available
+    //   delay(interval).then(async () => {
+    //     for (const iterator of this.instance.KairosObj.AUX) {
+    //       if (iterator.aux !== '') await sendCommandWithDelay(`${iterator.aux}.available`, 250)
+    //     }
+    //   })
+    // )
 
-    this.sockets.main.on('connect', () => {
-      this.instance.status(1)
-      this.instance.log('debug', 'Connected to mixer')
-      // 300 milisec is save, if you put it lower it will break
-      let interval_subscribe = 150
-      let interval_fetching = 300
-      fetchInitialData(interval_fetching).then(() => {
-        // All data is in, now Subscribe to some stuff
+    const subscribeToData = (interval: number) => {
+      return new Promise((resolve) => {
         this.sendCommand('Subscribe:Mixer.AudioMixers.AudioMixer.mute')
-        delay(interval_subscribe)
+        delay(interval)
+          .then(() =>
+            delay(200).then(() => {
+              // Get all transitions together
+              for (const SCENE of this.instance.KairosObj.SCENES) {
+                this.instance.combinedTransitionsArray = this.instance.combinedTransitionsArray.concat(
+                  SCENE.transitions
+                )
+              }
+            })
+          )
+          .then(() =>
+            delay(200).then(() => {
+              // Get all Snapshots together
+              for (const SCENE of this.instance.KairosObj.SCENES) {
+                this.instance.combinedSnapshotsArray = this.instance.combinedSnapshotsArray.concat(SCENE.snapshots)
+              }
+            })
+          )
           .then(() => {
             this.instance.KairosObj.PLAYERS.forEach((element) => {
               this.sendCommand(`subscribe:${element.player}.repeat`)
             })
           })
           .then(() =>
-            delay(interval_subscribe).then(() => {
+            delay(interval).then(() => {
               this.instance.KairosObj.AUDIO_CHANNELS.forEach((element) => {
                 this.sendCommand(`subscribe:Mixer.AudioMixers.AudioMixer.${element.channel}.mute`)
               })
             })
           )
           .then(() =>
-            delay(interval_subscribe).then(() => {
+            delay(interval).then(() => {
               this.instance.KairosObj.AUX.forEach((element) => {
                 this.sendCommand(`subscribe:${element.aux}.source`)
               })
             })
           )
           .then(() =>
-            delay(interval_subscribe).then(() => {
+            delay(interval).then(() => {
               this.instance.KairosObj.SCENES.forEach((element) => {
                 this.sendCommand(`subscribe:${element.scene}.next_transition`)
               })
@@ -269,18 +259,30 @@ export class TCP {
           )
           .then(() => {
             for (const LAYER of this.instance.combinedLayerArray) {
-              delay(interval_subscribe).then(() => this.sendCommand(`subscribe:${LAYER.name}.sourceA`))
+              delay(interval).then(() => this.sendCommand(`subscribe:${LAYER.name}.sourceA`))
             }
           })
           .then(() => {
             for (const LAYER of this.instance.combinedLayerArray) {
-              delay(interval_subscribe).then(() => this.sendCommand(`subscribe:${LAYER.name}.sourceB`))
+              delay(interval).then(() => this.sendCommand(`subscribe:${LAYER.name}.sourceB`))
             }
           })
-          .then(() => delay(interval_subscribe).then(() => this.instance.status(0)))
-          .then(() => delay(10).then(() => this.instance.updateInstance()))
+          .then(() => resolve('subscribe ready'))
+      })
+    }
+    this.sockets.main.on('connect', async () => {
+      this.instance.status(1)
+      this.instance.log('debug', 'Connected to mixer')
+      // 300 milisec is save, if you put it lower it will break
+      let interval_subscribe = 150
+      let interval_fetching = 300
+      await fetchInitialData(interval_fetching).then(async () => {
+        // All data is in, now Subscribe to some stuff
+        await subscribeToData(interval_subscribe)
+          .then(() => this.instance.status(0))
+          .then(() => this.instance.updateInstance())
           .then(() => (this.keepAliveInterval = setInterval(keepAlive, 4500))) //session expires at 5 seconds
-          .then(() => console.log(this.instance.combinedLayerArray))
+          .then(() => console.log('OBJ', this.instance.KairosObj))
       })
     })
 
@@ -299,43 +301,42 @@ export class TCP {
       } else if (data[0] == 'Error') {
         //Status message
         this.instance.log('debug', 'Command failed')
-      } else if (data[0].split('=')[0].includes('.sourceA')) {
-        console.log('layer:', data)
+      } else if (data[0].includes('.sourceA')) {
         let firstItem = data[0].split('=')
         let index = this.instance.combinedLayerArray.findIndex((x) => x.name === firstItem[0].slice(0, -8))
-        this.instance.combinedLayerArray[index].sourceA = firstItem[1]
-				data.shift()
-				if(data[0] != '') processData(data)
+        if (index != -1) this.instance.combinedLayerArray[index].sourceA = firstItem[1]
         this.instance.variables?.updateVariables()
         this.instance.checkFeedbacks('inputSource')
-      } else if (data[0].split('=')[0].includes('.sourceB')) {
-        console.log('layer:', data)
+        data.shift()
+        if (data[0] != '') processData(data)
+      } else if (data[0].includes('.sourceB')) {
         let firstItem = data[0].split('=')
         let index = this.instance.combinedLayerArray.findIndex((x) => x.name === firstItem[0].slice(0, -8))
         this.instance.combinedLayerArray[index].sourceB = firstItem[1]
-				data.shift()
-				if(data[0] != '') processData(data)
         this.instance.variables?.updateVariables()
         this.instance.checkFeedbacks('inputSource')
+        data.shift()
+        if (data[0] != '') processData(data)
       } else if (data[0].includes('Mixer.AudioMixers.AudioMixer.mute')) {
-        //This is an Audio Master Mixer stuff
+        // This is an Audio Master Mixer stuff
         this.instance.KairosObj.audio_master_mute = parseInt(data[0].split('=')[1])
         this.instance.checkFeedbacks('audioMuteMaster')
         this.instance.variables?.updateVariables()
+      } else if (data[0].includes('Mixer.AudioMixers.AudioMixer.')) {
+        // This is an Audio channel Mixer stuff
+        // ['Mixer.AudioMixers.AudioMixer.Channel 1.mute=1','']
+        let channelIndex = parseInt(data[0].slice(data[0].search('.Channel') + 9, -7)) - 1
+        this.instance.KairosObj.AUDIO_CHANNELS[channelIndex].mute = parseInt(data[0].split('=')[1])
+        this.instance.checkFeedbacks('audioMuteChannel')
+        this.instance.variables?.updateVariables()
       } else if (data[0].includes('.source=')) {
-        //This is an AUX source
+        // This is an AUX source
         let split = data[0].split('=')
         let index = this.instance.KairosObj.AUX.findIndex(
           (x) => x.aux === split[0].slice(0, split[0].search('.source'))
         )
         if (index != -1) this.instance.KairosObj.AUX[index].liveSource = split[1]
         this.instance.checkFeedbacks('aux')
-        this.instance.variables?.updateVariables()
-      } else if (data[0].includes('Mixer.AudioMixers.AudioMixer.')) {
-        //This is an Audio channel Mixer stuff
-        let channelIndex = parseInt(data[0].slice(29, -5)) - 1
-        this.instance.KairosObj.AUDIO_CHANNELS[channelIndex].mute = parseInt(data[0].split('=')[1])
-        this.instance.checkFeedbacks('audioMuteChannel')
         this.instance.variables?.updateVariables()
       } else if (data[0].includes('MACROS.')) {
         //This is an MACRO list
@@ -361,44 +362,47 @@ export class TCP {
         let sceneName = data[0].slice(0, data[0].search('.Snapshots.'))
         let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
         if (index != -1) this.instance.KairosObj.SCENES[index].snapshots = data.filter(String)
-      } else if (data[0].search('.sourceOptions') != -1 && data[0].search('Layers') != -1) {
-        // SourceOptions for Layers
-        // 'SCENES.New Scene-1.Layers.Layer-3.sourceOptions=BLACK,WHITE,Mixer.SourceGroup.ColorMattes.ColA,Mixer.SourceGroup.ColorMattes.ColB,Mixer.SourceGroup.ColorMattes.ColC,Mixer.SourceGroup.FxInputs.FxStream1,IP1,NDI1,STREAM1,STREAM2,'
-        let left = data[0].split('=')[0]
-        let sourceOptions = data[0].split('=')[1].split(',').filter(String)
-        let sceneName = left.slice(0, left.search('.Layers.'))
-        let layer = left.slice(0, -14)
-        let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
-        if (index != -1) {
-          let indexLayer = this.instance.KairosObj.SCENES[index].layers.findIndex((s) => s.layer === layer)
-          if (indexLayer != -1)
-            this.instance.KairosObj.SCENES[index].layers[indexLayer].options = sourceOptions.filter(String)
-        }
-        for (let index = 0; index < sourceOptions.length; index++) {
-          if (this.instance.KairosObj.INPUTS.find((x) => x.input === sourceOptions[index]) === undefined) {
-            this.instance.KairosObj.INPUTS.push({
-              input: sourceOptions[index],
-              name: sourceOptions[index],
-              live: false,
-            })
-          }
-        }
+        // } else if (data[0].search('.sourceOptions') != -1 && data[0].search('Layers') != -1) {
+        //   // SourceOptions for Layers
+        //   // 'SCENES.New Scene-1.Layers.Layer-3.sourceOptions=BLACK,WHITE,Mixer.SourceGroup.ColorMattes.ColA,Mixer.SourceGroup.ColorMattes.ColB,Mixer.SourceGroup.ColorMattes.ColC,Mixer.SourceGroup.FxInputs.FxStream1,IP1,NDI1,STREAM1,STREAM2,'
+        //   let left = data[0].split('=')[0]
+        //   let sourceOptions = data[0].split('=')[1].split(',').filter(String)
+        //   let sceneName = left.slice(0, left.search('.Layers.'))
+        //   let layer = left.slice(0, -14)
+        //   let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
+        //   if (index != -1) {
+        //     let indexLayer = this.instance.KairosObj.SCENES[index].layers.findIndex((s) => s.layer === layer)
+        //     if (indexLayer != -1)
+        //       this.instance.KairosObj.SCENES[index].layers[indexLayer].options = sourceOptions.filter(String)
+        //   }
+        //   for (let index = 0; index < sourceOptions.length; index++) {
+        //     if (this.instance.KairosObj.INPUTS.find((x) => x.input === sourceOptions[index]) === undefined) {
+        //       this.instance.KairosObj.INPUTS.push({
+        //         input: sourceOptions[index],
+        //         name: sourceOptions[index],
+        //       })
+        //     }
+        //   }
       } else if (data[0].includes('.Layers.')) {
         //This is an Layer list
         // SCENES.Main.Layers.Background
+        for (const LAYER of data.filter(String)) {
+          this.instance.combinedLayerArray.push({ name: LAYER, sourceA: '', sourceB: '' })
+        }
         let sceneName = data[0].slice(0, data[0].search('.Layers.'))
         let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
         if (index != -1)
           this.instance.KairosObj.SCENES[index].layers = data
             .filter(String)
-            .map((layer) => ({ layer, sourceA: '', sourceB: '', options: [] }))
+            .map((layer) => ({ layer, sourceA: '', sourceB: '' }))
       } else if (data[0].includes('.next_transition=')) {
         //This is a next transition
-        // SCENES.Main.next_transition=SCENES.Main.Transitions.BgdMix
+        // SCENES.Main.next_transition=SCENES.Main.Transitions.BgdMix,
         let split = data[0].split('=')
-        let sceneName = split[0].slice(0, data[0].search('.next_transition='))
+        let sceneName = split[0].slice(0, split[0].search('.next_transition'))
         let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
-        if (index != -1) this.instance.KairosObj.SCENES[index].next_transition = split[1]
+        if (index != -1) this.instance.KairosObj.SCENES[index].next_transition = split[1].slice(0, -1)
+        this.instance.variables?.updateVariables()
       } else if (data[0].includes('.Transitions.')) {
         //This is an Transition list
         // SCENES.Main.Transitions.BgdMix
@@ -414,7 +418,7 @@ export class TCP {
             for (const key in this.instance.KairosObj.INPUTS) {
               if (Object.prototype.hasOwnProperty.call(this.instance.KairosObj.INPUTS, key)) {
                 const inputFromArray = this.instance.KairosObj.INPUTS[key]
-                if (inputFromArray.input == input) {
+                if (inputFromArray.shortcut == input) {
                   inputFromArray.name = name
                   break
                 }
@@ -422,33 +426,59 @@ export class TCP {
             }
           }
         })
-      } else if (data[0].search('.sourceOptions') != -1 && data[0].search('AUX') != -1) {
-        //This is Aux source option
-        // Split data for name and options
-        let auxSourceOptions = data[0].split('=')
-        // aux name/ID is the first part
-        let auxName = auxSourceOptions[0].slice(0, -14)
-        // When ready remove the first part so you keep only the options
-        auxSourceOptions.shift()
-        // Then there is only one item in the array
-        // let newArray = auxSourceOptions[0].trim().split(',').join('').split('')
-        let newArray = auxSourceOptions[0].trim().split(',').filter(String)
-        let index = this.instance.KairosObj.AUX.findIndex((x) => x.aux === auxName)
-        if (index != -1) this.instance.KairosObj.AUX[index].sources = newArray
-        for (let index = 0; index < newArray.length; index++) {
-          if (this.instance.KairosObj.INPUTS.find((x) => x.input === newArray[index]) === undefined) {
-            this.instance.KairosObj.INPUTS.push({ input: newArray[index], name: newArray[index], live: false })
-          }
-        }
-      } else if (data.find((element) => element == 'IP1')) {
+        // } else if (data[0].search('.sourceOptions') != -1 && data[0].search('AUX') != -1) {
+        //   //This is Aux source option
+        //   // Split data for name and options
+        //   let auxSourceOptions = data[0].split('=')
+        //   // aux name/ID is the first part
+        //   let auxName = auxSourceOptions[0].slice(0, -14)
+        //   // When ready remove the first part so you keep only the options
+        //   auxSourceOptions.shift()
+        //   // Then there is only one item in the array
+        //   // let newArray = auxSourceOptions[0].trim().split(',').join('').split('')
+        //   let newArray = auxSourceOptions[0].trim().split(',').filter(String)
+        //   let index = this.instance.KairosObj.AUX.findIndex((x) => x.aux === auxName)
+        //   if (index != -1) this.instance.KairosObj.AUX[index].sources = newArray
+        //   for (let index = 0; index < newArray.length; index++) {
+        //     if (this.instance.KairosObj.INPUTS.find((x) => x.input === newArray[index]) === undefined) {
+        //       this.instance.KairosObj.INPUTS.push({ input: newArray[index], name: newArray[index] })
+        //     }
+        //   }
+      } else if (data[0].includes('IP1')) {
         //This is an input list
-        if (data.length > 0) {
-          this.instance.KairosObj.INPUTS.length = 0
-          data.forEach((element) => {
-            if (element !== '') this.instance.KairosObj.INPUTS.push({ input: element, name: element, live: false })
-          })
-        }
-      } else if (data.find((element) => element == 'SCENES.Main')) {
+        data.forEach((element) => {
+          if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
+        })
+      } else if (data[0].includes('GFX1')) {
+        //This is an input list
+        data.forEach((element) => {
+          if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
+        })
+      } else if (data[0].includes('RR1')) {
+        //This is an input list
+        data.forEach((element) => {
+          if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
+        })
+      } else if (data[0].includes('Mixer.SourceGroup.FxInputs.FxStream1')) {
+        //This is an input list
+        data.forEach((element) => {
+          if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
+        })
+      } else if (data[0].includes('Mixer.SourceGroup.ColorMattes.ColA')) {
+        //This is an input list
+        data.forEach((element) => {
+          if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
+        })
+      } else if (data[0].includes('CP1')) {
+        //This is an input list
+        data.forEach((element) => {
+          if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
+        })
+      } else if (data[0].includes('MEDIA.stills.')) {
+        // This is an Media stills list
+        // 'MEDIA.stills.valleyball&#46;rr'
+        this.instance.KairosObj.MEDIA_STILLS = data.filter(String)
+      } else if (data.find((element) => element === 'SCENES.Main')) {
         //This is an SCENES list, only at startup so reset
         this.instance.KairosObj.SCENES.length = 0
         data.forEach((element) => {
@@ -461,21 +491,20 @@ export class TCP {
               next_transition: '',
             })
         })
-      } else if (data.find((element) => element == 'IP-AUX1')) {
+      } else if (data.find((element) => element === 'IP-AUX1')) {
         //This is an AUX list
         this.instance.KairosObj.AUX.length = 0
         data.forEach((element) => {
-          if (element !== '')
-            this.instance.KairosObj.AUX.push({ aux: element, liveSource: '', sources: [], available: 1 })
+          if (element !== '') this.instance.KairosObj.AUX.push({ aux: element, liveSource: '', available: 1 })
         })
       } else {
-        console.log(data)
+        console.log('Something new', data)
       }
     }
+
     this.sockets.main.on('data', (data: Buffer) => {
       //create array from data
       const message = data.toString().split('\r\n')
-
       processData(message)
     })
   }

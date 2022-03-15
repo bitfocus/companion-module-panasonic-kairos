@@ -75,12 +75,12 @@ export class Variables {
 
 		let inputSources = []
 		for (const input of this.instance.KairosObj.INPUTS) {
-			inputSources.push({label: `${input.input} name`, name: `${input.input}`})
+			inputSources.push({label: `${input.shortcut} name`, name: `${input.shortcut}`})
 		}
 
 		let sceneNextTransition = []
 		for (const scene of this.instance.KairosObj.SCENES) {
-			sceneNextTransition.push({ label: `${scene.scene.slice(7)} next transition`, name: `${scene.scene.slice(0,-1)}.next_transition` })
+			sceneNextTransition.push({ label: `${scene.scene.slice(7)} next transition`, name: `${scene.scene}.next_transition` })
 		}
     let auxSources = []
     for (const AUX of this.instance.KairosObj.AUX) {
@@ -113,18 +113,18 @@ export class Variables {
 
     // LIVE LAYERS
 		for (const LAYER of this.instance.combinedLayerArray) {
-			newVariables[`${LAYER.name}.sourceA`] = this.instance.KairosObj.INPUTS.find(o => o.input === LAYER.sourceA)?.name
-			newVariables[`${LAYER.name}.sourceB`] = this.instance.KairosObj.INPUTS.find(o => o.input === LAYER.sourceB)?.name
+			newVariables[`${LAYER.name}.sourceA`] = this.instance.KairosObj.INPUTS.find(o => o.shortcut === LAYER.sourceA)?.name
+			newVariables[`${LAYER.name}.sourceB`] = this.instance.KairosObj.INPUTS.find(o => o.shortcut === LAYER.sourceB)?.name
 		}
     // AUX
     for (const AUX of this.instance.KairosObj.AUX) {
       // newVariables[AUX.aux] = this.instance.KairosObj.INPUTS.find((x) => x.input == AUX.live)
-      newVariables[AUX.aux] = this.instance.KairosObj.INPUTS.find(o => o.input === AUX.liveSource)?.name
+      newVariables[AUX.aux] = this.instance.KairosObj.INPUTS.find(o => o.shortcut === AUX.liveSource)?.name
       newVariables[`${AUX.aux}.available`] = AUX.available == 0 ? 'disabled' : 'enabled'
     }
 		// TRANSITION
 		for (const SCENE of this.instance.KairosObj.SCENES) {
-      newVariables[`${SCENE.scene}.next_transition`] = SCENE.next_transition.slice(SCENE.scene.length+1)
+      newVariables[`${SCENE.scene}.next_transition`] = SCENE.next_transition//.slice(SCENE.scene.length+1)
     }
 		// PLAYERS
     for (const PLAYER of this.instance.KairosObj.PLAYERS) {
@@ -132,7 +132,7 @@ export class Variables {
     }
 		// INPUTS
 		for (const INPUT of this.instance.KairosObj.INPUTS) {
-			newVariables[INPUT.input] = INPUT.name
+			newVariables[INPUT.shortcut] = INPUT.name
     }
 		// AUDIO
     newVariables['mute_master_audio'] = this.instance.KairosObj.audio_master_mute == 0 ? 'unmuted' : 'muted'

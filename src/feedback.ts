@@ -24,14 +24,14 @@ export interface KairosFeedbacks {
 
 // Tally
 interface inputSourceCallback {
-  type: 'inputSourceA'
+  type: 'inputSource'
   options: Readonly<{
     fg: number
     bg: number
 		bg_pvw: number
     source: string
-		layer: string
 		sourceAB: string
+		layer: string
   }>
 }
 
@@ -124,12 +124,22 @@ export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
           default: instance.combinedLayerArray[0].name,
           choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
         },
+				{
+          type: 'dropdown',
+          label: 'SourceA/B',
+          id: 'sourceAB',
+          default: 'sourceA',
+          choices: [
+            { id: 'sourceA', label: 'sourceA' },
+            { id: 'sourceB', label: 'sourceB' },
+          ],
+        },
         {
           type: 'dropdown',
           label: 'Source',
           id: 'source',
-          default: instance.KairosObj.INPUTS[0].input,
-          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.input, label: id.name })),
+          default: instance.KairosObj.INPUTS[0].shortcut,
+          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
         },
 				options.foregroundColor,
 				options.backgroundColorProgram,
@@ -138,9 +148,10 @@ export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
       callback: (feedback) => {
 				let layer = feedback.options.layer
         let source = feedback.options.source
+				let sourceAB = feedback.options.sourceAB
 				for (const LAYER of instance.combinedLayerArray) {
-					if (LAYER.name == layer && LAYER.sourceA === source) return { color: feedback.options.fg, bgcolor: feedback.options.bg }
-					if (LAYER.name == layer && LAYER.sourceB === source) return { color: feedback.options.fg, bgcolor: feedback.options.bg_pvw }
+					if (LAYER.name == layer && LAYER.sourceA === source && sourceAB == 'sourceA') return { color: feedback.options.fg, bgcolor: feedback.options.bg }
+					if (LAYER.name == layer && LAYER.sourceB === source && sourceAB == 'sourceB') return { color: feedback.options.fg, bgcolor: feedback.options.bg_pvw }
 				}
         return
       },
@@ -189,8 +200,8 @@ export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
           type: 'dropdown',
           label: 'Source',
           id: 'source',
-          default: instance.KairosObj.INPUTS[0].input,
-          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.input, label: id.name })),
+          default: instance.KairosObj.INPUTS[0].shortcut,
+          choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
         },
 				options.foregroundColor,
 				options.backgroundColorProgram,
