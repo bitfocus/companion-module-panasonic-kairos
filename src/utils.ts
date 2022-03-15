@@ -181,14 +181,14 @@ export const options: Options = {
 
   backgroundColorPreview: {
     type: 'colorpicker',
-    label: 'Background color',
-    id: 'bg',
+    label: 'Background color when in preview',
+    id: 'bg_pvw',
     default: rgb(0, 255, 0),
   },
 
   backgroundColorProgram: {
     type: 'colorpicker',
-    label: 'Background color',
+    label: 'Background color when in grogram',
     id: 'bg',
     default: rgb(255, 0, 0),
   },
