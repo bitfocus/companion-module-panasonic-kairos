@@ -11,6 +11,15 @@ export interface Config {
 export const getConfigFields = (): SomeCompanionConfigField[] => {
   return [
     {
+      type: 'text',
+      id: 'info',
+      width: 12,
+      label: 'Startup warning',
+      value: 
+					'First startup of this module can take up to a minute to process all data. <br />' +
+					'Please be patient for all commands to be finished, the status will turn OK/Green when ready',
+    },
+    {
       type: 'textinput',
       id: 'host',
       label: 'Target host',
