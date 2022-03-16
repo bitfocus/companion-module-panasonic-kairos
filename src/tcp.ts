@@ -118,13 +118,13 @@ export class TCP {
       return new Promise((resolve) => setTimeout(resolve, time))
     }
     const addInternalSourceGroup = () => {
-      this.instance.KairosObj.INPUTS.push({ shortcut: 'MV2', name: 'MV1' })
-      this.instance.KairosObj.INPUTS.push({ shortcut: 'MV2', name: 'MV2' })
+      this.instance.KairosObj.INPUTS.push({ shortcut: 'Environment.InternalSourceGroup.MV1', name: 'MV1' })
+      this.instance.KairosObj.INPUTS.push({ shortcut: 'Environment.InternalSourceGroup.MV2', name: 'MV2' })
       this.instance.KairosObj.INPUTS.push({ shortcut: 'BLACK', name: 'BLACK' })
       this.instance.KairosObj.INPUTS.push({ shortcut: 'WHITE', name: 'WHITE' })
-      this.instance.KairosObj.INPUTS.push({ shortcut: 'ColorBar', name: 'ColorBar' })
+      this.instance.KairosObj.INPUTS.push({ shortcut: 'Environment.InternalSourceGroup.ColorBar', name: 'ColorBar' })
       this.instance.KairosObj.INPUTS.push({
-        shortcut: 'ColorCircle',
+        shortcut: 'Environment.InternalSourceGroup.ColorCircle',
         name: 'ColorCircle',
       })
     }
@@ -195,6 +195,12 @@ export class TCP {
           .then(async () => {
             for (const LAYER of this.instance.combinedLayerArray) {
               await sendCommandWithDelay(`${LAYER.name}.sourceB`, interval)
+            }
+          })
+          // Get PVW enabled or not
+          .then(async () => {
+            for (const LAYER of this.instance.combinedLayerArray) {
+              await sendCommandWithDelay(`${LAYER.name}.preset_enabled`, interval)
             }
           })
           .then(() => delay(interval).then(() => resolve('fetch ready')))
@@ -383,11 +389,20 @@ export class TCP {
         //       })
         //     }
         //   }
+      } else if (data[0].includes('.preset_enabled')) {
+        //This is an response to
+        // SCENES.Main.Layers.Background.preset_enabled=1
+				let split = data[0].split('=')
+				let layer = split[0].slice(0,split[0].search('.preset_enabled'))
+        
+        let index = this.instance.combinedLayerArray.findIndex((s) => s.name === layer)
+        if (index != -1)
+          this.instance.combinedLayerArray[index].preset_enabled = parseInt(split[1])
       } else if (data[0].includes('.Layers.')) {
         //This is an Layer list
         // SCENES.Main.Layers.Background
         for (const LAYER of data.filter(String)) {
-          this.instance.combinedLayerArray.push({ name: LAYER, sourceA: '', sourceB: '' })
+          this.instance.combinedLayerArray.push({ name: LAYER, sourceA: '', sourceB: '', preset_enabled: 0 })
         }
         let sceneName = data[0].slice(0, data[0].search('.Layers.'))
         let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
