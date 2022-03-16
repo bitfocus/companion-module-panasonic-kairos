@@ -62,6 +62,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
       })
     })
     instance.KairosObj.INPUTS.forEach((INPUT) => {
+			if(LAYER.preset_enabled != 1) return
       presets.push({
         category: `${LAYER.name.slice(7, LAYER.name.search('.Layers.'))} | ${LAYER.name.slice(
           LAYER.name.search('.Layers.') + 8
@@ -326,7 +327,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: 'Program Cut',
 			bank: {
 				style: 'text',
-				text: `${SCENE.scene}\\nCUT`,
+				text: `${SCENE.scene.slice(7)}\\nCUT`,
 				size: 'auto',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(255, 0, 0),
@@ -339,7 +340,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: 'Program Auto',
 			bank: {
 				style: 'text',
-				text: `${SCENE.scene}\\nAUTO`,
+				text: `${SCENE.scene.slice(7)}\\nAUTO`,
 				size: 'auto',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(255, 0, 0),
@@ -349,7 +350,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 		})
     SCENE.snapshots.forEach((SNAPSHOT) => {
       presets.push({
-        category: 'Snapshots',
+        category: 'SNAPSHOTS',
         label: SNAPSHOT,
         bank: {
           style: 'text',
@@ -398,7 +399,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
       label: 'Macros',
       bank: {
         style: 'text',
-        text: `${MACRO}\\nplay`,
+        text: `${MACRO.slice(7)}\\nplay`,
         size: 'auto',
         color: instance.rgb(255, 255, 255),
         bgcolor: instance.rgb(0, 0, 0),
@@ -411,7 +412,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
       label: 'Macros',
       bank: {
         style: 'text',
-        text: `${MACRO}\\pause`,
+        text: `${MACRO.slice(7)}\\npause`,
         size: 'auto',
         color: instance.rgb(255, 255, 255),
         bgcolor: instance.rgb(0, 0, 0),
@@ -424,7 +425,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
       label: 'Macros',
       bank: {
         style: 'text',
-        text: `${MACRO}\\nstop`,
+        text: `${MACRO.slice(7)}\\nstop`,
         size: 'auto',
         color: instance.rgb(255, 255, 255),
         bgcolor: instance.rgb(0, 0, 0),
@@ -437,7 +438,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
       label: 'Macros',
       bank: {
         style: 'text',
-        text: `${MACRO}\\nrecord`,
+        text: `${MACRO.slice(7)}\\nrecord`,
         size: 'auto',
         color: instance.rgb(255, 255, 255),
         bgcolor: instance.rgb(0, 0, 0),
@@ -446,11 +447,11 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
       feedbacks: [],
     })
     presets.push({
-      category: 'MACRO',
+      category: 'MACROS',
       label: 'Macros',
       bank: {
         style: 'text',
-        text: `${MACRO}\\nstop record`,
+        text: `${MACRO.slice(7)}\\nstop record`,
         size: 'auto',
         color: instance.rgb(255, 255, 255),
         bgcolor: instance.rgb(0, 0, 0),
@@ -547,7 +548,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: 'Next transition',
 			bank: {
 				style: 'text',
-				text: `${TRANSITION}\\nNext transition`,
+				text: `${TRANSITION.slice(7)}\\nNext transition`,
 				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
@@ -560,10 +561,10 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: 'Cut transition',
 			bank: {
 				style: 'text',
-				text: `${TRANSITION}\\nCUT`,
+				text: `${TRANSITION.slice(7)}\\nCUT`,
 				size: 'auto',
 				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				bgcolor: instance.rgb(255, 0, 0),
 			},
 			actions: [{ action: 'cutTransition', options: { layer: TRANSITION } }],
 			feedbacks: [],
@@ -573,7 +574,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: 'Auto transition',
 			bank: {
 				style: 'text',
-				text: `${TRANSITION}\\nAUTO`,
+				text: `${TRANSITION.slice(7)}\\nAUTO`,
 				size: 'auto',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
