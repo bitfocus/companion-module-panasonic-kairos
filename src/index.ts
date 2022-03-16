@@ -25,7 +25,7 @@ class KairosInstance extends instance_skel<Config> {
     this.system = system
     this.config = config
   }
-	public combinedLayerArray!: { name: string, sourceA: string, sourceB: string}[]
+	public combinedLayerArray!: { name: string, sourceA: string, sourceB: string, preset_enabled: number}[]
 	public combinedTransitionsArray!: Array<string>
 	public combinedSnapshotsArray!: Array<string>
   public KairosObj!: {
