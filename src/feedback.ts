@@ -34,6 +34,17 @@ interface inputSourceCallback {
 		layer: string
   }>
 }
+interface inputMediaStillCallback {
+  type: 'inputMediaStill'
+  options: Readonly<{
+    fg: number
+    bg: number
+		bg_pvw: number
+    source: string
+		sourceAB: string
+		layer: string
+  }>
+}
 
 // Audio
 interface audioMuteCallback {
@@ -66,6 +77,7 @@ interface auxCallback {
 // Callback type for Presets
 export type FeedbackCallbacks =
   | inputSourceCallback 
+  | inputMediaStillCallback 
 	| auxCallback
 	| audioMuteCallback
 	| audioMuteChannelCallback
@@ -140,6 +152,50 @@ export function getFeedbacks(instance: KairosInstance): KairosFeedbacks {
           id: 'source',
           default: instance.KairosObj.INPUTS[0].shortcut,
           choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
+        },
+				options.foregroundColor,
+				options.backgroundColorProgram,
+				options.backgroundColorPreview,
+      ],
+      callback: (feedback) => {
+				let layer = feedback.options.layer
+        let source = feedback.options.source
+				let sourceAB = feedback.options.sourceAB
+				for (const LAYER of instance.combinedLayerArray) {
+					if (LAYER.name == layer && LAYER.sourceA === source && sourceAB == 'sourceA') return { color: feedback.options.fg, bgcolor: feedback.options.bg }
+					if (LAYER.name == layer && LAYER.sourceB === source && sourceAB == 'sourceB') return { color: feedback.options.fg, bgcolor: feedback.options.bg_pvw }
+				}
+        return
+      },
+    },
+    inputMediaStill: {
+      type: 'advanced',
+      label: 'Switched state',
+      description: 'Indicates if an still is in Program/Preview',
+      options: [
+				{
+          type: 'dropdown',
+          label: 'Layer',
+          id: 'layer',
+          default: instance.combinedLayerArray[0].name,
+          choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+        },
+				{
+          type: 'dropdown',
+          label: 'SourceA/B',
+          id: 'sourceAB',
+          default: 'sourceA',
+          choices: [
+            { id: 'sourceA', label: 'sourceA' },
+            { id: 'sourceB', label: 'sourceB' },
+          ],
+        },
+        {
+          type: 'dropdown',
+          label: 'Source',
+          id: 'source',
+          default: instance.KairosObj.MEDIA_STILLS[0],
+          choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: id })),
         },
 				options.foregroundColor,
 				options.backgroundColorProgram,
