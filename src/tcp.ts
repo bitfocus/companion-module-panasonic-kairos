@@ -318,7 +318,7 @@ export class TCP {
       } else if (data[0].includes('.sourceB')) {
         let firstItem = data[0].split('=')
         let index = this.instance.combinedLayerArray.findIndex((x) => x.name === firstItem[0].slice(0, -8))
-        this.instance.combinedLayerArray[index].sourceB = firstItem[1]
+        if (index != -1) this.instance.combinedLayerArray[index].sourceB = firstItem[1]
         this.instance.variables?.updateVariables()
         this.instance.checkFeedbacks('inputSource')
         data.shift()
