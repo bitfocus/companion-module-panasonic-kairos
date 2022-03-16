@@ -11,7 +11,8 @@ export interface KairosActions {
   // mv Recall
   mvRecall: KairosAction<MvRecallCallback>
   // Layer Source Assignment
-  setSource: KairosAction<SetSourceACallback>
+  setSource: KairosAction<SetSourceCallback>
+  setMediaStill: KairosAction<SetMediaStillCallback>
   // Transition
   programCut: KairosAction<ProgramCutCallback>
   programAuto: KairosAction<ProgramAutoCallback>
@@ -63,8 +64,17 @@ interface MvRecallCallback {
   }>
 }
 // Layer Source Assignment
-interface SetSourceACallback {
+interface SetSourceCallback {
   action: 'setSource'
+  options: Readonly<{
+    layer: string
+    sourceAB: string
+    source: string
+  }>
+}
+// Layer Source Assignment
+interface SetMediaStillCallback {
+  action: 'setMediaStill'
   options: Readonly<{
     layer: string
     sourceAB: string
@@ -91,15 +101,15 @@ interface NextTransitionCallback {
   }>
 }
 interface AutoTransitionCallback {
-  action: 'nextTransition'
+  action: 'autoTransition'
   options: Readonly<{
-    transition: string
+    layer: string
   }>
 }
 interface CutTransitionCallback {
-  action: 'nextTransition'
+  action: 'cutTransition'
   options: Readonly<{
-    transition: string
+    layer: string
   }>
 }
 // Snapshots
@@ -111,13 +121,13 @@ interface TriggerSnapshotCallback {
 }
 // Audio
 interface MuteMasterCallback {
-  action: 'muteMasterCallback'
+  action: 'muteMaster'
   options: Readonly<{
     mute: number
   }>
 }
 interface MuteChannelCallback {
-  action: 'muteChannelCallback'
+  action: 'muteChannel'
   options: Readonly<{
     channel: string
     mute: number
@@ -128,11 +138,12 @@ export type ActionCallbacks =
   | PlayerControlCallback
   | SetAUXCallback
   | MvRecallCallback
-  | SetSourceACallback
+  | SetSourceCallback
+  | SetMediaStillCallback
   | ProgramAutoCallback
   | ProgramCutCallback
   | TriggerSnapshotCallback
-  | MuteChannelCallback
+  | MuteMasterCallback
   | MuteChannelCallback
   | NextTransitionCallback
   | AutoTransitionCallback
@@ -221,6 +232,54 @@ export function getActions(instance: KairosInstance): KairosActions {
         sendBasicCommand(setSource)
       },
     },
+    // Layer Source Assignment
+    setMediaStill: {
+      label: 'Set Media Still',
+      options: [
+        {
+          type: 'dropdown',
+          label: 'Layer',
+          id: 'layer',
+          default: instance.combinedLayerArray[0].name,
+          choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+        },
+        {
+          type: 'dropdown',
+          label: 'SourceA/B',
+          id: 'sourceAB',
+          default: 'sourceA',
+          choices: [
+            { id: 'sourceA', label: 'sourceA' },
+            { id: 'sourceB', label: 'sourceB' },
+          ],
+        },
+        {
+          type: 'dropdown',
+          label: 'Source',
+          id: 'source',
+          default: instance.KairosObj.MEDIA_STILLS[0],
+          choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: id })),
+        },
+      ],
+      callback: (action) => {
+        const setMediaStill: any = {
+          id: 'setMediaStill',
+          options: {
+            functionID: `${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
+          },
+        }
+        // Don't wait for the value to return from the mixer, set it directly
+        let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
+        if (index != -1) {
+          action.options.sourceAB == 'sourceA'
+            ? (instance.combinedLayerArray[index].sourceA = action.options.source)
+            : (instance.combinedLayerArray[index].sourceB = action.options.source)
+        }
+        instance.checkFeedbacks('inputSource')
+
+        sendBasicCommand(setMediaStill)
+      },
+    },
     // Transition
     programCut: {
       label: 'Transition - CUT',
@@ -268,7 +327,7 @@ export function getActions(instance: KairosInstance): KairosActions {
       },
     },
     nextTransition: {
-      label: 'Transition - NEXT selected scene',
+      label: 'Transition - NEXT for Layer',
       options: [
         {
           type: 'dropdown',
@@ -291,12 +350,12 @@ export function getActions(instance: KairosInstance): KairosActions {
       },
     },
     autoTransition: {
-      label: 'Transition per scene - AUTO',
+      label: 'Transition per LAYER - AUTO',
       options: [
         {
           type: 'dropdown',
-          label: 'Transition per scene',
-          id: 'transition',
+          label: 'Auto transition per layer',
+          id: 'layer',
           default: instance.combinedTransitionsArray[0],
           choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
         },
@@ -305,19 +364,19 @@ export function getActions(instance: KairosInstance): KairosActions {
         const autoTransition: any = {
           id: 'autoTransition',
           options: {
-            functionID: `${action.options.transition}.transition_auto`,
+            functionID: `${action.options.layer}.transition_auto`,
           },
         }
         sendBasicCommand(autoTransition)
       },
     },
     cutTransition: {
-      label: 'Transition per scene - CUT',
+      label: 'Transition per LAYER - CUT',
       options: [
         {
           type: 'dropdown',
           label: 'Transition per scene',
-          id: 'transition',
+          id: 'layer',
           default: instance.combinedTransitionsArray[0],
           choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
         },
@@ -326,7 +385,7 @@ export function getActions(instance: KairosInstance): KairosActions {
         const cutTransition: any = {
           id: 'cutTransition',
           options: {
-            functionID: `${action.options.transition}.transition_auto`,
+            functionID: `${action.options.layer}.transition_cut`,
           },
         }
         sendBasicCommand(cutTransition)
