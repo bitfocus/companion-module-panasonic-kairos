@@ -5,13 +5,13 @@ This module is for the Panasonic Kairos switcher.
 **Available commands in this module**
 
 ### Master transition control
-* set next transition
 * execute auto transition for selected SCENE
 * execute cut transition for selected SCENE
 
 ### Individual transition control
-* execute auto transition for selected TRANSITION of SCENE
-* execute cut transition for selected TRANSITION of SCENE
+* set next transition for LAYER
+* execute auto transition for selected TRANSITION of LAYER
+* execute cut transition for selected TRANSITION of LAYER
 
 ### Layer source assignment
 * set sourceA for LAYER of SCENE
@@ -53,17 +53,21 @@ This module is for the Panasonic Kairos switcher.
 
 **Available feedback in this module**
 
-* Main background layer Source A
-* Main background layer Source B
+* SourceA for each layer (PGM)
+* SourceB for each layer (PVW)
 * AUX sources
 * Audio master mute
 * Audio 16-channels mute
 
 **Available variables in this module**
 
-* main.background.sourceA
-* main.background.sourceB
+* SourceA for each layer (PGM)
+* SourceB for each layer (PVW)
+* Next transition
+* Input names
 * AUX with sources
-* PLAYER repeat modus
 * MUTE master
 * MUTE channel 1 t/m 16
+* PLAYER repeat modus
+* AUX enabled
+* Presets enabled or not (PVW bus on a layer)
