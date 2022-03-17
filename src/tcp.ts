@@ -460,12 +460,12 @@ export class TCP {
 				data.forEach((element) => {
 					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
 				})
-			} else if (data[0].includes('Mixer.SourceGroup.FxInputs.FxStream1')) {
+			} else if (data[0].includes('Mixer.SourceGroup.FxInputs.')) {
 				//This is an input list
 				data.forEach((element) => {
 					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
 				})
-			} else if (data[0].includes('Mixer.SourceGroup.ColorMattes.ColA')) {
+			} else if (data[0].includes('Mixer.SourceGroup.ColorMattes.')) {
 				//This is an input list
 				data.forEach((element) => {
 					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
