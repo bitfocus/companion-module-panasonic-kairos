@@ -543,19 +543,19 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 	})
 	// TRANSITIONS
 	instance.combinedTransitionsArray.forEach((TRANSITION) => {
-		presets.push({
-			category: 'TRANSITIONS',
-			label: 'Next transition',
-			bank: {
-				style: 'text',
-				text: `${TRANSITION.slice(7)}\\nNext transition`,
-				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
-			},
-			actions: [{ action: 'nextTransition', options: { transition: TRANSITION } }],
-			feedbacks: [],
-		})
+		// presets.push({
+		// 	category: 'TRANSITIONS',
+		// 	label: 'Next transition',
+		// 	bank: {
+		// 		style: 'text',
+		// 		text: `${TRANSITION.slice(7)}\\nNext transition`,
+		// 		size: '14',
+		// 		color: instance.rgb(255, 255, 255),
+		// 		bgcolor: instance.rgb(0, 0, 0),
+		// 	},
+		// 	actions: [{ action: 'nextTransition', options: { transition: TRANSITION } }],
+		// 	feedbacks: [],
+		// })
 		presets.push({
 			category: 'TRANSITIONS',
 			label: 'Cut transition',
