@@ -77,11 +77,6 @@ export class Variables {
 		for (const input of this.instance.KairosObj.INPUTS) {
 			inputSources.push({label: `${input.shortcut} name`, name: `${input.shortcut}`})
 		}
-
-		let sceneNextTransition = []
-		for (const scene of this.instance.KairosObj.SCENES) {
-			sceneNextTransition.push({ label: `${scene.scene.slice(7)} next transition`, name: `${scene.scene}.next_transition` })
-		}
     let auxSources = []
     for (const AUX of this.instance.KairosObj.AUX) {
       auxSources.push({ label: `Source in ${AUX.aux}`, name: AUX.aux })
@@ -105,7 +100,7 @@ export class Variables {
 			presetEnabled.push({ label: `PVW bus for ${LAYER.name.slice(7)}`, name: `${LAYER.name}.preset_enabled`})			
 		}
 
-    let filteredVariables = [...layerSources, ...sceneNextTransition, ...inputSources,...auxSources, ...audio_mute, ...playerRepeat, ...auxAvailable, ...presetEnabled]
+    let filteredVariables = [...layerSources, ...inputSources,...auxSources, ...audio_mute, ...playerRepeat, ...auxAvailable, ...presetEnabled]
 
     this.instance.setVariableDefinitions(filteredVariables)
   }
@@ -127,10 +122,6 @@ export class Variables {
       // newVariables[AUX.aux] = this.instance.KairosObj.INPUTS.find((x) => x.input == AUX.live)
       newVariables[AUX.aux] = this.instance.KairosObj.INPUTS.find(o => o.shortcut === AUX.liveSource)?.name
       newVariables[`${AUX.aux}.available`] = AUX.available == 0 ? 'disabled' : 'enabled'
-    }
-		// TRANSITION
-		for (const SCENE of this.instance.KairosObj.SCENES) {
-      newVariables[`${SCENE.scene}.next_transition`] = SCENE.next_transition//.slice(SCENE.scene.length+1)
     }
 		// PLAYERS
     for (const PLAYER of this.instance.KairosObj.PLAYERS) {

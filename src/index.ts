@@ -29,8 +29,6 @@ class KairosInstance extends instance_skel<Config> {
 	public combinedTransitionsArray!: Array<string>
 	public combinedSnapshotsArray!: Array<string>
   public KairosObj!: {
-    main_background_sourceA: string
-    main_background_sourceB: string
 		audio_master_mute: number
     INPUTS: { shortcut: string, name: string}[]
 		MEDIA_STILLS: Array<string>
