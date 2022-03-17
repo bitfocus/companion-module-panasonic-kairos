@@ -34,8 +34,6 @@ export class TCP {
     this.instance.combinedSnapshotsArray = []
 
     this.instance.KairosObj = {
-      main_background_sourceA: '',
-      main_background_sourceB: '',
       audio_master_mute: 0,
       INPUTS: [],
       MEDIA_STILLS: [],
@@ -158,7 +156,7 @@ export class TCP {
           .then(async () => {
             // Fetch all input names
             for (const INPUT of this.instance.KairosObj.INPUTS) {
-              if (INPUT.shortcut !== '') await sendCommandWithDelay(`${INPUT.shortcut}.name`, interval)
+              if (INPUT.shortcut !== '') await sendCommandWithDelay(`${INPUT.shortcut}.name`, 100)
             }
           })
           .then(async () => {
@@ -173,34 +171,34 @@ export class TCP {
               if (item.scene !== '') await sendCommandWithDelay(`list:${item.scene}.Transitions`, interval)
             }
           })
-          .then(async () => {
-            // Fetch next transition per scene
-            for (const item of this.instance.KairosObj.SCENES) {
-              if (item.scene !== '') await sendCommandWithDelay(`${item.scene}.next_transition`, interval)
-            }
-          })
+          // .then(async () => {
+          //   // Fetch next transition per scene
+          //   for (const item of this.instance.KairosObj.SCENES) {
+          //     if (item.scene !== '') await sendCommandWithDelay(`${item.scene}.next_transition`, interval)
+          //   }
+          // })
           // Fetch all live sources for AUX
           .then(async () => {
             for (const iterator of this.instance.KairosObj.AUX) {
-              if (iterator.aux !== '') await sendCommandWithDelay(`${iterator.aux}.source`, 250)
+              if (iterator.aux !== '') await sendCommandWithDelay(`${iterator.aux}.source`, 100)
             }
           })
           // Get live source for each layer
           .then(async () => {
             for (const LAYER of this.instance.combinedLayerArray) {
-              await sendCommandWithDelay(`${LAYER.name}.sourceA`, interval)
+              await sendCommandWithDelay(`${LAYER.name}.sourceA`, 100)
             }
           })
           // Get live source for each layer
           .then(async () => {
             for (const LAYER of this.instance.combinedLayerArray) {
-              await sendCommandWithDelay(`${LAYER.name}.sourceB`, interval)
+              await sendCommandWithDelay(`${LAYER.name}.sourceB`, 100)
             }
           })
           // Get PVW enabled or not
           .then(async () => {
             for (const LAYER of this.instance.combinedLayerArray) {
-              await sendCommandWithDelay(`${LAYER.name}.preset_enabled`, interval)
+              await sendCommandWithDelay(`${LAYER.name}.preset_enabled`, 100)
             }
           })
           .then(() => delay(interval).then(() => resolve('fetch ready')))
@@ -304,9 +302,11 @@ export class TCP {
       if (data[0] == 'OK') {
         //Status message
         this.instance.log('debug', 'Command succeeded')
-      } else if (data[0] == 'Error') {
+      } else if (data[0] === 'Error') {
         //Status message
         this.instance.log('debug', 'Command failed')
+        data.shift()
+        if (data.length > 1) processData(data)
       } else if (data[0].includes('.sourceA')) {
         let firstItem = data[0].split('=')
         let index = this.instance.combinedLayerArray.findIndex((x) => x.name === firstItem[0].slice(0, -8))
@@ -344,6 +344,8 @@ export class TCP {
         if (index != -1) this.instance.KairosObj.AUX[index].liveSource = split[1]
         this.instance.checkFeedbacks('aux')
         this.instance.variables?.updateVariables()
+        data.shift()
+        if (data[0] != '') processData(data)
       } else if (data[0].includes('MACROS.')) {
         //This is an MACRO list
         this.instance.KairosObj.MACROS = data.filter(String)
@@ -392,12 +394,12 @@ export class TCP {
       } else if (data[0].includes('.preset_enabled')) {
         //This is an response to
         // SCENES.Main.Layers.Background.preset_enabled=1
-				let split = data[0].split('=')
-				let layer = split[0].slice(0,split[0].search('.preset_enabled'))
-        
+        let split = data[0].split('=')
+        let layer = split[0].slice(0, split[0].search('.preset_enabled'))
         let index = this.instance.combinedLayerArray.findIndex((s) => s.name === layer)
-        if (index != -1)
-          this.instance.combinedLayerArray[index].preset_enabled = parseInt(split[1])
+        if (index != -1) this.instance.combinedLayerArray[index].preset_enabled = parseInt(split[1])
+        data.shift()
+        if (data[0] != '') processData(data)
       } else if (data[0].includes('.Layers.')) {
         //This is an Layer list
         // SCENES.Main.Layers.Background
@@ -430,35 +432,19 @@ export class TCP {
           if (res !== '') {
             let input = res.split('=')[0].slice(0, -5)
             let name = res.split('=')[1]
-            for (const key in this.instance.KairosObj.INPUTS) {
-              if (Object.prototype.hasOwnProperty.call(this.instance.KairosObj.INPUTS, key)) {
-                const inputFromArray = this.instance.KairosObj.INPUTS[key]
-                if (inputFromArray.shortcut == input) {
-                  inputFromArray.name = name
-                  break
-                }
-              }
-            }
+            let index = this.instance.KairosObj.INPUTS.findIndex((x) => x.shortcut === input)
+            if (index != -1) this.instance.KairosObj.INPUTS[index].name = name
+            // for (const key in this.instance.KairosObj.INPUTS) {
+            //   if (Object.prototype.hasOwnProperty.call(this.instance.KairosObj.INPUTS, key)) {
+            //     const inputFromArray = this.instance.KairosObj.INPUTS[key]
+            //     if (inputFromArray.shortcut == input) {
+            //       inputFromArray.name = name
+            //       break
+            //     }
+            //   }
+            // }
           }
         })
-        // } else if (data[0].search('.sourceOptions') != -1 && data[0].search('AUX') != -1) {
-        //   //This is Aux source option
-        //   // Split data for name and options
-        //   let auxSourceOptions = data[0].split('=')
-        //   // aux name/ID is the first part
-        //   let auxName = auxSourceOptions[0].slice(0, -14)
-        //   // When ready remove the first part so you keep only the options
-        //   auxSourceOptions.shift()
-        //   // Then there is only one item in the array
-        //   // let newArray = auxSourceOptions[0].trim().split(',').join('').split('')
-        //   let newArray = auxSourceOptions[0].trim().split(',').filter(String)
-        //   let index = this.instance.KairosObj.AUX.findIndex((x) => x.aux === auxName)
-        //   if (index != -1) this.instance.KairosObj.AUX[index].sources = newArray
-        //   for (let index = 0; index < newArray.length; index++) {
-        //     if (this.instance.KairosObj.INPUTS.find((x) => x.input === newArray[index]) === undefined) {
-        //       this.instance.KairosObj.INPUTS.push({ input: newArray[index], name: newArray[index] })
-        //     }
-        //   }
       } else if (data[0].includes('IP1')) {
         //This is an input list
         data.forEach((element) => {
@@ -506,8 +492,8 @@ export class TCP {
               next_transition: '',
             })
         })
-				// Add SCENE to inputs also
-				data.forEach((element) => {
+        // Add SCENE to inputs also
+        data.forEach((element) => {
           if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
         })
       } else if (data.find((element) => element === 'IP-AUX1')) {
