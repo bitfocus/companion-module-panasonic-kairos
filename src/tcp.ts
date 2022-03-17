@@ -506,6 +506,10 @@ export class TCP {
               next_transition: '',
             })
         })
+				// Add SCENE to inputs also
+				data.forEach((element) => {
+          if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
+        })
       } else if (data.find((element) => element === 'IP-AUX1')) {
         //This is an AUX list
         this.instance.KairosObj.AUX.length = 0
