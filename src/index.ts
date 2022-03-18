@@ -37,7 +37,6 @@ class KairosInstance extends instance_skel<Config> {
 			snapshots: Array<string>
 			layers: { layer: string; sourceA: string; sourceB: string }[]
 			transitions: Array<string>
-			next_transition: string
 		}[]
 		SNAPSHOTS: Array<string>
 		AUX: { aux: string; liveSource: string; available: number }[]
