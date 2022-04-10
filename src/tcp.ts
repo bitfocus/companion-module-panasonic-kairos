@@ -19,6 +19,7 @@ export class TCP {
 	private recvRemain = ''
 	private nListCmd = 0 // number of outstanding command of list or info 
 	private nCommand = 0 // number of outstanding command
+	private processCallback: ((data: Array<string>) => void) | null = null
 	private waitListCallback: (() => void) | null = null;
 	private waitCommandCallback: (() => void) | null = null;
 
@@ -125,6 +126,16 @@ export class TCP {
 			this.instance.KairosObj.INPUTS.push({ shortcut: 'Environment.InternalSourceGroup.ColorBar', name: 'ColorBar' })
 			this.instance.KairosObj.INPUTS.push({ shortcut: 'Environment.InternalSourceGroup.ColorCircle', name: 'ColorCircle', })
 		}
+		const addScene = (scene: string) => {
+			if (scene !== '')
+				this.instance.KairosObj.SCENES.push({
+					scene: scene,
+					snapshots: [],
+					layers: [],
+					transitions: [],
+				})
+			this.instance.KairosObj.INPUTS.push({ shortcut: scene, name: scene })
+		}
 		const listFinish = () => {
 			return new Promise((resolve) => {
 				this.waitListCallback = () => resolve('done')
@@ -136,10 +147,41 @@ export class TCP {
 			})
 		}
 
+		const fetchScenes = () => {
+			return new Promise((resolve) => {
+				//This is an SCENES list, only at startup so reset
+				this.instance.KairosObj.SCENES.length = 0
+
+				this.sendCommand('list:SCENES')
+				this.processCallback = (data: Array<string>) => {
+					// receive top hierarchy
+					data.forEach((element) => {
+						this.sendCommand(`list:${element}`)
+					})
+
+					// ToDo: It should manage third level or more
+					this.processCallback = (data: Array<string>) => {
+						// receive second hierarchy
+						const layers = data.find((element) => element.endsWith('.Layers'))
+						if (layers) {
+							addScene(layers.substring(0, layers.length - 7))
+						} else {
+							data.forEach((element) => {
+								addScene(element)
+							})
+						}
+					}
+
+					listFinish().then(() => {
+						this.processCallback = null
+						resolve('fetch ready')
+					})
+				}
+			})
+		}
 		const fetchFixedItems = () => {
 			return new Promise((resolve) => {
 				this.sendCommand('list:AUX')
-				this.sendCommand('list:SCENES')
 				this.sendCommand('list:MACROS')
 				this.sendCommand('list:Mixer.MV-Presets')
 				this.sendCommand('list:Mixer.Inputs')
@@ -249,7 +291,8 @@ export class TCP {
 		this.sockets.main.on('connect', async () => {
 			this.instance.status(1)
 			this.instance.log('debug', 'Connected to mixer')
-			await fetchFixedItems()
+			await fetchScenes()
+				.then(() => fetchFixedItems())
 				.then(() => fetchVariableItems())
 				.then(() => subscribeToData())
 				.then(() => this.instance.status(0))
@@ -267,7 +310,9 @@ export class TCP {
 		 */
 
 		const processData = (data: Array<string>) => {
-			if (data.find((element) => element === 'IP1')) {
+			if (this.processCallback) {
+				this.processCallback(data)
+			} else if (data.find((element) => element === 'IP1')) {
 				//This is an input list
 				data.forEach((element) => {
 					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
@@ -284,22 +329,6 @@ export class TCP {
 				})
 			} else if (data.find((element) => element === 'CP1')) {
 				//This is an input list
-				data.forEach((element) => {
-					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
-				})
-			} else if (data.find((element) => element === 'SCENES.Main')) {
-				//This is an SCENES list, only at startup so reset
-				this.instance.KairosObj.SCENES.length = 0
-				data.forEach((element) => {
-					if (element !== '')
-						this.instance.KairosObj.SCENES.push({
-							scene: element,
-							snapshots: [],
-							layers: [],
-							transitions: [],
-						})
-				})
-				// Add SCENE to inputs also
 				data.forEach((element) => {
 					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
 				})
@@ -458,6 +487,7 @@ export class TCP {
 			}
 		}
 
+		// ToDo: It should operate call back function with each transitions
 		this.sockets.main.on('data', (data: Buffer) => {
 			let str = this.recvRemain + data.toString()
 			this.recvRemain = '';
@@ -518,6 +548,7 @@ export class TCP {
 	/**
 	 * @param command function and any params
 	 * @description Check TCP connection status and format command to send to Kairos
+	 * @todo It should provide callback or promise of each transaction
 	 */
 	public readonly sendCommand = (command: string): void => {
 		// @ts-expect-error Types doesn't include 'connected' property
