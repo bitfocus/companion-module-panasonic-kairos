@@ -20,8 +20,8 @@ export class TCP {
 	private nListCmd = 0 // number of outstanding command of list or info 
 	private nCommand = 0 // number of outstanding command
 	private processCallback: ((data: Array<string>) => void) | null = null
-	private waitListCallback: (() => void) | null = null;
-	private waitCommandCallback: (() => void) | null = null;
+	private waitListCallback: (() => void) | null = null
+	private waitCommandCallback: (() => void) | null = null
 
 	constructor(instance: KairosInstance) {
 		this.instance = instance
@@ -206,13 +206,13 @@ export class TCP {
 				// Fetch all layer per scene
 				for (const item of this.instance.KairosObj.SCENES) {
 					if (item.scene !== '') {
-						this.sendCommand(`list:${item.scene}.Layers`);
+						this.sendCommand(`list:${item.scene}.Layers`)
 					}
 				}
 				// Fetch all transitions per scene
 				for (const item of this.instance.KairosObj.SCENES) {
 					if (item.scene !== '') {
-						this.sendCommand(`list:${item.scene}.Transitions`);
+						this.sendCommand(`list:${item.scene}.Transitions`)
 					}
 				}
 
@@ -227,17 +227,17 @@ export class TCP {
 					// Fetch all live sources for AUX
 					for (const iterator of this.instance.KairosObj.AUX) {
 						if (iterator.aux !== '') {
-							this.sendCommand(`${iterator.aux}.source`);
+							this.sendCommand(`${iterator.aux}.source`)
 						}
 					}
 				
 					// Get live source for each layer
 					for (const LAYER of this.instance.combinedLayerArray) {
-						this.sendCommand(`${LAYER.name}.sourceA`);
+						this.sendCommand(`${LAYER.name}.sourceA`)
 					}
 					// Get live source for each layer
 					for (const LAYER of this.instance.combinedLayerArray) {
-						this.sendCommand(`${LAYER.name}.sourceB`);
+						this.sendCommand(`${LAYER.name}.sourceB`)
 					}
 					// Check if AUX is available
 					for (const iterator of this.instance.KairosObj.AUX) {
@@ -490,16 +490,16 @@ export class TCP {
 		// ToDo: It should operate call back function with each transitions
 		this.sockets.main.on('data', (data: Buffer) => {
 			let str = this.recvRemain + data.toString()
-			this.recvRemain = '';
+			this.recvRemain = ''
 			if (str.endsWith('\r\n') === false) {
 				// store uncompleted line 
 				const end = str.lastIndexOf('\r\n')
 				if (end < 0) {
-					this.recvRemain = str;
-					return;
+					this.recvRemain = str
+					return
 				}
-				this.recvRemain = str.substring(end + 2);
-				str = str.substring(0, end + 2);
+				this.recvRemain = str.substring(end + 2)
+				str = str.substring(0, end + 2)
 			}
 			while (this.nListCmd > 0) {
 				if (str.startsWith('\r\n')) {
@@ -512,9 +512,9 @@ export class TCP {
 					let end = str.indexOf('\r\n\r\n')
 					if (end < 0) {
 						this.recvRemain = str + this.recvRemain
-						return;
+						return
 					}
-					const message = str.substring(0, end).split('\r\n');
+					const message = str.substring(0, end).split('\r\n')
 					console.log(message)
 					processData(message)
 					str = str.substring(end + 4)
@@ -527,13 +527,13 @@ export class TCP {
 				}
 			}
 			if (str !== '') {
-				const message = str.split('\r\n');
+				const message = str.split('\r\n')
 				console.log(message)
 				processData(message)
 				if (this.nCommand > 0) {
 					this.nCommand -= message.length - 1
 					if (this.nCommand <= 0) {
-						this.nCommand = 0;
+						this.nCommand = 0
 						if (this.waitCommandCallback) {
 							const callback = this.waitCommandCallback
 							this.waitCommandCallback = null
