@@ -17,7 +17,7 @@ export class TCP {
 	private tcpPort: number
 	private keepAliveInterval: NodeJS.Timer | undefined
 	private recvRemain = ''
-	private nListCmd = 0 // number of outstanding command of list or info 
+	private nListCmd = 0 // number of outstanding command of list or info
 	private nCommand = 0 // number of outstanding command
 	private processCallback: ((data: Array<string>) => void) | null = null
 	private waitListCallback: (() => void) | null = null
@@ -124,7 +124,10 @@ export class TCP {
 			this.instance.KairosObj.INPUTS.push({ shortcut: 'BLACK', name: 'BLACK' })
 			this.instance.KairosObj.INPUTS.push({ shortcut: 'WHITE', name: 'WHITE' })
 			this.instance.KairosObj.INPUTS.push({ shortcut: 'Environment.InternalSourceGroup.ColorBar', name: 'ColorBar' })
-			this.instance.KairosObj.INPUTS.push({ shortcut: 'Environment.InternalSourceGroup.ColorCircle', name: 'ColorCircle', })
+			this.instance.KairosObj.INPUTS.push({
+				shortcut: 'Environment.InternalSourceGroup.ColorCircle',
+				name: 'ColorCircle',
+			})
 		}
 		const addScene = (scene: string) => {
 			if (scene !== '')
@@ -230,7 +233,7 @@ export class TCP {
 							this.sendCommand(`${iterator.aux}.source`)
 						}
 					}
-				
+
 					// Get live source for each layer
 					for (const LAYER of this.instance.combinedLayerArray) {
 						this.sendCommand(`${LAYER.name}.sourceA`)
@@ -259,9 +262,7 @@ export class TCP {
 				this.sendCommand('subscribe:Mixer.AudioMixers.AudioMixer.mute')
 				// Get all transitions together
 				for (const SCENE of this.instance.KairosObj.SCENES) {
-					this.instance.combinedTransitionsArray = this.instance.combinedTransitionsArray.concat(
-						SCENE.transitions
-					)
+					this.instance.combinedTransitionsArray = this.instance.combinedTransitionsArray.concat(SCENE.transitions)
 				}
 				// Get all Snapshots together
 				for (const SCENE of this.instance.KairosObj.SCENES) {
@@ -492,7 +493,7 @@ export class TCP {
 			let str = this.recvRemain + data.toString()
 			this.recvRemain = ''
 			if (str.endsWith('\r\n') === false) {
-				// store uncompleted line 
+				// store uncompleted line
 				const end = str.lastIndexOf('\r\n')
 				if (end < 0) {
 					this.recvRemain = str
