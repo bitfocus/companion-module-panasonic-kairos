@@ -19,6 +19,8 @@ export interface KairosActions {
 	nextTransition: KairosAction<NextTransitionCallback>
 	autoTransition: KairosAction<AutoTransitionCallback>
 	cutTransition: KairosAction<CutTransitionCallback>
+	// Scene Macros
+	smacroControl: KairosAction<SmacroControlCallback>
 	// Snapshots
 	triggerSnapshot: KairosAction<TriggerSnapshotCallback>
 	// Audio mixer control
@@ -112,6 +114,15 @@ interface CutTransitionCallback {
 		layer: string
 	}>
 }
+// Scene Macros
+interface SmacroControlCallback {
+	action: 'smacroControl'
+	options: Readonly<{
+	functionID: ''
+	smacro: string
+	action: string
+	}>
+}
 // Snapshots
 interface TriggerSnapshotCallback {
 	action: 'triggerSnapshot'
@@ -142,6 +153,7 @@ export type ActionCallbacks =
 	| SetMediaStillCallback
 	| ProgramAutoCallback
 	| ProgramCutCallback
+	| SmacroControlCallback
 	| TriggerSnapshotCallback
 	| MuteMasterCallback
 	| MuteChannelCallback
@@ -479,7 +491,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 					label: 'Preset',
 					id: 'preset',
 					default: instance.KairosObj.MV_PRESETS[0],
-					choices: instance.KairosObj.MV_PRESETS.map((id) => ({ id, label: id.slice(17) })),
+					choices: instance.KairosObj.MV_PRESETS.map((id) => ({ id, label: id.slice(10) })),
 				},
 				options.mvRecall,
 			],
@@ -491,6 +503,29 @@ export function getActions(instance: KairosInstance): KairosActions {
 					},
 				}
 				sendBasicCommand(mvRecall)
+			},
+		},
+		// Scene Macros
+		smacroControl: {
+			label: 'Scene macro action',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Smacro',
+					id: 'smacro',
+					default: instance.combinedSmacrosArray[0],
+					choices: instance.combinedSmacrosArray.map((id) => ({ id, label: id })),
+				},
+				options.macroControl,
+			],
+			callback: (action) => {
+				const smacroControl: any = {
+					id: 'smacroControl',
+					options: {
+						functionID: `${action.options.smacro}.${action.options.action}`,
+					},
+				}
+				sendBasicCommand(smacroControl)
 			},
 		},
 		// Snapshots

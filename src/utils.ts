@@ -75,7 +75,7 @@ export const options: Options = {
 			{ id: 'reverse_play', label: 'Reverse play' },
 			{ id: 'play', label: 'Play' },
 			{ id: 'pause', label: 'Pause' },
-			{ id: 'stop', label: 'Stop' },
+			//{ id: 'stop', label: 'Stop' },
 			{ id: 'step_forward', label: 'Step forward' },
 			{ id: 'fast_forward', label: 'Fast forward' },
 			{ id: 'end', label: 'Go to End' },
@@ -91,7 +91,7 @@ export const options: Options = {
 		default: 'play',
 		choices: [
 			{ id: 'play', label: 'Play' },
-			{ id: 'pause', label: 'Pause' },
+			//{ id: 'pause', label: 'Pause' },
 			{ id: 'stop', label: 'Stop' },
 			{ id: 'record', label: 'Record' },
 			{ id: 'stop_record', label: 'Stop record' },

@@ -27,6 +27,7 @@ class KairosInstance extends instance_skel<Config> {
 	}
 	public combinedLayerArray!: { name: string; sourceA: string; sourceB: string; preset_enabled: number }[]
 	public combinedTransitionsArray!: Array<string>
+	public combinedSmacrosArray!: Array<string>
 	public combinedSnapshotsArray!: Array<string>
 	public KairosObj!: {
 		audio_master_mute: number
@@ -34,10 +35,12 @@ class KairosInstance extends instance_skel<Config> {
 		MEDIA_STILLS: Array<string>
 		SCENES: {
 			scene: string
+			smacros: Array<string>
 			snapshots: Array<string>
 			layers: { layer: string; sourceA: string; sourceB: string }[]
 			transitions: Array<string>
 		}[]
+		SMACROS: Array<string>
 		SNAPSHOTS: Array<string>
 		AUX: { aux: string; liveSource: string; available: number }[]
 		MACROS: Array<string>

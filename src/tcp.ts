@@ -37,13 +37,15 @@ export class TCP {
 		// })
 		this.instance.combinedLayerArray = []
 		this.instance.combinedTransitionsArray = []
+		this.instance.combinedSmacrosArray = []
 		this.instance.combinedSnapshotsArray = []
 
 		this.instance.KairosObj = {
 			audio_master_mute: 0,
 			INPUTS: [],
 			MEDIA_STILLS: [],
-			SCENES: [{ scene: '', snapshots: [], layers: [], transitions: [] }],
+			SCENES: [{ scene: '', smacros: [], snapshots: [], layers: [], transitions: [] }],
+			SMACROS: [],
 			SNAPSHOTS: [],
 			AUX: [{ aux: '', liveSource: '', available: 0 }],
 			MACROS: [],
@@ -133,6 +135,7 @@ export class TCP {
 			if (scene !== '')
 				this.instance.KairosObj.SCENES.push({
 					scene: scene,
+					smacros: [],
 					snapshots: [],
 					layers: [],
 					transitions: [],
@@ -200,6 +203,12 @@ export class TCP {
 		}
 		const fetchVariableItems = () => {
 			return new Promise((resolve) => {
+				// Fetch all macros per scene
+				for (const item of this.instance.KairosObj.SCENES) {
+					if (item.scene !== '') {
+						this.sendCommand(`list:${item.scene}.Macros`)
+					}
+				}
 				// Fetch all snapshots per scene
 				for (const item of this.instance.KairosObj.SCENES) {
 					if (item.scene !== '') {
@@ -263,6 +272,10 @@ export class TCP {
 				// Get all transitions together
 				for (const SCENE of this.instance.KairosObj.SCENES) {
 					this.instance.combinedTransitionsArray = this.instance.combinedTransitionsArray.concat(SCENE.transitions)
+				}
+				// Get all Scene Macros together
+				for (const SCENE of this.instance.KairosObj.SCENES) {
+					this.instance.combinedSmacrosArray = this.instance.combinedSmacrosArray.concat(SCENE.smacros)
 				}
 				// Get all Snapshots together
 				for (const SCENE of this.instance.KairosObj.SCENES) {
@@ -424,6 +437,13 @@ export class TCP {
 						case /^Mixer\.MV-Presets/i.test(returningData): // This is an MV Preset list
 						case /^MVPRESETS\./i.test(returningData): // This is an MV Preset list
 							this.instance.KairosObj.MV_PRESETS.push(returningData)
+							break
+						case /\.Macros./i.test(returningData): // This is a Scene Macro
+							{
+								let sceneName = data[0].slice(0, data[0].search('.Macros.')) // SCENES.Main.Macros.M-1
+								let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
+								if (index != -1) this.instance.KairosObj.SCENES[index].smacros.push(returningData)
+							}
 							break
 						case /\.Snapshots./i.test(returningData): // This is a Snapshot
 							{

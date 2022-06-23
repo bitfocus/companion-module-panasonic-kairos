@@ -176,19 +176,19 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'play' } }],
 			feedbacks: [],
 		})
-		presets.push({
-			category: 'PLAYERS',
-			label: element.player + 'stop',
-			bank: {
-				style: 'text',
-				text: element.player + '\\nstop',
-				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
-			},
-			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'stop' } }],
-			feedbacks: [],
-		})
+		//presets.push({
+		//	category: 'PLAYERS',
+		//	label: element.player + 'stop',
+		//	bank: {
+		//		style: 'text',
+		//		text: element.player + '\\nstop',
+		//		size: 'auto',
+		//		color: instance.rgb(255, 255, 255),
+		//		bgcolor: instance.rgb(0, 0, 0),
+		//	},
+		//	actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'stop' } }],
+		//	feedbacks: [],
+		//})
 		presets.push({
 			category: 'PLAYERS',
 			label: element.player + 'pause',
@@ -354,13 +354,81 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			actions: [{ action: 'programAuto', options: { scene: SCENE.scene } }],
 			feedbacks: [],
 		})
+		SCENE.smacros.forEach((SMACRO) => {
+			presets.push({
+				category: 'SCENE MACROS',
+				label: SMACRO,
+				bank: {
+					style: 'text',
+					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nplay`,
+					size: 'auto',
+					color: instance.rgb(255, 255, 255),
+					bgcolor: instance.rgb(0, 0, 0),
+				},
+				actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'play' } }],
+				feedbacks: [],
+			})
+			//presets.push({
+			//	category: 'SCENE MACROS',
+			//	label: SMACRO,
+			//	bank: {
+			//		style: 'text',
+			//		text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\npause`,
+			//		size: 'auto',
+			//		color: instance.rgb(255, 255, 255),
+			//		bgcolor: instance.rgb(0, 0, 0),
+			//	},
+			//	actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'pause' } }],
+			//	feedbacks: [],
+			//})
+			presets.push({
+				category: 'SCENE MACROS',
+				label: SMACRO,
+				bank: {
+					style: 'text',
+					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop`,
+					size: 'auto',
+					color: instance.rgb(255, 255, 255),
+					bgcolor: instance.rgb(0, 0, 0),
+				},
+				actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop' } }],
+				feedbacks: [],
+			})
+			presets.push({
+				category: 'SCENE MACROS',
+				label: SMACRO,
+				bank: {
+					style: 'text',
+					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nrecord`,
+					size: 'auto',
+					color: instance.rgb(255, 255, 255),
+					bgcolor: instance.rgb(0, 0, 0),
+				},
+				actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'record' } }],
+				feedbacks: [],
+			})
+			presets.push({
+				category: 'SCENE MACROS',
+				label: SMACRO,
+				bank: {
+					style: 'text',
+					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop record`,
+					size: 'auto',
+					color: instance.rgb(255, 255, 255),
+					bgcolor: instance.rgb(0, 0, 0),
+				},
+				actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop_record' } }],
+				feedbacks: [],
+			})
+		})
 		SCENE.snapshots.forEach((SNAPSHOT) => {
 			presets.push({
 				category: 'SNAPSHOTS',
 				label: SNAPSHOT,
 				bank: {
 					style: 'text',
-					text: SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11),
+					//text: SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11),
+					text: `${SCENE.scene.slice(7)}\\n${SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11)}`,
 					size: 'auto',
 					color: instance.rgb(255, 255, 255),
 					bgcolor: instance.rgb(0, 0, 0),
@@ -413,19 +481,19 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'play' } }],
 			feedbacks: [],
 		})
-		presets.push({
-			category: 'MACROS',
-			label: 'Macros',
-			bank: {
-				style: 'text',
-				text: `${MACRO.slice(7)}\\npause`,
-				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
-			},
-			actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'pause' } }],
-			feedbacks: [],
-		})
+		//presets.push({
+		//	category: 'MACROS',
+		//	label: 'Macros',
+		//	bank: {
+		//		style: 'text',
+		//		text: `${MACRO.slice(7)}\\npause`,
+		//		size: 'auto',
+		//		color: instance.rgb(255, 255, 255),
+		//		bgcolor: instance.rgb(0, 0, 0),
+		//	},
+		//	actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'pause' } }],
+		//	feedbacks: [],
+		//})
 		presets.push({
 			category: 'MACROS',
 			label: 'Macros',
@@ -470,7 +538,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 	instance.KairosObj.MV_PRESETS.forEach((PRESET) => {
 		presets.push({
 			category: 'Multiviewer presets | MV1',
-			label: 'Macros',
+			label: 'Multiviewer presets 1',
 			bank: {
 				style: 'text',
 				text: `${PRESET}`,
@@ -483,7 +551,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 		})
 		presets.push({
 			category: 'Multiviewer presets | MV2',
-			label: 'Macros',
+			label: 'Multiviewer presets 2',
 			bank: {
 				style: 'text',
 				text: `${PRESET}`,
