@@ -58,6 +58,22 @@ export class TCP {
 				{ player: 'RR8', repeat: 0 },
 				{ player: 'CP1', repeat: 0 },
 				{ player: 'CP2', repeat: 0 },
+				{ player: 'AP1', repeat: 0 },
+				{ player: 'AP2', repeat: 0 },
+				{ player: 'AP3', repeat: 0 },
+				{ player: 'AP4', repeat: 0 },
+				{ player: 'AP5', repeat: 0 },
+				{ player: 'AP6', repeat: 0 },
+				{ player: 'AP7', repeat: 0 },
+				{ player: 'AP8', repeat: 0 },
+				{ player: 'AP9', repeat: 0 },
+				{ player: 'AP10', repeat: 0 },
+				{ player: 'AP11', repeat: 0 },
+				{ player: 'AP12', repeat: 0 },
+				{ player: 'AP13', repeat: 0 },
+				{ player: 'AP14', repeat: 0 },
+				{ player: 'AP15', repeat: 0 },
+				{ player: 'AP16', repeat: 0 },
 			],
 			MV_PRESETS: [],
 			AUDIO_CHANNELS: [
@@ -188,6 +204,7 @@ export class TCP {
 				this.sendCommand('list:INPUTS')
 				this.sendCommand('list:RAMRECORDERS')
 				this.sendCommand('list:PLAYERS')
+				//this.sendCommand('list:AUDIOPLAYERS')
 				this.sendCommand('list:GFXCHANNELS')
 				this.sendCommand('list:FXINPUTS')
 				this.sendCommand('list:MATTES')
@@ -254,6 +271,16 @@ export class TCP {
 					for (const LAYER of this.instance.combinedLayerArray) {
 						this.sendCommand(`${LAYER.name}.preset_enabled`)
 					}
+					// Get repeat state for each player
+					for (const PLAYER of this.instance.KairosObj.PLAYERS) {
+						this.sendCommand(`${PLAYER.player}.repeat`)
+					}
+					// Get mute state for each audio mixer channel
+					this.sendCommand(`Mixer.AudioMixers.AudioMixer.mute`)
+					for (const CHANNEL of this.instance.KairosObj.AUDIO_CHANNELS) {
+						this.sendCommand(`Mixer.AudioMixers.AudioMixer.${CHANNEL.channel}.mute`)
+					}
+					
 					commandFinish().then(() => resolve('fetch ready'))
 				})
 			})
@@ -381,6 +408,7 @@ export class TCP {
 								this.instance.checkFeedbacks('inputSource')
 							}
 							break
+						case /^Mixer\.AudioMixers\.AudioMixer\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
 						case /^AUDIOMIXER\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
 							{
 								this.instance.KairosObj.audio_master_mute = parseInt(returningData.split('=')[1])
@@ -388,6 +416,7 @@ export class TCP {
 								this.instance.variables?.updateVariables()
 							}
 							break
+						case /^Mixer\.AudioMixers\.AudioMixer\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
 						case /^AUDIOMIXER\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
 							{
 								let index = parseInt(returningData.slice(returningData.search('.Channel') + 9, -7)) - 1
@@ -423,7 +452,7 @@ export class TCP {
 						case /\.repeat=/i.test(returningData): // //This is an PLAYER repeat check
 							{
 								let index = this.instance.KairosObj.PLAYERS.findIndex(
-									(x) => x.player === returningData.split('=')[0].slice(0, 7)
+									(x) => x.player === returningData.split('=')[0].slice(0, -7)
 								)
 								if (index != -1) this.instance.KairosObj.PLAYERS[index].repeat = parseInt(returningData.split('=')[1])
 								this.instance.variables?.updateVariables()
