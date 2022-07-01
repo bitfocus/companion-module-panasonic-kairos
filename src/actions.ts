@@ -16,7 +16,7 @@ export interface KairosActions {
 	// Transition
 	programCut: KairosAction<ProgramCutCallback>
 	programAuto: KairosAction<ProgramAutoCallback>
-	nextTransition: KairosAction<NextTransitionCallback>
+	//nextTransition: KairosAction<NextTransitionCallback>
 	autoTransition: KairosAction<AutoTransitionCallback>
 	cutTransition: KairosAction<CutTransitionCallback>
 	// Scene Macros
@@ -96,12 +96,12 @@ interface ProgramAutoCallback {
 		scene: string
 	}>
 }
-interface NextTransitionCallback {
-	action: 'nextTransition'
-	options: Readonly<{
-		transition: string
-	}>
-}
+//interface NextTransitionCallback {
+//	action: 'nextTransition'
+//	options: Readonly<{
+//		transition: string
+//	}>
+//}
 interface AutoTransitionCallback {
 	action: 'autoTransition'
 	options: Readonly<{
@@ -157,7 +157,7 @@ export type ActionCallbacks =
 	| TriggerSnapshotCallback
 	| MuteMasterCallback
 	| MuteChannelCallback
-	| NextTransitionCallback
+	//| NextTransitionCallback
 	| AutoTransitionCallback
 	| CutTransitionCallback
 
@@ -294,7 +294,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 		},
 		// Transition
 		programCut: {
-			label: 'Transition - CUT',
+			label: 'Master CUT Transition',
 			options: [
 				{
 					type: 'dropdown',
@@ -316,7 +316,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 			},
 		},
 		programAuto: {
-			label: 'Transition - AUTO',
+			label: 'Master AUTO Transition',
 			options: [
 				{
 					type: 'dropdown',
@@ -338,35 +338,35 @@ export function getActions(instance: KairosInstance): KairosActions {
 				sendBasicCommand(programAuto)
 			},
 		},
-		nextTransition: {
-			label: 'Transition - NEXT for Layer',
-			options: [
-				{
-					type: 'dropdown',
-					label: 'Set next transition',
-					id: 'transition',
-					default: instance.combinedTransitionsArray[0],
-					choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
-				},
-			],
-			callback: (action) => {
-				const nextTransition: any = {
-					id: 'nextTransition',
-					options: {
-						functionID: `${action.options.transition.slice(0, 11)}.next_transition=${action.options.transition.slice(
-							24
-						)}`,
-					},
-				}
-				sendBasicCommand(nextTransition)
-			},
-		},
+		//nextTransition: {
+		//	label: 'Transition - NEXT for Layer',
+		//	options: [
+		//		{
+		//			type: 'dropdown',
+		//			label: 'Set next transition',
+		//			id: 'transition',
+		//			default: instance.combinedTransitionsArray[0],
+		//			choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
+		//		},
+		//	],
+		//	callback: (action) => {
+		//		const nextTransition: any = {
+		//			id: 'nextTransition',
+		//			options: {
+		//				functionID: `${action.options.transition.slice(0, 11)}.next_transition=${action.options.transition.slice(
+		//					24
+		//				)}`,
+		//			},
+		//		}
+		//		sendBasicCommand(nextTransition)
+		//	},
+		//},
 		autoTransition: {
-			label: 'Transition per LAYER - AUTO',
+			label: 'AUTO Transition',
 			options: [
 				{
 					type: 'dropdown',
-					label: 'Auto transition per layer',
+					label: 'Transition',
 					id: 'layer',
 					default: instance.combinedTransitionsArray[0],
 					choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
@@ -383,11 +383,11 @@ export function getActions(instance: KairosInstance): KairosActions {
 			},
 		},
 		cutTransition: {
-			label: 'Transition per LAYER - CUT',
+			label: 'CUT Transition',
 			options: [
 				{
 					type: 'dropdown',
-					label: 'Transition per scene',
+					label: 'Transition',
 					id: 'layer',
 					default: instance.combinedTransitionsArray[0],
 					choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
@@ -439,11 +439,11 @@ export function getActions(instance: KairosInstance): KairosActions {
 		},
 		//Control
 		playerControl: {
-			label: 'Ram recorder action',
+			label: 'RAM/Clip Player action',
 			options: [
 				{
 					type: 'dropdown',
-					label: 'Scene',
+					label: 'Player Source',
 					id: 'player',
 					default: instance.KairosObj.PLAYERS[0].player,
 					choices: instance.KairosObj.PLAYERS.map((element) => ({ id: element.player, label: element.player })),
@@ -484,7 +484,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 		},
 		// Recall MV presets
 		mvRecall: {
-			label: 'Recall multiviewer preset',
+			label: 'Recall Multiviewer preset',
 			options: [
 				{
 					type: 'dropdown',
@@ -507,11 +507,11 @@ export function getActions(instance: KairosInstance): KairosActions {
 		},
 		// Scene Macros
 		smacroControl: {
-			label: 'Scene macro action',
+			label: 'Scene Macro action',
 			options: [
 				{
 					type: 'dropdown',
-					label: 'Smacro',
+					label: 'Scene Macro',
 					id: 'smacro',
 					default: instance.combinedSmacrosArray[0],
 					choices: instance.combinedSmacrosArray.map((id) => ({ id, label: id })),
@@ -530,11 +530,11 @@ export function getActions(instance: KairosInstance): KairosActions {
 		},
 		// Snapshots
 		triggerSnapshot: {
-			label: 'Trigger snapshots',
+			label: 'Trigger Snapshots',
 			options: [
 				{
 					type: 'dropdown',
-					label: 'snapshot name',
+					label: 'Snapshot',
 					id: 'snapshot',
 					default: instance.combinedSnapshotsArray[0],
 					choices: instance.combinedSnapshotsArray.map((id) => ({ id, label: id })),
@@ -553,7 +553,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 		},
 		//Audio
 		muteMaster: {
-			label: 'Mute Master',
+			label: 'Audio Mixer Master Mute',
 			options: [options.mute],
 			callback: (action) => {
 				const muteMaster: any = {
@@ -569,7 +569,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 			},
 		},
 		muteChannel: {
-			label: 'Mute Channel',
+			label: 'Audio Mixer Channel Mute',
 			options: [options.channel, options.mute],
 			callback: (action) => {
 				const muteChannel: any = {
