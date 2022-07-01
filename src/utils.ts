@@ -72,7 +72,7 @@ export const options: Options = {
 			{ id: 'begin', label: 'Go to Begin' },
 			{ id: 'rewind', label: 'Rewind' },
 			{ id: 'step_back', label: 'Step back' },
-			{ id: 'reverse_play', label: 'Reverse play' },
+			{ id: 'reverse', label: 'Reverse play' },
 			{ id: 'play', label: 'Play' },
 			{ id: 'pause', label: 'Pause' },
 			//{ id: 'stop', label: 'Stop' },

@@ -45,9 +45,7 @@ export class TCP {
 			INPUTS: [],
 			MEDIA_STILLS: [],
 			SCENES: [{ scene: '', smacros: [], snapshots: [], layers: [], transitions: [] }],
-			SMACROS: [],
-			SNAPSHOTS: [],
-			AUX: [{ aux: '', liveSource: '', available: 0 }],
+			AUX: [{ aux: '', name: '', liveSource: '', available: 0 }],
 			MACROS: [],
 			PLAYERS: [
 				{ player: 'RR1', repeat: 0 },
@@ -121,15 +119,12 @@ export class TCP {
 		})
 		// Helpers
 		const addInternalSourceGroup = () => {
-			this.instance.KairosObj.INPUTS.push({ shortcut: 'Environment.InternalSourceGroup.MV1', name: 'MV1' })
-			this.instance.KairosObj.INPUTS.push({ shortcut: 'Environment.InternalSourceGroup.MV2', name: 'MV2' })
+			this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV1', name: 'MV1' })
+			this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV2', name: 'MV2' })
 			this.instance.KairosObj.INPUTS.push({ shortcut: 'BLACK', name: 'BLACK' })
 			this.instance.KairosObj.INPUTS.push({ shortcut: 'WHITE', name: 'WHITE' })
-			this.instance.KairosObj.INPUTS.push({ shortcut: 'Environment.InternalSourceGroup.ColorBar', name: 'ColorBar' })
-			this.instance.KairosObj.INPUTS.push({
-				shortcut: 'Environment.InternalSourceGroup.ColorCircle',
-				name: 'ColorCircle',
-			})
+			this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.ColorBar', name: 'ColorBar' })
+			this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.ColorCircle', name: 'ColorCircle' })
 		}
 		const addScene = (scene: string) => {
 			if (scene !== '')
@@ -140,7 +135,7 @@ export class TCP {
 					layers: [],
 					transitions: [],
 				})
-			this.instance.KairosObj.INPUTS.push({ shortcut: scene, name: scene })
+			this.instance.KairosObj.INPUTS.push({ shortcut: scene, name: scene.slice(7) })
 		}
 		const listFinish = () => {
 			return new Promise((resolve) => {
@@ -189,13 +184,13 @@ export class TCP {
 			return new Promise((resolve) => {
 				this.sendCommand('list:AUX')
 				this.sendCommand('list:MACROS')
-				this.sendCommand('list:Mixer.MV-Presets')
-				this.sendCommand('list:Mixer.Inputs')
-				this.sendCommand('list:Mixer.RamRecorders')
-				this.sendCommand('list:Mixer.ClipPlayers')
-				this.sendCommand('list:Mixer.GfxChannels')
-				this.sendCommand('list:Mixer.SourceGroup.FxInputs')
-				this.sendCommand('list:Mixer.SourceGroup.ColorMattes')
+				this.sendCommand('list:MVPRESETS')
+				this.sendCommand('list:INPUTS')
+				this.sendCommand('list:RAMRECORDERS')
+				this.sendCommand('list:PLAYERS')
+				this.sendCommand('list:GFXCHANNELS')
+				this.sendCommand('list:FXINPUTS')
+				this.sendCommand('list:MATTES')
 				this.sendCommand('list:MEDIA.stills')
 				addInternalSourceGroup()
 				listFinish().then(() => resolve('fetch ready'))
@@ -237,9 +232,13 @@ export class TCP {
 					}
 
 					// Fetch all live sources for AUX
+					// Fetch all AUX names
+					// Check if AUX is available
 					for (const iterator of this.instance.KairosObj.AUX) {
 						if (iterator.aux !== '') {
 							this.sendCommand(`${iterator.aux}.source`)
+							this.sendCommand(`${iterator.aux}.name`)
+							//this.sendCommand(`${iterator.aux}.available`)
 						}
 					}
 
@@ -250,12 +249,6 @@ export class TCP {
 					// Get live source for each layer
 					for (const LAYER of this.instance.combinedLayerArray) {
 						this.sendCommand(`${LAYER.name}.sourceB`)
-					}
-					// Check if AUX is available
-					for (const iterator of this.instance.KairosObj.AUX) {
-						if (iterator.aux !== '') {
-							this.sendCommand(`${iterator.aux}.available`)
-						}
 					}
 					// Get PVW enabled or not
 					for (const LAYER of this.instance.combinedLayerArray) {
@@ -350,7 +343,7 @@ export class TCP {
 				//This is an AUX list
 				this.instance.KairosObj.AUX.length = 0
 				data.forEach((element) => {
-					if (element !== '') this.instance.KairosObj.AUX.push({ aux: element, liveSource: '', available: 1 })
+					if (element !== '') this.instance.KairosObj.AUX.push({ aux: element, name: element, liveSource: '', available: 1 })
 				})
 			} else {
 				// Do a switch block to go fast through the rest of the data
@@ -384,7 +377,6 @@ export class TCP {
 								this.instance.checkFeedbacks('inputSource')
 							}
 							break
-						case /^Mixer\.AudioMixers\.AudioMixer\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
 						case /^AUDIOMIXER\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
 							{
 								this.instance.KairosObj.audio_master_mute = parseInt(returningData.split('=')[1])
@@ -392,7 +384,6 @@ export class TCP {
 								this.instance.variables?.updateVariables()
 							}
 							break
-						case /^Mixer\.AudioMixers\.AudioMixer\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
 						case /^AUDIOMIXER\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
 							{
 								let index = parseInt(returningData.slice(returningData.search('.Channel') + 9, -7)) - 1
@@ -416,15 +407,15 @@ export class TCP {
 								this.instance.KairosObj.MACROS.push(returningData)
 							}
 							break
-						case /\.available=/i.test(returningData): // This is an AUX available check
-							{
-								let index = this.instance.KairosObj.AUX.findIndex(
-									(x) => x.aux === returningData.split('=')[0].slice(0, -10)
-								)
-								if (index != -1) this.instance.KairosObj.AUX[index].available = parseInt(returningData.split('=')[1])
-								this.instance.variables?.updateVariables()
-							}
-							break
+						//case /\.available=/i.test(returningData): // This is an AUX available check
+						//	{
+						//		let index = this.instance.KairosObj.AUX.findIndex(
+						//			(x) => x.aux === returningData.split('=')[0].slice(0, -10)
+						//		)
+						//		if (index != -1) this.instance.KairosObj.AUX[index].available = parseInt(returningData.split('=')[1])
+						//		this.instance.variables?.updateVariables()
+						//	}
+						//	break
 						case /\.repeat=/i.test(returningData): // //This is an PLAYER repeat check
 							{
 								let index = this.instance.KairosObj.PLAYERS.findIndex(
@@ -434,18 +425,17 @@ export class TCP {
 								this.instance.variables?.updateVariables()
 							}
 							break
-						case /^Mixer\.MV-Presets/i.test(returningData): // This is an MV Preset list
 						case /^MVPRESETS\./i.test(returningData): // This is an MV Preset list
 							this.instance.KairosObj.MV_PRESETS.push(returningData)
 							break
-						case /\.Macros./i.test(returningData): // This is a Scene Macro
+						case /\.Macros\./i.test(returningData): // This is a Scene Macro
 							{
 								let sceneName = data[0].slice(0, data[0].search('.Macros.')) // SCENES.Main.Macros.M-1
 								let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
 								if (index != -1) this.instance.KairosObj.SCENES[index].smacros.push(returningData)
 							}
 							break
-						case /\.Snapshots./i.test(returningData): // This is a Snapshot
+						case /\.Snapshots\./i.test(returningData): // This is a Snapshot
 							{
 								let sceneName = data[0].slice(0, data[0].search('.Snapshots.')) // SCENES.Main.Snapshots.SNP1
 								let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
@@ -481,19 +471,19 @@ export class TCP {
 								if (index != -1) this.instance.KairosObj.SCENES[index].transitions.push(returningData)
 							}
 							break
-						case /\.name=/i.test(returningData): // This is an name for an Input (BE AWARE THIS CAN CHANGE IN THE FUTURE)
+						case /\.name=/i.test(returningData): // This is an name for an Input or AUX (BE AWARE THIS CAN CHANGE IN THE FUTURE)
 							{
-								let input = returningData.split('=')[0].slice(0, -5)
+								let source = returningData.split('=')[0].slice(0, -5)
 								let name = returningData.split('=')[1]
-								let index = this.instance.KairosObj.INPUTS.findIndex((x) => x.shortcut === input)
-								if (index != -1) this.instance.KairosObj.INPUTS[index].name = name
+								let index_i = this.instance.KairosObj.INPUTS.findIndex((x) => x.shortcut === source)
+								let index_a = this.instance.KairosObj.AUX.findIndex((x) => x.aux === source)
+								if (index_i != -1) this.instance.KairosObj.INPUTS[index_i].name = name
+								else if (index_a != -1) this.instance.KairosObj.AUX[index_a].name = name
 							}
 							break
-						case /^Mixer\.SourceGroup\.FxInputs/i.test(returningData):
 						case /^FXINPUTS\./i.test(returningData):
 							this.instance.KairosObj.INPUTS.push({ shortcut: returningData, name: returningData })
 							break
-						case /^Mixer\.SourceGroup\.ColorMattes/i.test(returningData):
 						case /^MATTES\./i.test(returningData):
 							this.instance.KairosObj.INPUTS.push({ shortcut: returningData, name: returningData })
 							break

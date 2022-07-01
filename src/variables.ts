@@ -78,20 +78,24 @@ export class Variables {
 		}
 		let auxSources = []
 		for (const AUX of this.instance.KairosObj.AUX) {
-			auxSources.push({ label: `Source in ${AUX.aux}`, name: AUX.aux })
+			auxSources.push({ label: `Source in ${AUX.aux}`, name: `${AUX.aux}.source` })
+		}
+		let auxNames = []
+		for (const AUX of this.instance.KairosObj.AUX) {
+			auxNames.push({ label: `${AUX.aux} name`, name: AUX.aux })
 		}
 		let layerSources = []
 		for (const LAYER of this.instance.combinedLayerArray) {
 			layerSources.push({ label: `SourceA in ${LAYER.name.slice(7)}`, name: `${LAYER.name}.sourceA` })
 			layerSources.push({ label: `SourceB in ${LAYER.name.slice(7)}`, name: `${LAYER.name}.sourceB` })
 		}
-		let auxAvailable = []
-		for (const AUX of this.instance.KairosObj.AUX) {
-			auxAvailable.push({ label: `${AUX.aux} available`, name: `${AUX.aux}.available` })
-		}
+		//let auxAvailable = []
+		//for (const AUX of this.instance.KairosObj.AUX) {
+		//	auxAvailable.push({ label: `${AUX.aux} available`, name: `${AUX.aux}.available` })
+		//}
 		let playerRepeat = []
 		for (const PLAYER of this.instance.KairosObj.PLAYERS) {
-			playerRepeat.push({ label: `${PLAYER.player} in repeat modus`, name: `${PLAYER.player}.repeat` })
+			playerRepeat.push({ label: `${PLAYER.player} in repeat mode`, name: `${PLAYER.player}.repeat` })
 		}
 
 		let presetEnabled = []
@@ -103,9 +107,10 @@ export class Variables {
 			...layerSources,
 			...inputSources,
 			...auxSources,
+			...auxNames,
 			...audio_mute,
 			...playerRepeat,
-			...auxAvailable,
+			//...auxAvailable,
 			...presetEnabled,
 		]
 
@@ -131,8 +136,9 @@ export class Variables {
 		// AUX
 		for (const AUX of this.instance.KairosObj.AUX) {
 			// newVariables[AUX.aux] = this.instance.KairosObj.INPUTS.find((x) => x.input == AUX.live)
-			newVariables[AUX.aux] = this.instance.KairosObj.INPUTS.find((o) => o.shortcut === AUX.liveSource)?.name
-			newVariables[`${AUX.aux}.available`] = AUX.available == 0 ? 'disabled' : 'enabled'
+			newVariables[`${AUX.aux}.source`] = this.instance.KairosObj.INPUTS.find((o) => o.shortcut === AUX.liveSource)?.name
+			newVariables[AUX.aux] = AUX.name
+			//newVariables[`${AUX.aux}.available`] = AUX.available == 0 ? 'disabled' : 'enabled'
 		}
 		// PLAYERS
 		for (const PLAYER of this.instance.KairosObj.PLAYERS) {

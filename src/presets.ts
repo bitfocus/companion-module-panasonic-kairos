@@ -35,7 +35,8 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 				label: INPUT.shortcut,
 				bank: {
 					style: 'text',
-					text: `$(kairos:${INPUT.shortcut})`,
+					//text: `$(kairos:${INPUT.shortcut})`,
+					text: INPUT.name,
 					size: '18',
 					color: instance.rgb(255, 255, 255),
 					bgcolor: instance.rgb(0, 0, 0),
@@ -70,7 +71,8 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 				label: INPUT.shortcut,
 				bank: {
 					style: 'text',
-					text: `$(kairos:${INPUT.shortcut})`,
+					//text: `$(kairos:${INPUT.shortcut})`,
+					text: INPUT.name,
 					size: '18',
 					color: instance.rgb(255, 255, 255),
 					bgcolor: instance.rgb(0, 0, 0),
@@ -96,71 +98,40 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 				],
 			})
 		})
-		instance.KairosObj.MEDIA_STILLS.forEach((STILL) => {
-			presets.push({
-				category: `MEDIASTILL`,
-				label: STILL,
-				bank: {
-					style: 'text',
-					text: `${STILL.slice(13)}\\nPGM`,
-					size: 'auto',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
-				},
-				actions: [
-					{
-						action: 'setMediaStill',
-						options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceA', source: STILL },
-					},
-				],
-				feedbacks: [
-					{
-						type: 'inputSource',
-						options: {
-							source: STILL,
-							sourceAB: 'sourceA',
-							layer: LAYER.name,
-							fg: instance.rgb(255, 255, 255),
-							bg: instance.rgb(255, 0, 0),
-							bg_pvw: instance.rgb(0, 255, 0),
-						},
-					},
-				],
-			})
-		})
-		// instance.KairosObj.MEDIA_STILLS.forEach((STILL) => {
-		// 	presets.push({
-		// 		category: `MEDIASTILL`,
-		// 		label: STILL,
-		// 		bank: {
-		// 			style: 'text',
-		// 			text: `${STILL.slice(13)}\\nPVW`,
-		// 			size: 'auto',
-		// 			color: instance.rgb(255, 255, 255),
-		// 			bgcolor: instance.rgb(0, 0, 0),
-		// 		},
-		// 		actions: [
-		// 			{
-		// 				action: 'setMediaStill',
-		// 				options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceB', source: STILL },
-		// 			},
-		// 		],
-		// 		feedbacks: [
-		// 			{
-		// 				type: 'inputSource',
-		// 				options: {
-		// 					source: STILL,
-		// 					sourceAB: 'sourceB',
-		// 					layer: LAYER.name,
-		// 					fg: instance.rgb(255, 255, 255),
-		// 					bg: instance.rgb(255, 0, 0),
-		// 					bg_pvw: instance.rgb(0, 255, 0),
-		// 				},
-		// 			},
-		// 		],
-		// 	})
-		// })
 	}
+	// Media Stills
+	instance.KairosObj.MEDIA_STILLS.forEach((STILL) => {
+		presets.push({
+			category: `MEDIA STILLS`,
+			label: STILL,
+			bank: {
+				style: 'text',
+				text: STILL.slice(13, STILL.search('&#46;rr')) + ".rr",
+				size: '7',
+				color: instance.rgb(255, 255, 255),
+				bgcolor: instance.rgb(0, 0, 0),
+			},
+			actions: [
+				{
+					action: 'setMediaStill',
+					options: { functionID: '', layer: instance.combinedLayerArray[0].name, sourceAB: 'sourceA', source: STILL },
+				},
+			],
+			feedbacks: [
+				{
+					type: 'inputSource',
+					options: {
+						source: STILL,
+						sourceAB: 'sourceA',
+						layer: instance.combinedLayerArray[0].name,
+						fg: instance.rgb(255, 255, 255),
+						bg: instance.rgb(255, 0, 0),
+						bg_pvw: instance.rgb(0, 255, 0),
+					},
+				},
+			],
+		})
+	})
 	// Player
 	instance.KairosObj.PLAYERS.forEach((element) => {
 		presets.push({
@@ -169,7 +140,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			bank: {
 				style: 'text',
 				text: element.player + '\\nplay',
-				size: 'auto',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
@@ -182,7 +153,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 		//	bank: {
 		//		style: 'text',
 		//		text: element.player + '\\nstop',
-		//		size: 'auto',
+		//		size: '14',
 		//		color: instance.rgb(255, 255, 255),
 		//		bgcolor: instance.rgb(0, 0, 0),
 		//	},
@@ -195,7 +166,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			bank: {
 				style: 'text',
 				text: element.player + '\\npause',
-				size: 'auto',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
@@ -208,7 +179,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			bank: {
 				style: 'text',
 				text: element.player + '\\nbegin',
-				size: 'auto',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
@@ -221,7 +192,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			bank: {
 				style: 'text',
 				text: element.player + '\\nrewind',
-				size: 'auto',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
@@ -234,7 +205,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			bank: {
 				style: 'text',
 				text: element.player + '\\nstep_back',
-				size: 'auto',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
@@ -246,13 +217,13 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: element.player + 'reverse_play',
 			bank: {
 				style: 'text',
-				text: element.player + '\\nreverse_play',
-				size: 'auto',
+				text: element.player + '\\nreverse',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
 			actions: [
-				{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'reverse_play' } },
+				{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'reverse' } },
 			],
 			feedbacks: [],
 		})
@@ -261,8 +232,8 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: element.player + 'step_forward',
 			bank: {
 				style: 'text',
-				text: element.player + '\\nstep_forward',
-				size: 'auto',
+				text: element.player + '\\nstep_fwd',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
@@ -276,8 +247,8 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: element.player + 'fast_forward',
 			bank: {
 				style: 'text',
-				text: element.player + '\\nfast_forward',
-				size: 'auto',
+				text: element.player + '\\nfast_fwd',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
@@ -292,7 +263,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			bank: {
 				style: 'text',
 				text: element.player + '\\nend',
-				size: 'auto',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
@@ -304,8 +275,8 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: element.player + 'repeat',
 			bank: {
 				style: 'text',
-				text: element.player + '\\nRepeat off',
-				size: 'auto',
+				text: element.player + '\\nrepeat:off',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
@@ -317,8 +288,8 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: element.player + 'repeat',
 			bank: {
 				style: 'text',
-				text: element.player + '\\nRepeat on',
-				size: 'auto',
+				text: element.player + '\\nrepeat:on',
+				size: '14',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
 			},
@@ -330,7 +301,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 	instance.KairosObj.SCENES.forEach((SCENE) => {
 		presets.push({
 			category: 'TRANSITIONS',
-			label: 'Program Cut',
+			label: 'Master Cut',
 			bank: {
 				style: 'text',
 				text: `${SCENE.scene.slice(7)}\\nCUT`,
@@ -343,7 +314,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 		})
 		presets.push({
 			category: 'TRANSITIONS',
-			label: 'Program Auto',
+			label: 'Master Auto',
 			bank: {
 				style: 'text',
 				text: `${SCENE.scene.slice(7)}\\nAUTO`,
@@ -353,6 +324,34 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			},
 			actions: [{ action: 'programAuto', options: { scene: SCENE.scene } }],
 			feedbacks: [],
+		})
+		SCENE.transitions.forEach((TRANSITION) => {
+			presets.push({
+				category: 'TRANSITIONS',
+				label: 'transition Cut',
+				bank: {
+					style: 'text',
+					text: `${SCENE.scene.slice(7)}\\n${TRANSITION.slice(TRANSITION.search('.Transitions.') + 13)}\\nCUT`,
+					size: 'auto',
+					color: instance.rgb(255, 255, 255),
+					bgcolor: instance.rgb(0, 0, 0),
+				},
+				actions: [{ action: 'cutTransition', options: { layer: TRANSITION } }],
+				feedbacks: [],
+			})
+			presets.push({
+				category: 'TRANSITIONS',
+				label: 'transition Auto',
+				bank: {
+					style: 'text',
+					text: `${SCENE.scene.slice(7)}\\n${TRANSITION.slice(TRANSITION.search('.Transitions.') + 13)}\\nAUTO`,
+					size: 'auto',
+					color: instance.rgb(255, 255, 255),
+					bgcolor: instance.rgb(0, 0, 0),
+				},
+				actions: [{ action: 'autoTransition', options: { layer: TRANSITION } }],
+				feedbacks: [],
+			})
 		})
 		SCENE.smacros.forEach((SMACRO) => {
 			presets.push({
@@ -412,7 +411,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 				label: SMACRO,
 				bank: {
 					style: 'text',
-					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop record`,
+					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop_rec`,
 					size: 'auto',
 					color: instance.rgb(255, 255, 255),
 					bgcolor: instance.rgb(0, 0, 0),
@@ -442,11 +441,12 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 	instance.KairosObj.AUX.forEach((element) => {
 		instance.KairosObj.INPUTS.forEach((INPUT) => {
 			presets.push({
-				category: element.aux,
+				category: element.name,
 				label: element.aux,
 				bank: {
 					style: 'text',
-					text: `${element.aux}\\n$(kairos:${INPUT.shortcut})`,
+					//text: `${element.aux}\\n$(kairos:${INPUT.shortcut})`,
+					text: `${element.name}\\n${INPUT.name}`,
 					size: 'auto',
 					color: instance.rgb(255, 255, 255),
 					bgcolor: instance.rgb(0, 0, 0),
@@ -525,7 +525,7 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			label: 'Macros',
 			bank: {
 				style: 'text',
-				text: `${MACRO.slice(7)}\\nstop record`,
+				text: `${MACRO.slice(7)}\\nstop_rec`,
 				size: 'auto',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
@@ -537,11 +537,11 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 	// MULTIVIEWER
 	instance.KairosObj.MV_PRESETS.forEach((PRESET) => {
 		presets.push({
-			category: 'Multiviewer presets | MV1',
-			label: 'Multiviewer presets 1',
+			category: 'Multiviewer1 Presets',
+			label: 'Multiviewer1 presets',
 			bank: {
 				style: 'text',
-				text: `${PRESET}`,
+				text: `MV1 Preset\\n${PRESET.slice(10)}`,
 				size: 'auto',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
@@ -550,11 +550,11 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			feedbacks: [],
 		})
 		presets.push({
-			category: 'Multiviewer presets | MV2',
-			label: 'Multiviewer presets 2',
+			category: 'Multiviewer2 Presets',
+			label: 'Multiviewer2 presets',
 			bank: {
 				style: 'text',
-				text: `${PRESET}`,
+				text: `MV2 Preset\\n${PRESET.slice(10)}`,
 				size: 'auto',
 				color: instance.rgb(255, 255, 255),
 				bgcolor: instance.rgb(0, 0, 0),
@@ -616,46 +616,50 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 		})
 	})
 	// TRANSITIONS
-	instance.combinedTransitionsArray.forEach((TRANSITION) => {
-		// presets.push({
-		// 	category: 'TRANSITIONS',
-		// 	label: 'Next transition',
-		// 	bank: {
-		// 		style: 'text',
-		// 		text: `${TRANSITION.slice(7)}\\nNext transition`,
-		// 		size: '14',
-		// 		color: instance.rgb(255, 255, 255),
-		// 		bgcolor: instance.rgb(0, 0, 0),
-		// 	},
-		// 	actions: [{ action: 'nextTransition', options: { transition: TRANSITION } }],
-		// 	feedbacks: [],
-		// })
-		presets.push({
-			category: 'TRANSITIONS',
-			label: 'Cut transition',
-			bank: {
-				style: 'text',
-				text: `${TRANSITION.slice(7)}\\nCUT`,
-				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(255, 0, 0),
-			},
-			actions: [{ action: 'cutTransition', options: { layer: TRANSITION } }],
-			feedbacks: [],
-		})
-		presets.push({
-			category: 'TRANSITIONS',
-			label: 'Auto transition',
-			bank: {
-				style: 'text',
-				text: `${TRANSITION.slice(7)}\\nAUTO`,
-				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
-			},
-			actions: [{ action: 'autoTransition', options: { layer: TRANSITION } }],
-			feedbacks: [],
-		})
-	})
+//	instance.combinedTransitionsArray.forEach((TRANSITION) => {
+//		// presets.push({
+//		// 	category: 'TRANSITIONS',
+//		// 	label: 'Next transition',
+//		// 	bank: {
+//		// 		style: 'text',
+//		// 		text: `${TRANSITION.slice(7)}\\nNext transition`,
+//		// 		size: '14',
+//		// 		color: instance.rgb(255, 255, 255),
+//		// 		bgcolor: instance.rgb(0, 0, 0),
+//		// 	},
+//		// 	actions: [{ action: 'nextTransition', options: { transition: TRANSITION } }],
+//		// 	feedbacks: [],
+//		// })
+//		presets.push({
+//			category: 'TRANSITIONS',
+//			label: 'Cut transition',
+//			bank: {
+//				style: 'text',
+//				//text: `${TRANSITION.slice(7)}\\nCUT`,
+//				text: `${TRANSITION.slice(7, TRANSITION.search('.Transitions.'))}\\n${TRANSITION.slice(
+//					TRANSITION.search('.Transitions.') + 13)}\\nCUT`,
+//				size: 'auto',
+//				color: instance.rgb(255, 255, 255),
+//				bgcolor: instance.rgb(255, 0, 0),
+//			},
+//			actions: [{ action: 'cutTransition', options: { layer: TRANSITION } }],
+//			feedbacks: [],
+//		})
+//		presets.push({
+//			category: 'TRANSITIONS',
+//			label: 'Auto transition',
+//			bank: {
+//				style: 'text',
+//				//text: `${TRANSITION.slice(7)}\\nAUTO`,
+//				text: `${TRANSITION.slice(7, TRANSITION.search('.Transitions.'))}\\n${TRANSITION.slice(
+//					TRANSITION.search('.Transitions.') + 13)}\\nAUTO`,
+//				size: 'auto',
+//				color: instance.rgb(255, 255, 255),
+//				bgcolor: instance.rgb(0, 0, 0),
+//			},
+//			actions: [{ action: 'autoTransition', options: { layer: TRANSITION } }],
+//			feedbacks: [],
+//		})
+//	})
 	return presets
 }
