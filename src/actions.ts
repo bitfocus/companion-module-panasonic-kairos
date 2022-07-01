@@ -205,6 +205,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 					id: 'layer',
 					default: instance.combinedLayerArray[0].name,
 					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+					minChoicesForSearch: 8,
 				},
 				{
 					type: 'dropdown',
@@ -254,6 +255,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 					id: 'layer',
 					default: instance.combinedLayerArray[0].name,
 					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+					minChoicesForSearch: 8,
 				},
 				{
 					type: 'dropdown',
@@ -469,6 +471,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 					id: 'macro',
 					default: instance.KairosObj.MACROS[0],
 					choices: instance.KairosObj.MACROS.map((id) => ({ id, label: id.slice(7) })),
+					minChoicesForSearch: 8,
 				},
 				options.macroControl,
 			],
@@ -515,6 +518,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 					id: 'smacro',
 					default: instance.combinedSmacrosArray[0],
 					choices: instance.combinedSmacrosArray.map((id) => ({ id, label: id })),
+					minChoicesForSearch: 8,
 				},
 				options.macroControl,
 			],
@@ -538,6 +542,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 					id: 'snapshot',
 					default: instance.combinedSnapshotsArray[0],
 					choices: instance.combinedSnapshotsArray.map((id) => ({ id, label: id })),
+					minChoicesForSearch: 8,
 				},
 			],
 			callback: (action) => {

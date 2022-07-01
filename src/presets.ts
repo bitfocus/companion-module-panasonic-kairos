@@ -35,8 +35,8 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 				label: INPUT.shortcut,
 				bank: {
 					style: 'text',
-					//text: `$(kairos:${INPUT.shortcut})`,
-					text: INPUT.name,
+					text: `$(kairos:${INPUT.shortcut})`,
+					//text: INPUT.name,
 					size: '18',
 					color: instance.rgb(255, 255, 255),
 					bgcolor: instance.rgb(0, 0, 0),
@@ -71,8 +71,8 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 				label: INPUT.shortcut,
 				bank: {
 					style: 'text',
-					//text: `$(kairos:${INPUT.shortcut})`,
-					text: INPUT.name,
+					text: `$(kairos:${INPUT.shortcut})`,
+					//text: INPUT.name,
 					size: '18',
 					color: instance.rgb(255, 255, 255),
 					bgcolor: instance.rgb(0, 0, 0),
@@ -445,8 +445,8 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 				label: element.aux,
 				bank: {
 					style: 'text',
-					//text: `${element.aux}\\n$(kairos:${INPUT.shortcut})`,
-					text: `${element.name}\\n${INPUT.name}`,
+					text: `$(kairos:${element.aux})\\n$(kairos:${INPUT.shortcut})`,
+					//text: `${element.name}\\n${INPUT.name}`,
 					size: 'auto',
 					color: instance.rgb(255, 255, 255),
 					bgcolor: instance.rgb(0, 0, 0),

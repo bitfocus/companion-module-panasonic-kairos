@@ -98,10 +98,10 @@ export class Variables {
 			playerRepeat.push({ label: `${PLAYER.player} in repeat mode`, name: `${PLAYER.player}.repeat` })
 		}
 
-		let presetEnabled = []
-		for (const LAYER of this.instance.combinedLayerArray) {
-			presetEnabled.push({ label: `PVW bus for ${LAYER.name.slice(7)}`, name: `${LAYER.name}.preset_enabled` })
-		}
+		//let presetEnabled = []
+		//for (const LAYER of this.instance.combinedLayerArray) {
+		//	presetEnabled.push({ label: `PVW bus for ${LAYER.name.slice(7)}`, name: `${LAYER.name}.preset_enabled` })
+		//}
 
 		let filteredVariables = [
 			...layerSources,
@@ -111,7 +111,7 @@ export class Variables {
 			...audio_mute,
 			...playerRepeat,
 			//...auxAvailable,
-			...presetEnabled,
+			//...presetEnabled,
 		]
 
 		this.instance.setVariableDefinitions(filteredVariables)
@@ -131,7 +131,7 @@ export class Variables {
 			newVariables[`${LAYER.name}.sourceB`] = this.instance.KairosObj.INPUTS.find(
 				(o) => o.shortcut === LAYER.sourceB
 			)?.name
-			newVariables[`${LAYER.name}.preset_enabled`] = LAYER.preset_enabled === 1 ? 'enabled' : 'disabled'
+			//newVariables[`${LAYER.name}.preset_enabled`] = LAYER.preset_enabled === 1 ? 'enabled' : 'disabled'
 		}
 		// AUX
 		for (const AUX of this.instance.KairosObj.AUX) {

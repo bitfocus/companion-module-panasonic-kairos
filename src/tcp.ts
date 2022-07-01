@@ -283,6 +283,10 @@ export class TCP {
 				})
 				this.instance.KairosObj.AUX.forEach((element) => {
 					this.sendCommand(`subscribe:${element.aux}.source`)
+					this.sendCommand(`subscribe:${element.aux}.name`)
+				})
+				this.instance.KairosObj.INPUTS.forEach((element) => {
+					this.sendCommand(`subscribe:${element.shortcut}.name`)
 				})
 
 				for (const LAYER of this.instance.combinedLayerArray) {
@@ -479,6 +483,7 @@ export class TCP {
 								let index_a = this.instance.KairosObj.AUX.findIndex((x) => x.aux === source)
 								if (index_i != -1) this.instance.KairosObj.INPUTS[index_i].name = name
 								else if (index_a != -1) this.instance.KairosObj.AUX[index_a].name = name
+								this.instance.variables?.updateVariables()
 							}
 							break
 						case /^FXINPUTS\./i.test(returningData):
