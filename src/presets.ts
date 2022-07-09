@@ -186,19 +186,19 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'begin' } }],
 			feedbacks: [],
 		})
-		presets.push({
-			category: 'PLAYERS',
-			label: element.player + 'rewind',
-			bank: {
-				style: 'text',
-				text: element.player + '\\nrewind',
-				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
-			},
-			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'rewind' } }],
-			feedbacks: [],
-		})
+		//presets.push({
+		//	category: 'PLAYERS',
+		//	label: element.player + 'rewind',
+		//	bank: {
+		//		style: 'text',
+		//		text: element.player + '\\nrewind',
+		//		size: '14',
+		//		color: instance.rgb(255, 255, 255),
+		//		bgcolor: instance.rgb(0, 0, 0),
+		//	},
+		//	actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'rewind' } }],
+		//	feedbacks: [],
+		//})
 		presets.push({
 			category: 'PLAYERS',
 			label: element.player + 'step_back',
@@ -212,21 +212,21 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'step_back' } }],
 			feedbacks: [],
 		})
-		presets.push({
-			category: 'PLAYERS',
-			label: element.player + 'reverse_play',
-			bank: {
-				style: 'text',
-				text: element.player + '\\nreverse',
-				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
-			},
-			actions: [
-				{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'reverse' } },
-			],
-			feedbacks: [],
-		})
+		//presets.push({
+		//	category: 'PLAYERS',
+		//	label: element.player + 'reverse_play',
+		//	bank: {
+		//		style: 'text',
+		//		text: element.player + '\\nreverse',
+		//		size: '14',
+		//		color: instance.rgb(255, 255, 255),
+		//		bgcolor: instance.rgb(0, 0, 0),
+		//	},
+		//	actions: [
+		//		{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'reverse' } },
+		//	],
+		//	feedbacks: [],
+		//})
 		presets.push({
 			category: 'PLAYERS',
 			label: element.player + 'step_forward',
@@ -242,21 +242,21 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			],
 			feedbacks: [],
 		})
-		presets.push({
-			category: 'PLAYERS',
-			label: element.player + 'fast_forward',
-			bank: {
-				style: 'text',
-				text: element.player + '\\nfast_fwd',
-				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
-			},
-			actions: [
-				{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'fast_forward' } },
-			],
-			feedbacks: [],
-		})
+		//presets.push({
+		//	category: 'PLAYERS',
+		//	label: element.player + 'fast_forward',
+		//	bank: {
+		//		style: 'text',
+		//		text: element.player + '\\nfast_fwd',
+		//		size: '14',
+		//		color: instance.rgb(255, 255, 255),
+		//		bgcolor: instance.rgb(0, 0, 0),
+		//	},
+		//	actions: [
+		//		{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'fast_forward' } },
+		//	],
+		//	feedbacks: [],
+		//})
 		presets.push({
 			category: 'PLAYERS',
 			label: element.player + 'end',
@@ -393,32 +393,32 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 				actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop' } }],
 				feedbacks: [],
 			})
-			presets.push({
-				category: 'SCENE MACROS',
-				label: SMACRO,
-				bank: {
-					style: 'text',
-					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nrecord`,
-					size: 'auto',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
-				},
-				actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'record' } }],
-				feedbacks: [],
-			})
-			presets.push({
-				category: 'SCENE MACROS',
-				label: SMACRO,
-				bank: {
-					style: 'text',
-					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop_rec`,
-					size: 'auto',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
-				},
-				actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop_record' } }],
-				feedbacks: [],
-			})
+			//presets.push({
+			//	category: 'SCENE MACROS',
+			//	label: SMACRO,
+			//	bank: {
+			//		style: 'text',
+			//		text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nrecord`,
+			//		size: 'auto',
+			//		color: instance.rgb(255, 255, 255),
+			//		bgcolor: instance.rgb(0, 0, 0),
+			//	},
+			//	actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'record' } }],
+			//	feedbacks: [],
+			//})
+			//presets.push({
+			//	category: 'SCENE MACROS',
+			//	label: SMACRO,
+			//	bank: {
+			//		style: 'text',
+			//		text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop_rec`,
+			//		size: 'auto',
+			//		color: instance.rgb(255, 255, 255),
+			//		bgcolor: instance.rgb(0, 0, 0),
+			//	},
+			//	actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop_record' } }],
+			//	feedbacks: [],
+			//})
 		})
 		SCENE.snapshots.forEach((SNAPSHOT) => {
 			presets.push({
@@ -507,32 +507,32 @@ export function getPresets(instance: KairosInstance): KairosPreset[] {
 			actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'stop' } }],
 			feedbacks: [],
 		})
-		presets.push({
-			category: 'MACROS',
-			label: 'Macros',
-			bank: {
-				style: 'text',
-				text: `${MACRO.slice(7)}\\nrecord`,
-				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
-			},
-			actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'record' } }],
-			feedbacks: [],
-		})
-		presets.push({
-			category: 'MACROS',
-			label: 'Macros',
-			bank: {
-				style: 'text',
-				text: `${MACRO.slice(7)}\\nstop_rec`,
-				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
-			},
-			actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'stop_record' } }],
-			feedbacks: [],
-		})
+		//presets.push({
+		//	category: 'MACROS',
+		//	label: 'Macros',
+		//	bank: {
+		//		style: 'text',
+		//		text: `${MACRO.slice(7)}\\nrecord`,
+		//		size: 'auto',
+		//		color: instance.rgb(255, 255, 255),
+		//		bgcolor: instance.rgb(0, 0, 0),
+		//	},
+		//	actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'record' } }],
+		//	feedbacks: [],
+		//})
+		//presets.push({
+		//	category: 'MACROS',
+		//	label: 'Macros',
+		//	bank: {
+		//		style: 'text',
+		//		text: `${MACRO.slice(7)}\\nstop_rec`,
+		//		size: 'auto',
+		//		color: instance.rgb(255, 255, 255),
+		//		bgcolor: instance.rgb(0, 0, 0),
+		//	},
+		//	actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'stop_record' } }],
+		//	feedbacks: [],
+		//})
 	})
 	// MULTIVIEWER
 	instance.KairosObj.MV_PRESETS.forEach((PRESET) => {
