@@ -196,21 +196,98 @@ export class TCP {
 				}
 			})
 		}
+		const fetchStills = () => {
+			return new Promise((resolve) => {
+				this.instance.KairosObj.MEDIA_STILLS.length = 0
+
+				this.sendCommand('list:MEDIA.stills')
+				this.processCallback = (data: Array<string>) => {
+					data.forEach((element) => {
+						if (element.endsWith('&#46;rr')) {
+							// receive top hierarchy
+							this.instance.KairosObj.MEDIA_STILLS.push(element)
+						} else {
+							this.sendCommand(`list:${element}`)
+						}
+					})
+				}
+				listFinish().then(() => {
+					this.processCallback = null
+					resolve('fetch ready')
+				})
+			})
+		}
+		const fetchFxinputs = () => {
+			return new Promise((resolve) => {
+				this.sendCommand('list:FXINPUTS')
+				this.processCallback = (data: Array<string>) => {
+					data.forEach((element) => {
+						// ToDo: directory should be removed
+						this.instance.KairosObj.INPUTS.push({ shortcut: element, name: '' })
+						this.sendCommand(`list:${element}`)
+					})
+				}
+				listFinish().then(() => {
+					this.processCallback = null
+					resolve('fetch ready')
+				})
+			})
+		}
+		const fetchMacros = () => {
+			return new Promise((resolve) => {
+				this.sendCommand('list:MACROS')
+				this.processCallback = (data: Array<string>) => {
+					data.forEach((element) => {
+						// ToDo: directory should be removed
+						this.instance.KairosObj.MACROS.push(element)
+						this.sendCommand(`list:${element}`)
+					})
+				}
+				listFinish().then(() => {
+					this.processCallback = null
+					resolve('fetch ready')
+				})
+			})
+		}
 		const fetchFixedItems = () => {
 			return new Promise((resolve) => {
 				this.sendCommand('list:AUX')
-				this.sendCommand('list:MACROS')
+				//this.sendCommand('list:MACROS')
 				this.sendCommand('list:MVPRESETS')
 				this.sendCommand('list:INPUTS')
 				this.sendCommand('list:RAMRECORDERS')
 				this.sendCommand('list:PLAYERS')
 				//this.sendCommand('list:AUDIOPLAYERS')
 				this.sendCommand('list:GFXCHANNELS')
-				this.sendCommand('list:FXINPUTS')
+				//this.sendCommand('list:FXINPUTS')
 				this.sendCommand('list:MATTES')
-				this.sendCommand('list:MEDIA.stills')
+				//this.sendCommand('list:MEDIA.stills')
 				addInternalSourceGroup()
 				listFinish().then(() => resolve('fetch ready'))
+			})
+		}
+		const fetchLayers = () => {
+			return new Promise((resolve) => {
+				for (const item of this.instance.KairosObj.SCENES) {
+					this.sendCommand(`list:${item.scene}.Layers`)
+					this.processCallback = (data: Array<string>) => {
+						data.forEach((element) => {
+							// ToDo: directory should be removed
+							this.sendCommand(`list:${element}`)
+							this.instance.combinedLayerArray.push({
+								name: element,
+								sourceA: '',
+								sourceB: '',
+								preset_enabled: 0,
+							})
+							item.layers.push({ layer: element, sourceA: '', sourceB: '' })
+						})
+					}
+				}
+				listFinish().then(() => {
+					this.processCallback = null
+					resolve('fetch ready')
+				})
 			})
 		}
 		const fetchVariableItems = () => {
@@ -228,11 +305,11 @@ export class TCP {
 					}
 				}
 				// Fetch all layer per scene
-				for (const item of this.instance.KairosObj.SCENES) {
-					if (item.scene !== '') {
-						this.sendCommand(`list:${item.scene}.Layers`)
-					}
-				}
+				//for (const item of this.instance.KairosObj.SCENES) {
+				//	if (item.scene !== '') {
+				//		this.sendCommand(`list:${item.scene}.Layers`)
+				//	}
+				//}
 				// Fetch all transitions per scene
 				for (const item of this.instance.KairosObj.SCENES) {
 					if (item.scene !== '') {
@@ -276,9 +353,11 @@ export class TCP {
 						this.sendCommand(`${PLAYER.player}.repeat`)
 					}
 					// Get mute state for each audio mixer channel
-					this.sendCommand(`Mixer.AudioMixers.AudioMixer.mute`)
+					//this.sendCommand(`Mixer.AudioMixers.AudioMixer.mute`)
+					this.sendCommand(`AUDIOMIXER.mute`)
 					for (const CHANNEL of this.instance.KairosObj.AUDIO_CHANNELS) {
-						this.sendCommand(`Mixer.AudioMixers.AudioMixer.${CHANNEL.channel}.mute`)
+						//this.sendCommand(`Mixer.AudioMixers.AudioMixer.${CHANNEL.channel}.mute`)
+						this.sendCommand(`AUDIOMIXER.${CHANNEL.channel}.mute`)
 					}
 					
 					commandFinish().then(() => resolve('fetch ready'))
@@ -288,7 +367,8 @@ export class TCP {
 
 		const subscribeToData = () => {
 			return new Promise((resolve) => {
-				this.sendCommand('subscribe:Mixer.AudioMixers.AudioMixer.mute')
+				//this.sendCommand('subscribe:Mixer.AudioMixers.AudioMixer.mute')
+				this.sendCommand('subscribe:AUDIOMIXER.mute')
 				// Get all transitions together
 				for (const SCENE of this.instance.KairosObj.SCENES) {
 					this.instance.combinedTransitionsArray = this.instance.combinedTransitionsArray.concat(SCENE.transitions)
@@ -306,7 +386,8 @@ export class TCP {
 					this.sendCommand(`subscribe:${element.player}.repeat`)
 				})
 				this.instance.KairosObj.AUDIO_CHANNELS.forEach((element) => {
-					this.sendCommand(`subscribe:Mixer.AudioMixers.AudioMixer.${element.channel}.mute`)
+					//this.sendCommand(`subscribe:Mixer.AudioMixers.AudioMixer.${element.channel}.mute`)
+					this.sendCommand(`subscribe:AUDIOMIXER.${element.channel}.mute`)
 				})
 				this.instance.KairosObj.AUX.forEach((element) => {
 					this.sendCommand(`subscribe:${element.aux}.source`)
@@ -330,7 +411,11 @@ export class TCP {
 			this.instance.status(1)
 			this.instance.log('debug', 'Connected to mixer')
 			await fetchScenes()
+				.then(() => fetchStills())
+				.then(() => fetchFxinputs())
+				.then(() => fetchMacros())
 				.then(() => fetchFixedItems())
+				.then(() => fetchLayers())
 				.then(() => fetchVariableItems())
 				.then(() => subscribeToData())
 				.then(() => this.instance.status(0))
@@ -408,7 +493,7 @@ export class TCP {
 								this.instance.checkFeedbacks('inputSource')
 							}
 							break
-						case /^Mixer\.AudioMixers\.AudioMixer\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
+						//case /^Mixer\.AudioMixers\.AudioMixer\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
 						case /^AUDIOMIXER\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
 							{
 								this.instance.KairosObj.audio_master_mute = parseInt(returningData.split('=')[1])
@@ -416,7 +501,7 @@ export class TCP {
 								this.instance.variables?.updateVariables()
 							}
 							break
-						case /^Mixer\.AudioMixers\.AudioMixer\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
+						//case /^Mixer\.AudioMixers\.AudioMixer\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
 						case /^AUDIOMIXER\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
 							{
 								let index = parseInt(returningData.slice(returningData.search('.Channel') + 9, -7)) - 1
@@ -435,11 +520,11 @@ export class TCP {
 								this.instance.variables?.updateVariables()
 							}
 							break
-						case /^MACROS\./i.test(returningData): // This is an MACRO
-							{
-								this.instance.KairosObj.MACROS.push(returningData)
-							}
-							break
+						//case /^MACROS\./i.test(returningData): // This is an MACRO
+						//	{
+						//		this.instance.KairosObj.MACROS.push(returningData)
+						//	}
+						//	break
 						//case /\.available=/i.test(returningData): // This is an AUX available check
 						//	{
 						//		let index = this.instance.KairosObj.AUX.findIndex(
@@ -483,20 +568,20 @@ export class TCP {
 									this.instance.combinedLayerArray[index].preset_enabled = parseInt(returningData.split('=')[1])
 							}
 							break
-						case /\.Layers\./i.test(returningData): // This is a Layer list
-							{
-								this.instance.combinedLayerArray.push({
-									name: returningData,
-									sourceA: '',
-									sourceB: '',
-									preset_enabled: 0,
-								})
-								let sceneName = returningData.slice(0, returningData.search('.Layers.'))
-								let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
-								if (index != -1)
-									this.instance.KairosObj.SCENES[index].layers.push({ layer: returningData, sourceA: '', sourceB: '' })
-							}
-							break
+						//case /\.Layers\./i.test(returningData): // This is a Layer list
+						//	{
+						//		this.instance.combinedLayerArray.push({
+						//			name: returningData,
+						//			sourceA: '',
+						//			sourceB: '',
+						//			preset_enabled: 0,
+						//		})
+						//		let sceneName = returningData.slice(0, returningData.search('.Layers.'))
+						//		let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
+						//		if (index != -1)
+						//			this.instance.KairosObj.SCENES[index].layers.push({ layer: returningData, sourceA: '', sourceB: '' })
+						//	}
+						//	break
 						case /\.Transitions\./i.test(returningData): // This is an Transition list, SCENES.Main.Transitions.BgdMix
 							{
 								let sceneName = returningData.slice(0, returningData.search('.Transitions.'))
@@ -515,15 +600,15 @@ export class TCP {
 								this.instance.variables?.updateVariables()
 							}
 							break
-						case /^FXINPUTS\./i.test(returningData):
-							this.instance.KairosObj.INPUTS.push({ shortcut: returningData, name: returningData })
-							break
+						//case /^FXINPUTS\./i.test(returningData):
+						//	this.instance.KairosObj.INPUTS.push({ shortcut: returningData, name: returningData })
+						//	break
 						case /^MATTES\./i.test(returningData):
 							this.instance.KairosObj.INPUTS.push({ shortcut: returningData, name: returningData })
 							break
-						case /^MEDIA\.stills\./i.test(returningData):
-							this.instance.KairosObj.MEDIA_STILLS.push(returningData)
-							break
+						//case /^MEDIA\.stills\./i.test(returningData):
+						//	this.instance.KairosObj.MEDIA_STILLS.push(returningData)
+						//	break
 
 						default:
 							console.log('ERROR No Case provided for: ' + returningData)

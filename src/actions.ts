@@ -564,7 +564,8 @@ export function getActions(instance: KairosInstance): KairosActions {
 				const muteMaster: any = {
 					id: 'muteMaster',
 					options: {
-						functionID: `Mixer.AudioMixers.AudioMixer.mute=${action.options.mute}`,
+						//functionID: `Mixer.AudioMixers.AudioMixer.mute=${action.options.mute}`,
+						functionID: `AUDIOMIXER.mute=${action.options.mute}`,
 					},
 				}
 				instance.KairosObj.audio_master_mute = action.options.mute
@@ -580,7 +581,8 @@ export function getActions(instance: KairosInstance): KairosActions {
 				const muteChannel: any = {
 					id: 'muteChannel',
 					options: {
-						functionID: `Mixer.AudioMixers.AudioMixer.${action.options.channel}.mute=${action.options.mute}`,
+						//functionID: `Mixer.AudioMixers.AudioMixer.${action.options.channel}.mute=${action.options.mute}`,
+						functionID: `AUDIOMIXER.${action.options.channel}.mute=${action.options.mute}`,
 					},
 				}
 				let channelNumber = parseInt(action.options.channel.slice(7)) - 1
