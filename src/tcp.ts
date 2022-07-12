@@ -17,9 +17,9 @@ export class TCP {
 	private tcpPort: number
 	private keepAliveInterval: NodeJS.Timer | undefined
 	private recvRemain = ''
-	private nListCmd = 0 // number of outstanding command of list or info
+	private listQueue : string[] = [] // queue of outstanding command of list or info
 	private nCommand = 0 // number of outstanding command
-	private processCallback: ((data: Array<string>) => void) | null = null
+	private processCallback: ((data: Array<string>, cmd: string) => void) | null = null
 	private waitListCallback: (() => void) | null = null
 	private waitCommandCallback: (() => void) | null = null
 
@@ -220,10 +220,11 @@ export class TCP {
 		const fetchFxinputs = () => {
 			return new Promise((resolve) => {
 				this.sendCommand('list:FXINPUTS')
-				this.processCallback = (data: Array<string>) => {
+				this.processCallback = (data: Array<string>, cmd: string) => {
+					if (data.length === 0) {
+						this.instance.KairosObj.INPUTS.push({ shortcut: cmd, name: '' })
+					}
 					data.forEach((element) => {
-						// ToDo: directory should be removed
-						this.instance.KairosObj.INPUTS.push({ shortcut: element, name: '' })
 						this.sendCommand(`list:${element}`)
 					})
 				}
@@ -236,10 +237,11 @@ export class TCP {
 		const fetchMacros = () => {
 			return new Promise((resolve) => {
 				this.sendCommand('list:MACROS')
-				this.processCallback = (data: Array<string>) => {
+				this.processCallback = (data: Array<string>, cmd: string) => {
+					if (data.length === 0) {
+						this.instance.KairosObj.MACROS.push(cmd)
+					}
 					data.forEach((element) => {
-						// ToDo: directory should be removed
-						this.instance.KairosObj.MACROS.push(element)
 						this.sendCommand(`list:${element}`)
 					})
 				}
@@ -421,7 +423,7 @@ export class TCP {
 				.then(() => this.instance.status(0))
 				.then(() => this.instance.updateInstance())
 				.then(() => (this.keepAliveInterval = setInterval(keepAlive, 4500))) //session expires at 5 seconds
-				.then(() => console.log('OBJ', this.instance.KairosObj))
+//				.then(() => console.log('OBJ', this.instance.KairosObj))
 		})
 
 		let keepAlive = () => {
@@ -432,9 +434,9 @@ export class TCP {
 		 * Processing here
 		 */
 
-		const processData = (data: Array<string>) => {
+		const processData = (data: Array<string>, cmd: string) => {
 			if (this.processCallback) {
-				this.processCallback(data)
+				this.processCallback(data, cmd)
 			} else if (data.find((element) => element === 'IP1')) {
 				//This is an input list
 				data.forEach((element) => {
@@ -631,10 +633,11 @@ export class TCP {
 				this.recvRemain = str.substring(end + 2)
 				str = str.substring(0, end + 2)
 			}
-			while (this.nListCmd > 0) {
+			while (this.listQueue.length > 0) {
 				if (str.startsWith('\r\n')) {
 					// empty list
 					str = str.substring(2)
+					processData([], this.listQueue[0])
 				} else if (str.startsWith('Error\r\n')) {
 					// error return
 					str = str.substring(7)
@@ -645,12 +648,11 @@ export class TCP {
 						return
 					}
 					const message = str.substring(0, end).split('\r\n')
-					console.log(message)
-					processData(message)
+					processData(message, this.listQueue[0])
 					str = str.substring(end + 4)
 				}
-				this.nListCmd--
-				if (this.nListCmd === 0 && this.waitListCallback) {
+				this.listQueue.shift()
+				if (this.listQueue.length === 0 && this.waitListCallback) {
 					const callback = this.waitListCallback
 					this.waitListCallback = null
 					callback()
@@ -658,8 +660,7 @@ export class TCP {
 			}
 			if (str !== '') {
 				const message = str.split('\r\n')
-				console.log(message)
-				processData(message)
+				processData(message, '')
 				if (this.nCommand > 0) {
 					this.nCommand -= message.length - 1
 					if (this.nCommand <= 0) {
@@ -684,12 +685,12 @@ export class TCP {
 		// @ts-expect-error Types doesn't include 'connected' property
 		if (this.sockets.main && this.sockets.main.connected) {
 			if (command.startsWith('list:') || command.startsWith('info:')) {
-				this.nListCmd++
+				this.listQueue.push(command.replace(/^(list|info):/, ''))
 			} else if (command !== '') {
 				this.nCommand++
 			}
 			const message = `${command}\r\n`
-			if (message != '\r\n') console.log('send:' + message.trim())
+//			if (message != '\r\n') console.log('send:' + message.trim())
 
 			this.sockets.main.write(message, (err) => {
 				if (err) this.instance.log('debug', err.message)
