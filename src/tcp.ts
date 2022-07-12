@@ -221,7 +221,7 @@ export class TCP {
 			return new Promise((resolve) => {
 				this.sendCommand('list:FXINPUTS')
 				this.processCallback = (data: Array<string>, cmd: string) => {
-					if (data.length === 0) {
+					if (data.length === 0 && cmd !== 'FXINPUTS') {
 						this.instance.KairosObj.INPUTS.push({ shortcut: cmd, name: '' })
 					}
 					data.forEach((element) => {
@@ -238,7 +238,7 @@ export class TCP {
 			return new Promise((resolve) => {
 				this.sendCommand('list:MACROS')
 				this.processCallback = (data: Array<string>, cmd: string) => {
-					if (data.length === 0) {
+					if (data.length === 0 && cmd !== 'MACROS') {
 						this.instance.KairosObj.MACROS.push(cmd)
 					}
 					data.forEach((element) => {
@@ -272,18 +272,19 @@ export class TCP {
 			return new Promise((resolve) => {
 				for (const item of this.instance.KairosObj.SCENES) {
 					this.sendCommand(`list:${item.scene}.Layers`)
-					this.processCallback = (data: Array<string>) => {
+					this.processCallback = (data: Array<string>, cmd: string) => {
 						data.forEach((element) => {
-							// ToDo: directory should be removed
 							this.sendCommand(`list:${element}`)
+						})
+						if (data.length === 0) {
 							this.instance.combinedLayerArray.push({
-								name: element,
+								name: cmd,
 								sourceA: '',
 								sourceB: '',
 								preset_enabled: 0,
 							})
-							item.layers.push({ layer: element, sourceA: '', sourceB: '' })
-						})
+							item.layers.push({ layer: cmd, sourceA: '', sourceB: '' })
+						}
 					}
 				}
 				listFinish().then(() => {
