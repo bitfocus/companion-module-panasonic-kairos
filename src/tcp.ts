@@ -470,10 +470,10 @@ export class TCP {
 					switch (true) {
 						case /^$/i.test(returningData):
 							break
-						case /OK/i.test(returningData):
+						case /^OK$/i.test(returningData):
 							this.instance.log('debug', 'Command succeeded')
 							break
-						case /Error/i.test(returningData):
+						case /^Error$/i.test(returningData):
 							this.instance.log('debug', 'Command failed')
 							break
 						case /\.sourceA/i.test(returningData):
