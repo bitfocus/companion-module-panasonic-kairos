@@ -171,22 +171,13 @@ export class TCP {
 
 				this.sendCommand('list:SCENES')
 				this.processCallback = (data: Array<string>) => {
-					// receive top hierarchy
-					data.forEach((element) => {
-						this.sendCommand(`list:${element}`)
-					})
-
-					// ToDo: It should manage third level or more
-					this.processCallback = (data: Array<string>) => {
-						// receive second hierarchy
-						const layers = data.find((element) => element.endsWith('.Layers'))
-						if (layers) {
-							addScene(layers.substring(0, layers.length - 7))
-						} else {
-							data.forEach((element) => {
-								addScene(element)
-							})
-						}
+					const layers = data.find((element) => element.endsWith('.Layers'))
+					if (layers) {
+						addScene(layers.substring(0, layers.length - 7))
+					} else {
+						data.forEach((element) => {
+							this.sendCommand(`list:${element}`)
+						})
 					}
 
 					listFinish().then(() => {
