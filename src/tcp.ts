@@ -286,6 +286,8 @@ export class TCP {
 		}
 		const fetchVariableItems = () => {
 			return new Promise((resolve) => {
+				let begin:number, getA:number, getB:number
+
 				// Fetch all macros per scene
 				for (const item of this.instance.KairosObj.SCENES) {
 					if (item.scene !== '') {
@@ -329,15 +331,29 @@ export class TCP {
 							//this.sendCommand(`${iterator.aux}.available`)
 						}
 					}
+					return commandFinish()
+				}).then(() => {
+					begin = Date.now()
+					console.log('number of layers', this.instance.combinedLayerArray.length)
 
 					// Get live source for each layer
 					for (const LAYER of this.instance.combinedLayerArray) {
 						this.sendCommand(`${LAYER.name}.sourceA`)
 					}
+					return commandFinish()
+				}).then(() => {
+					getA = Date.now()
+					console.log('get sourceA', getA - begin, 'ms')
+
 					// Get live source for each layer
 					for (const LAYER of this.instance.combinedLayerArray) {
 						this.sendCommand(`${LAYER.name}.sourceB`)
 					}
+					return commandFinish()
+				}).then(() => {
+					getB = Date.now()
+					console.log('get sourceB', getB - getA, 'ms')
+
 					// Get PVW enabled or not
 					for (const LAYER of this.instance.combinedLayerArray) {
 						this.sendCommand(`${LAYER.name}.preset_enabled`)

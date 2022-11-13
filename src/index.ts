@@ -111,6 +111,7 @@ class KairosInstance extends instance_skel<Config> {
 	 * @description sets actions and feedbacks available for this instance
 	 */
 	public updateInstance(): void {
+		const begin = Date.now();
 		// Cast actions and feedbacks from Kairos types to Companion types
 		const actions = getActions(this) as CompanionActions
 		const feedbacks = getFeedbacks(this) as CompanionFeedbacks
@@ -119,6 +120,9 @@ class KairosInstance extends instance_skel<Config> {
 		this.setActions(actions)
 		this.setFeedbackDefinitions(feedbacks)
 		this.setPresetDefinitions(presets)
+		const end = Date.now();
+		console.log('number of presets', presets.length)
+		console.log('updateInstance', end - begin, 'ms')
 	}
 }
 
