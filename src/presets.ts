@@ -1,665 +1,815 @@
-import { CompanionPreset } from '../../../instance_skel_types'
 import KairosInstance from './index'
-import { ActionCallbacks } from './actions'
-import { FeedbackCallbacks } from './feedback'
+import { ActionId } from './actions'
+import { FeedbackId } from './feedback'
+import { combineRgb, CompanionButtonPresetDefinition, CompanionPresetDefinitions } from '@companion-module/base'
 
-// export type PresetCategory =
-//   | 'Player | play'
-//   | 'Macro'
-//   | 'Multiviewer'
-//   | 'Switching'
-//   | 'Transition'
-//   | 'Snapshots'
-//   | 'Audio Mute'
-// 	| 'AUX'
-
-interface KairosPresetAdditions {
-	category: string
-	actions: ActionCallbacks[]
-	release_actions?: ActionCallbacks[]
-	feedbacks: FeedbackCallbacks[]
+interface CompanionPresetExt extends CompanionButtonPresetDefinition {
+	feedbacks: Array<
+		{
+			feedbackId: FeedbackId
+		} & CompanionButtonPresetDefinition['feedbacks'][0]
+	>
+	steps: Array<{
+		down: Array<
+			{
+				actionId: ActionId
+			} & CompanionButtonPresetDefinition['steps'][0]['down'][0]
+		>
+		up: Array<
+			{
+				actionId: ActionId
+			} & CompanionButtonPresetDefinition['steps'][0]['up'][0]
+		>
+	}>
+}
+interface CompanionPresetDefinitionsExt {
+	[id: string]: CompanionPresetExt | undefined
 }
 
-export type KairosPreset = Exclude<CompanionPreset, 'category' | 'actions' | 'release_actions' | 'feedbacks'> &
-	KairosPresetAdditions
-
-export function getPresets(instance: KairosInstance): KairosPreset[] {
-	let presets: KairosPreset[] = []
+export function getPresets(instance: KairosInstance): CompanionPresetDefinitions {
+	const presets: CompanionPresetDefinitionsExt = {}
 	// Switch INPUT per Layer
 	for (const LAYER of instance.combinedLayerArray) {
 		instance.KairosObj.INPUTS.forEach((INPUT) => {
-			presets.push({
+			presets[`${LAYER.name}.${INPUT.name}.PGM`] = {
+				type: 'button',
 				category: `${LAYER.name.slice(7, LAYER.name.search('.Layers.'))} | ${LAYER.name.slice(
 					LAYER.name.search('.Layers.') + 8
 				)} | PGM`,
-				label: INPUT.shortcut,
-				bank: {
-					style: 'text',
+				name: INPUT.shortcut,
+				style: {
 					text: `$(kairos:${INPUT.shortcut})`,
 					//text: INPUT.name,
 					size: '18',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 0, 0),
 				},
-				actions: [
+				steps: [
 					{
-						action: 'setSource',
-						options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceA', source: INPUT.shortcut },
+						down: [
+							{
+								actionId: ActionId.setSource,
+								options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceA', source: INPUT.shortcut },
+							},
+						],
+						up: [],
 					},
 				],
 				feedbacks: [
 					{
-						type: 'inputSource',
+						feedbackId: FeedbackId.inputSource,
 						options: {
 							source: INPUT.shortcut,
 							sourceAB: 'sourceA',
 							layer: LAYER.name,
-							fg: instance.rgb(255, 255, 255),
-							bg: instance.rgb(255, 0, 0),
-							bg_pvw: instance.rgb(0, 255, 0),
+							fg: combineRgb(255, 255, 255),
+							bg: combineRgb(255, 0, 0),
+							bg_pvw: combineRgb(0, 255, 0),
 						},
 					},
 				],
-			})
+			}
 		})
 		instance.KairosObj.INPUTS.forEach((INPUT) => {
 			if (LAYER.preset_enabled != 1) return
-			presets.push({
+			presets[`${LAYER.name}.${INPUT.name}.PVW`] = {
+				type: 'button',
 				category: `${LAYER.name.slice(7, LAYER.name.search('.Layers.'))} | ${LAYER.name.slice(
 					LAYER.name.search('.Layers.') + 8
 				)} | PVW`,
-				label: INPUT.shortcut,
-				bank: {
-					style: 'text',
+				name: INPUT.shortcut,
+				style: {
 					text: `$(kairos:${INPUT.shortcut})`,
 					//text: INPUT.name,
 					size: '18',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 0, 0),
 				},
-				actions: [
+				steps: [
 					{
-						action: 'setSource',
-						options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceB', source: INPUT.shortcut },
+						down: [
+							{
+								actionId: ActionId.setSource,
+								options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceB', source: INPUT.shortcut },
+							},
+						],
+						up: [],
 					},
 				],
 				feedbacks: [
 					{
-						type: 'inputSource',
+						feedbackId: FeedbackId.inputSource,
 						options: {
 							source: INPUT.shortcut,
 							sourceAB: 'sourceB',
 							layer: LAYER.name,
-							fg: instance.rgb(255, 255, 255),
-							bg: instance.rgb(255, 0, 0),
-							bg_pvw: instance.rgb(0, 255, 0),
+							fg: combineRgb(255, 255, 255),
+							bg: combineRgb(255, 0, 0),
+							bg_pvw: combineRgb(0, 255, 0),
 						},
 					},
 				],
-			})
+			}
 		})
 	}
 	// Media Stills
 	instance.KairosObj.MEDIA_STILLS.forEach((STILL) => {
-		presets.push({
+		presets[`${STILL}.select`] = {
+			type: 'button',
 			category: `MEDIA STILLS`,
-			label: STILL,
-			bank: {
-				style: 'text',
-				text: STILL.slice(13, STILL.search('&#46;rr')) + ".rr",
+			name: STILL,
+			style: {
+				text: STILL.slice(13, STILL.search('&#46;rr')) + '.rr',
 				size: '7',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [
+			steps: [
 				{
-					action: 'setMediaStill',
-					options: { functionID: '', layer: instance.combinedLayerArray[0].name, sourceAB: 'sourceA', source: STILL },
+					down: [
+						{
+							actionId: ActionId.setMediaStill,
+							options: {
+								functionID: '',
+								layer: instance.combinedLayerArray[0].name,
+								sourceAB: 'sourceA',
+								source: STILL,
+							},
+						},
+					],
+					up: [],
 				},
 			],
 			feedbacks: [
 				{
-					type: 'inputSource',
+					feedbackId: FeedbackId.inputSource,
 					options: {
 						source: STILL,
 						sourceAB: 'sourceA',
 						layer: instance.combinedLayerArray[0].name,
-						fg: instance.rgb(255, 255, 255),
-						bg: instance.rgb(255, 0, 0),
-						bg_pvw: instance.rgb(0, 255, 0),
+					},
+					style: {
+						bgcolor: combineRgb(0, 255, 0),
+						color: combineRgb(0, 0, 0),
 					},
 				},
 			],
-		})
+		}
 	})
 	// Player
 	instance.KairosObj.PLAYERS.forEach((element) => {
-		presets.push({
+		presets[`${element.player}.play`] = {
+			type: 'button',
 			category: 'PLAYERS',
-			label: element.player + 'play',
-			bank: {
-				style: 'text',
+			name: element.player + 'play',
+			style: {
 				text: element.player + '\\nplay',
 				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'play' } }],
+			steps: [
+				{
+					down: [
+						{ actionId: ActionId.playerControl, options: { functionID: '', player: element.player, action: 'play' } },
+					],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
-		//presets.push({
+		}
+		//presets[`${element.player}.stop`] = {
 		//	category: 'PLAYERS',
 		//	label: element.player + 'stop',
-		//	bank: {
-		//		style: 'text',
+		//	style: {
+		//
 		//		text: element.player + '\\nstop',
 		//		size: '14',
-		//		color: instance.rgb(255, 255, 255),
-		//		bgcolor: instance.rgb(0, 0, 0),
+		//		color: combineRgb(255, 255, 255),
+		//		bgcolor: combineRgb(0, 0, 0),
 		//	},
-		//	actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'stop' } }],
+		//	steps: [ { down [{ actionId 'playerControl', options: { functionID: '', player: element.player, action: 'stop' } },],up:[],},],
 		//	feedbacks: [],
-		//})
-		presets.push({
+		//}
+		presets[`${element.player}.pause`] = {
 			category: 'PLAYERS',
-			label: element.player + 'pause',
-			bank: {
-				style: 'text',
+			type: 'button',
+			name: element.player + 'pause',
+			style: {
 				text: element.player + '\\npause',
 				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'pause' } }],
+			steps: [
+				{
+					down: [
+						{ actionId: ActionId.playerControl, options: { functionID: '', player: element.player, action: 'pause' } },
+					],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
-		presets.push({
+		}
+		presets[`${element.player}.begin`] = {
+			type: 'button',
 			category: 'PLAYERS',
-			label: element.player + 'begin',
-			bank: {
-				style: 'text',
+			name: element.player + 'begin',
+			style: {
 				text: element.player + '\\nbegin',
 				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'begin' } }],
+			steps: [
+				{
+					down: [
+						{ actionId: ActionId.playerControl, options: { functionID: '', player: element.player, action: 'begin' } },
+					],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
-		//presets.push({
+		}
+		//presets[`${element.player}.rewind`]={
 		//	category: 'PLAYERS',
 		//	label: element.player + 'rewind',
-		//	bank: {
-		//		style: 'text',
+		//	style: {
+		//
 		//		text: element.player + '\\nrewind',
 		//		size: '14',
-		//		color: instance.rgb(255, 255, 255),
-		//		bgcolor: instance.rgb(0, 0, 0),
+		//		color: combineRgb(255, 255, 255),
+		//		bgcolor: combineRgb(0, 0, 0),
 		//	},
-		//	actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'rewind' } }],
+		//	steps: [ { down [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'rewind' } },],up:[],},],
 		//	feedbacks: [],
-		//})
-		presets.push({
+		//}
+		presets[`${element.player}.step_back`] = {
+			type: 'button',
 			category: 'PLAYERS',
-			label: element.player + 'step_back',
-			bank: {
-				style: 'text',
+			name: element.player + 'step_back',
+			style: {
 				text: element.player + '\\nstep_back',
 				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'step_back' } }],
+			steps: [
+				{
+					down: [
+						{
+							actionId: ActionId.playerControl,
+							options: { functionID: '', player: element.player, action: 'step_back' },
+						},
+					],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
-		//presets.push({
+		}
+		//presets[`${element.player}.reverse_play`]={
 		//	category: 'PLAYERS',
 		//	label: element.player + 'reverse_play',
-		//	bank: {
-		//		style: 'text',
+		//	style: {
+		//
 		//		text: element.player + '\\nreverse',
 		//		size: '14',
-		//		color: instance.rgb(255, 255, 255),
-		//		bgcolor: instance.rgb(0, 0, 0),
+		//		color: combineRgb(255, 255, 255),
+		//		bgcolor: combineRgb(0, 0, 0),
 		//	},
-		//	actions: [
+		//	steps: [ { down [
 		//		{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'reverse' } },
 		//	],
 		//	feedbacks: [],
-		//})
-		presets.push({
+		//}
+		presets[`${element.player}.step_forward`] = {
+			type: 'button',
 			category: 'PLAYERS',
-			label: element.player + 'step_forward',
-			bank: {
-				style: 'text',
+			name: element.player + 'step_forward',
+			style: {
 				text: element.player + '\\nstep_fwd',
 				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [
-				{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'step_forward' } },
+			steps: [
+				{
+					down: [
+						{
+							actionId: ActionId.playerControl,
+							options: { functionID: '', player: element.player, action: 'step_forward' },
+						},
+					],
+					up: [],
+				},
 			],
 			feedbacks: [],
-		})
-		//presets.push({
+		}
+		//presets[`${element.player}.fast_forward`] = {
 		//	category: 'PLAYERS',
 		//	label: element.player + 'fast_forward',
-		//	bank: {
-		//		style: 'text',
+		//	style: {
+		//
 		//		text: element.player + '\\nfast_fwd',
 		//		size: '14',
-		//		color: instance.rgb(255, 255, 255),
-		//		bgcolor: instance.rgb(0, 0, 0),
+		//		color: combineRgb(255, 255, 255),
+		//		bgcolor: combineRgb(0, 0, 0),
 		//	},
-		//	actions: [
+		//	steps: [ { down [
 		//		{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'fast_forward' } },
 		//	],
 		//	feedbacks: [],
 		//})
-		presets.push({
+		presets[`${element.player}.end`] = {
+			type: 'button',
 			category: 'PLAYERS',
-			label: element.player + 'end',
-			bank: {
-				style: 'text',
+			name: element.player + 'end',
+			style: {
 				text: element.player + '\\nend',
 				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'end' } }],
+			steps: [
+				{
+					down: [
+						{ actionId: ActionId.playerControl, options: { functionID: '', player: element.player, action: 'end' } },
+					],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
-		presets.push({
+		}
+		presets[`${element.player}.repeat_off`] = {
+			type: 'button',
 			category: 'PLAYERS',
-			label: element.player + 'repeat',
-			bank: {
-				style: 'text',
+			name: element.player + 'repeat',
+			style: {
 				text: element.player + '\\nrepeat:off',
 				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'repeat=0' } }],
+			steps: [
+				{
+					down: [
+						{
+							actionId: ActionId.playerControl,
+							options: { functionID: '', player: element.player, action: 'repeat=0' },
+						},
+					],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
-		presets.push({
+		}
+		presets[`${element.player}.repeat_on`] = {
+			type: 'button',
 			category: 'PLAYERS',
-			label: element.player + 'repeat',
-			bank: {
-				style: 'text',
+			name: element.player + 'repeat',
+			style: {
 				text: element.player + '\\nrepeat:on',
 				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'repeat=1' } }],
+			steps: [
+				{
+					down: [
+						{
+							actionId: ActionId.playerControl,
+							options: { functionID: '', player: element.player, action: 'repeat=1' },
+						},
+					],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
+		}
 	})
 	// Snapshots & scene transitions
 	instance.KairosObj.SCENES.forEach((SCENE) => {
-		presets.push({
+		presets[`${SCENE.scene}.cut`] = {
+			type: 'button',
 			category: 'TRANSITIONS',
-			label: 'Master Cut',
-			bank: {
-				style: 'text',
+			name: 'Master Cut',
+			style: {
 				text: `${SCENE.scene.slice(7)}\\nCUT`,
 				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(255, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
 			},
-			actions: [{ action: 'programCut', options: { scene: SCENE.scene } }],
+			steps: [{ down: [{ actionId: ActionId.programCut, options: { scene: SCENE.scene } }], up: [] }],
 			feedbacks: [],
-		})
-		presets.push({
+		}
+		presets[`${SCENE.scene}.auto`] = {
+			type: 'button',
 			category: 'TRANSITIONS',
-			label: 'Master Auto',
-			bank: {
-				style: 'text',
+			name: 'Master Auto',
+			style: {
 				text: `${SCENE.scene.slice(7)}\\nAUTO`,
 				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(255, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
 			},
-			actions: [{ action: 'programAuto', options: { scene: SCENE.scene } }],
+			steps: [{ down: [{ actionId: ActionId.programAuto, options: { scene: SCENE.scene } }], up: [] }],
 			feedbacks: [],
-		})
+		}
 		SCENE.transitions.forEach((TRANSITION) => {
-			presets.push({
+			presets[`${TRANSITION}.cut`] = {
+				type: 'button',
 				category: 'TRANSITIONS',
-				label: 'transition Cut',
-				bank: {
-					style: 'text',
+				name: 'transition Cut',
+				style: {
 					text: `${SCENE.scene.slice(7)}\\n${TRANSITION.slice(TRANSITION.search('.Transitions.') + 13)}\\nCUT`,
 					size: 'auto',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 0, 0),
 				},
-				actions: [{ action: 'cutTransition', options: { layer: TRANSITION } }],
+				steps: [{ down: [{ actionId: ActionId.cutTransition, options: { layer: TRANSITION } }], up: [] }],
 				feedbacks: [],
-			})
-			presets.push({
+			}
+			presets[`${TRANSITION}.auto`] = {
+				type: 'button',
 				category: 'TRANSITIONS',
-				label: 'transition Auto',
-				bank: {
-					style: 'text',
+				name: 'transition Auto',
+				style: {
 					text: `${SCENE.scene.slice(7)}\\n${TRANSITION.slice(TRANSITION.search('.Transitions.') + 13)}\\nAUTO`,
 					size: 'auto',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 0, 0),
 				},
-				actions: [{ action: 'autoTransition', options: { layer: TRANSITION } }],
+				steps: [{ down: [{ actionId: ActionId.autoTransition, options: { layer: TRANSITION } }], up: [] }],
 				feedbacks: [],
-			})
+			}
 		})
 		SCENE.smacros.forEach((SMACRO) => {
-			presets.push({
+			presets[`${SMACRO}.play`] = {
+				type: 'button',
 				category: 'SCENE MACROS',
-				label: SMACRO,
-				bank: {
-					style: 'text',
+				name: SMACRO,
+				style: {
 					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nplay`,
 					size: 'auto',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 0, 0),
 				},
-				actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'play' } }],
+				steps: [
+					{
+						down: [{ actionId: ActionId.smacroControl, options: { functionID: '', smacro: SMACRO, action: 'play' } }],
+						up: [],
+					},
+				],
 				feedbacks: [],
-			})
-			//presets.push({
+			}
+			//presets[`${SMACRO}.pause`]={
+			//	type: 'button',
 			//	category: 'SCENE MACROS',
-			//	label: SMACRO,
-			//	bank: {
-			//		style: 'text',
+			//	name: SMACRO,
+			//	style: {
+			//
 			//		text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\npause`,
 			//		size: 'auto',
-			//		color: instance.rgb(255, 255, 255),
-			//		bgcolor: instance.rgb(0, 0, 0),
+			//		color: combineRgb(255, 255, 255),
+			//		bgcolor: combineRgb(0, 0, 0),
 			//	},
-			//	actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'pause' } }],
+			//	steps: [ { down: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'pause' } }],up:[]}],
 			//	feedbacks: [],
-			//})
-			presets.push({
+			//}
+			presets[`${SMACRO}.stop`] = {
+				type: 'button',
 				category: 'SCENE MACROS',
-				label: SMACRO,
-				bank: {
-					style: 'text',
+				name: SMACRO,
+				style: {
 					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop`,
 					size: 'auto',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 0, 0),
 				},
-				actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop' } }],
+				steps: [
+					{
+						down: [{ actionId: ActionId.smacroControl, options: { functionID: '', smacro: SMACRO, action: 'stop' } }],
+						up: [],
+					},
+				],
 				feedbacks: [],
-			})
-			//presets.push({
+			}
+			//presets[`${SMACRO}.record`]={
+			//	type: 'button',
 			//	category: 'SCENE MACROS',
-			//	label: SMACRO,
-			//	bank: {
-			//		style: 'text',
+			//	name: SMACRO,
+			//	style: {
+			//
 			//		text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nrecord`,
 			//		size: 'auto',
-			//		color: instance.rgb(255, 255, 255),
-			//		bgcolor: instance.rgb(0, 0, 0),
+			//		color: combineRgb(255, 255, 255),
+			//		bgcolor: combineRgb(0, 0, 0),
 			//	},
-			//	actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'record' } }],
+			//	steps: [ { down: [{ actionId: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'record' } }],up:[]}],
 			//	feedbacks: [],
-			//})
-			//presets.push({
+			//}
+			//presets[`${SMACRO}.stop_rec`]={
+			//	type: 'button',
 			//	category: 'SCENE MACROS',
-			//	label: SMACRO,
-			//	bank: {
-			//		style: 'text',
+			//	name: SMACRO,
+			//	style: {
+			//
 			//		text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop_rec`,
 			//		size: 'auto',
-			//		color: instance.rgb(255, 255, 255),
-			//		bgcolor: instance.rgb(0, 0, 0),
+			//		color: combineRgb(255, 255, 255),
+			//		bgcolor: combineRgb(0, 0, 0),
 			//	},
-			//	actions: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop_record' } }],
+			//	steps: [ { down: [{ actionId: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop_record' } }],up:[]}],
 			//	feedbacks: [],
-			//})
+			//}
 		})
 		SCENE.snapshots.forEach((SNAPSHOT) => {
-			presets.push({
+			presets[`${SNAPSHOT}.trigger`] = {
+				type: 'button',
 				category: 'SNAPSHOTS',
-				label: SNAPSHOT,
-				bank: {
-					style: 'text',
+				name: SNAPSHOT,
+				style: {
 					//text: SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11),
 					text: `${SCENE.scene.slice(7)}\\n${SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11)}`,
 					size: 'auto',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 0, 0),
 				},
-				actions: [{ action: 'triggerSnapshot', options: { snapshot: SNAPSHOT } }],
+				steps: [{ down: [{ actionId: ActionId.triggerSnapshot, options: { snapshot: SNAPSHOT } }], up: [] }],
 				feedbacks: [],
-			})
+			}
 		})
 	})
 	// AUX
 	instance.KairosObj.AUX.forEach((element) => {
 		instance.KairosObj.INPUTS.forEach((INPUT) => {
-			presets.push({
+			presets[`${element.aux}.${INPUT.name}.setAux`] = {
+				type: 'button',
 				category: element.name,
-				label: element.aux,
-				bank: {
-					style: 'text',
+				name: element.aux,
+				style: {
 					text: `$(kairos:${element.aux})\\n$(kairos:${INPUT.shortcut})`,
 					//text: `${element.name}\\n${INPUT.name}`,
 					size: 'auto',
-					color: instance.rgb(255, 255, 255),
-					bgcolor: instance.rgb(0, 0, 0),
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 0, 0),
 				},
-				actions: [{ action: 'setAUX', options: { functionID: '', aux: element.aux, source: INPUT.shortcut } }],
+				steps: [
+					{
+						down: [
+							{ actionId: ActionId.setAUX, options: { functionID: '', aux: element.aux, source: INPUT.shortcut } },
+						],
+						up: [],
+					},
+				],
 				feedbacks: [
 					{
-						type: 'aux',
+						feedbackId: FeedbackId.aux,
 						options: {
 							aux: element.aux,
 							source: INPUT.shortcut,
-							fg: instance.rgb(255, 255, 255),
-							bg: instance.rgb(0, 255, 0),
+							fg: combineRgb(255, 255, 255),
+							bg: combineRgb(0, 255, 0),
 						},
 					},
 				],
-			})
+			}
 		})
 	})
 	// MACRO
 	instance.KairosObj.MACROS.forEach((MACRO) => {
-		presets.push({
+		presets[`${MACRO}.play`] = {
+			type: 'button',
 			category: 'MACROS',
-			label: 'Macros',
-			bank: {
-				style: 'text',
+			name: 'Macros',
+			style: {
 				text: `${MACRO.slice(7)}\\nplay`,
 				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'play' } }],
+			steps: [
+				{
+					down: [{ actionId: ActionId.macroControl, options: { functionID: '', macro: MACRO, action: 'play' } }],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
-		//presets.push({
+		}
+		//presets[`${MACRO}.pause`] = {
+		//	type: 'button',
 		//	category: 'MACROS',
-		//	label: 'Macros',
-		//	bank: {
-		//		style: 'text',
+		//	name: 'Macros',
+		//	style: {
+		//
 		//		text: `${MACRO.slice(7)}\\npause`,
 		//		size: 'auto',
-		//		color: instance.rgb(255, 255, 255),
-		//		bgcolor: instance.rgb(0, 0, 0),
+		//		color: combineRgb(255, 255, 255),
+		//		bgcolor: combineRgb(0, 0, 0),
 		//	},
-		//	actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'pause' } }],
+		//	steps: [ { down: [{ actionId: 'macroControl', options: { functionID: '', macro: MACRO, action: 'pause' } }],up:[]}],
 		//	feedbacks: [],
-		//})
-		presets.push({
+		//}
+		presets[`${MACRO}.stop`] = {
+			type: 'button',
 			category: 'MACROS',
-			label: 'Macros',
-			bank: {
-				style: 'text',
+			name: 'Macros',
+			style: {
 				text: `${MACRO.slice(7)}\\nstop`,
 				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'stop' } }],
+			steps: [
+				{
+					down: [{ actionId: ActionId.macroControl, options: { functionID: '', macro: MACRO, action: 'stop' } }],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
-		//presets.push({
+		}
+		//presets[`${MACRO}.record`] = {
+		//	type: 'button',
 		//	category: 'MACROS',
-		//	label: 'Macros',
-		//	bank: {
-		//		style: 'text',
+		//	name: 'Macros',
+		//	style: {
+		//
 		//		text: `${MACRO.slice(7)}\\nrecord`,
 		//		size: 'auto',
-		//		color: instance.rgb(255, 255, 255),
-		//		bgcolor: instance.rgb(0, 0, 0),
+		//		color: combineRgb(255, 255, 255),
+		//		bgcolor: combineRgb(0, 0, 0),
 		//	},
-		//	actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'record' } }],
+		//	steps: [ { down: [{ actionId: 'macroControl', options: { functionID: '', macro: MACRO, action: 'record' } }],up:[]}],
 		//	feedbacks: [],
-		//})
-		//presets.push({
+		//}
+		//presets[`${MACRO}.stop_rec`] = {
+		//	type: 'button',
 		//	category: 'MACROS',
-		//	label: 'Macros',
-		//	bank: {
-		//		style: 'text',
+		//	name: 'Macros',
+		//	style: {
+		//
 		//		text: `${MACRO.slice(7)}\\nstop_rec`,
 		//		size: 'auto',
-		//		color: instance.rgb(255, 255, 255),
-		//		bgcolor: instance.rgb(0, 0, 0),
+		//		color: combineRgb(255, 255, 255),
+		//		bgcolor: combineRgb(0, 0, 0),
 		//	},
-		//	actions: [{ action: 'macroControl', options: { functionID: '', macro: MACRO, action: 'stop_record' } }],
+		//	steps: [ { down: [{ actionId: 'macroControl', options: { functionID: '', macro: MACRO, action: 'stop_record' } }],up:[]}],
 		//	feedbacks: [],
-		//})
+		//}
 	})
 	// MULTIVIEWER
 	instance.KairosObj.MV_PRESETS.forEach((PRESET) => {
-		presets.push({
+		presets[`MV_PRESETS.${PRESET}.recallmv1`] = {
+			type: 'button',
 			category: 'Multiviewer1 Presets',
-			label: 'Multiviewer1 presets',
-			bank: {
-				style: 'text',
+			name: 'Multiviewer1 presets',
+			style: {
 				text: `MV1 Preset\\n${PRESET.slice(10)}`,
 				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'mvRecall', options: { functionID: '', preset: PRESET, mv: 'recall_mv1' } }],
+			steps: [
+				{
+					down: [{ actionId: ActionId.mvRecall, options: { functionID: '', preset: PRESET, mv: 'recall_mv1' } }],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
-		presets.push({
+		}
+		presets[`MV_PRESETS.${PRESET}.recallmv2`] = {
+			type: 'button',
 			category: 'Multiviewer2 Presets',
-			label: 'Multiviewer2 presets',
-			bank: {
-				style: 'text',
+			name: 'Multiviewer2 presets',
+			style: {
 				text: `MV2 Preset\\n${PRESET.slice(10)}`,
 				size: 'auto',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'mvRecall', options: { functionID: '', preset: PRESET, mv: 'recall_mv2' } }],
+			steps: [
+				{
+					down: [{ actionId: ActionId.mvRecall, options: { functionID: '', preset: PRESET, mv: 'recall_mv2' } }],
+					up: [],
+				},
+			],
 			feedbacks: [],
-		})
+		}
 	})
 	// AUDIO
-	presets.push({
+	presets[`Audio_mute`] = {
+		type: 'button',
 		category: 'AUDIO MUTE',
-		label: 'MUTE',
-		bank: {
-			style: 'text',
+		name: 'MUTE',
+		style: {
 			text: 'MASTER\\nMUTE',
 			size: '14',
-			color: instance.rgb(255, 255, 255),
-			bgcolor: instance.rgb(0, 0, 0),
-			latch: true,
+			color: combineRgb(255, 255, 255),
+			bgcolor: combineRgb(0, 0, 0),
 		},
-		actions: [{ action: 'muteMaster', options: { mute: 1 } }],
-		release_actions: [{ action: 'muteMaster', options: { mute: 0 } }],
+		steps: [
+			{
+				down: [{ actionId: ActionId.muteMaster, options: { mute: 1 } }],
+				up:[],
+			},
+			{
+				down: [{ actionId: ActionId.muteMaster, options: { mute: 0 } }],
+				up:[],
+			},
+		],
 		feedbacks: [
 			{
-				type: 'audioMuteMaster',
+				feedbackId: FeedbackId.audioMuteMaster,
 				options: {
 					mute: 1,
-					fg: instance.rgb(255, 255, 255),
-					bg: instance.rgb(0, 255, 255),
+					fg: combineRgb(255, 255, 255),
+					bg: combineRgb(0, 255, 255),
 				},
 			},
 		],
-	})
+	}
 	instance.KairosObj.AUDIO_CHANNELS.forEach((CHANNEL) => {
-		presets.push({
+		presets[`${CHANNEL.channel}.Audio_mute`] = {
+			type: 'button',
 			category: 'AUDIO MUTE',
-			label: 'MUTE',
-			bank: {
-				style: 'text',
+			name: 'MUTE',
+			style: {
 				text: `${CHANNEL.channel}\\nMUTE`,
 				size: '14',
-				color: instance.rgb(255, 255, 255),
-				bgcolor: instance.rgb(0, 0, 0),
-				latch: true,
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
 			},
-			actions: [{ action: 'muteChannel', options: { channel: CHANNEL.channel, mute: 1 } }],
-			release_actions: [{ action: 'muteChannel', options: { channel: CHANNEL.channel, mute: 0 } }],
+			steps: [
+				{
+					down: [{ actionId: ActionId.muteChannel, options: { channel: CHANNEL.channel, mute: 1 } }],
+					up: [],
+				},
+				{
+					down: [{ actionId: ActionId.muteChannel, options: { channel: CHANNEL.channel, mute: 0 } }],
+					up: [],
+				},
+			],
 			feedbacks: [
 				{
-					type: 'audioMuteChannel',
+					feedbackId: FeedbackId.audioMuteChannel,
 					options: {
 						channel: CHANNEL.channel,
 						mute: 1,
-						fg: instance.rgb(255, 255, 255),
-						bg: instance.rgb(0, 255, 255),
+						fg: combineRgb(255, 255, 255),
+						bg: combineRgb(0, 255, 255),
 					},
 				},
 			],
-		})
+		}
 	})
 	// TRANSITIONS
-//	instance.combinedTransitionsArray.forEach((TRANSITION) => {
-//		// presets.push({
-//		// 	category: 'TRANSITIONS',
-//		// 	label: 'Next transition',
-//		// 	bank: {
-//		// 		style: 'text',
-//		// 		text: `${TRANSITION.slice(7)}\\nNext transition`,
-//		// 		size: '14',
-//		// 		color: instance.rgb(255, 255, 255),
-//		// 		bgcolor: instance.rgb(0, 0, 0),
-//		// 	},
-//		// 	actions: [{ action: 'nextTransition', options: { transition: TRANSITION } }],
-//		// 	feedbacks: [],
-//		// })
-//		presets.push({
-//			category: 'TRANSITIONS',
-//			label: 'Cut transition',
-//			bank: {
-//				style: 'text',
-//				//text: `${TRANSITION.slice(7)}\\nCUT`,
-//				text: `${TRANSITION.slice(7, TRANSITION.search('.Transitions.'))}\\n${TRANSITION.slice(
-//					TRANSITION.search('.Transitions.') + 13)}\\nCUT`,
-//				size: 'auto',
-//				color: instance.rgb(255, 255, 255),
-//				bgcolor: instance.rgb(255, 0, 0),
-//			},
-//			actions: [{ action: 'cutTransition', options: { layer: TRANSITION } }],
-//			feedbacks: [],
-//		})
-//		presets.push({
-//			category: 'TRANSITIONS',
-//			label: 'Auto transition',
-//			bank: {
-//				style: 'text',
-//				//text: `${TRANSITION.slice(7)}\\nAUTO`,
-//				text: `${TRANSITION.slice(7, TRANSITION.search('.Transitions.'))}\\n${TRANSITION.slice(
-//					TRANSITION.search('.Transitions.') + 13)}\\nAUTO`,
-//				size: 'auto',
-//				color: instance.rgb(255, 255, 255),
-//				bgcolor: instance.rgb(0, 0, 0),
-//			},
-//			actions: [{ action: 'autoTransition', options: { layer: TRANSITION } }],
-//			feedbacks: [],
-//		})
-//	})
+	//	instance.combinedTransitionsArray.forEach((TRANSITION) => {
+	//	 presets[`${TRANSITION}.Next`]={
+	//	 	type: 'button',
+	//	 	category: 'TRANSITIONS',
+	//	 	name: 'Next transition',
+	//	 	style: {
+	//
+	//	 		text: `${TRANSITION.slice(7)}\\nNext transition`,
+	//	 		size: '14',
+	//	 		color: combineRgb(255, 255, 255),
+	//	 		bgcolor: combineRgb(0, 0, 0),
+	//	 	},
+	//	 	steps: [ { down: [{ actionId 'nextTransition', options: { transition: TRANSITION } }],
+	//	 	feedbacks: [],
+	//	 }
+	//		presets[`${TRANSITION}.Cut`]={
+	//			type: 'button',
+	//			category: 'TRANSITIONS',
+	//			name: 'Cut transition',
+	//			style: {
+	//
+	//				//text: `${TRANSITION.slice(7)}\\nCUT`,
+	//				text: `${TRANSITION.slice(7, TRANSITION.search('.Transitions.'))}\\n${TRANSITION.slice(
+	//					TRANSITION.search('.Transitions.') + 13)}\\nCUT`,
+	//				size: 'auto',
+	//				color: combineRgb(255, 255, 255),
+	//				bgcolor: combineRgb(255, 0, 0),
+	//			},
+	//			steps: [ { down [{ actionId 'cutTransition', options: { layer: TRANSITION } }],
+	//			feedbacks: [],
+	//		})
+	//		presets[`${TRANSITION}.Auto`]={
+	//			type: 'button',
+	//			category: 'TRANSITIONS',
+	//			name: 'Auto transition',
+	//			style: {
+	//
+	//				//text: `${TRANSITION.slice(7)}\\nAUTO`,
+	//				text: `${TRANSITION.slice(7, TRANSITION.search('.Transitions.'))}\\n${TRANSITION.slice(
+	//					TRANSITION.search('.Transitions.') + 13)}\\nAUTO`,
+	//				size: 'auto',
+	//				color: combineRgb(255, 255, 255),
+	//				bgcolor: combineRgb(0, 0, 0),
+	//			},
+	//			steps: [ { down [{ actionId 'autoTransition', options: { layer: TRANSITION } }],
+	//			feedbacks: [],
+	//		})
+	//	})
 	return presets
 }

@@ -1,9 +1,5 @@
-import {
-	CompanionInputFieldColor,
-	CompanionInputFieldDropdown,
-	CompanionInputFieldNumber,
-	CompanionInputFieldTextInput,
-} from '../../../instance_skel_types'
+import { CompanionInputFieldColor, CompanionInputFieldDropdown, CompanionInputFieldNumber, CompanionInputFieldTextInput } from "@companion-module/base"
+
 
 type TimeFormat = 'hh:mm:ss' | 'hh:mm:ss.ms' | 'mm:ss' | 'mm:ss.ms'
 
@@ -47,7 +43,7 @@ export const SOURCES = ['IP1', 'IP2', 'IP3'] as const
  * @param blue 0-255
  * @returns RGB value encoded for Companion Bank styling
  */
-export const rgb = (red: number, green: number, blue: number): number => {
+export const combineRgb = (red: number, green: number, blue: number): number => {
 	return ((red & 0xff) << 16) | ((green & 0xff) << 8) | (blue & 0xff)
 }
 
@@ -168,36 +164,36 @@ export const options: Options = {
 	foregroundColor: {
 		type: 'colorpicker',
 		label: 'Foreground color',
-		id: 'fg',
-		default: rgb(255, 255, 255),
+		id: 'color',
+		default: combineRgb(255, 255, 255),
 	},
 
 	foregroundColorBlack: {
 		type: 'colorpicker',
 		label: 'Foreground color',
-		id: 'fg',
-		default: rgb(0, 0, 0),
+		id: 'color',
+		default: combineRgb(0, 0, 0),
 	},
 
 	backgroundColorPreview: {
 		type: 'colorpicker',
 		label: 'Background color when in preview',
-		id: 'bg_pvw',
-		default: rgb(0, 255, 0),
+		id: 'bgcolor',
+		default: combineRgb(0, 255, 0),
 	},
 
 	backgroundColorProgram: {
 		type: 'colorpicker',
 		label: 'Background color when in grogram',
-		id: 'bg',
-		default: rgb(255, 0, 0),
+		id: 'bgcolor',
+		default: combineRgb(255, 0, 0),
 	},
 
 	backgroundColorYellow: {
 		type: 'colorpicker',
 		label: 'Background color',
-		id: 'bg',
-		default: rgb(255, 255, 0),
+		id: 'bgcolor',
+		default: combineRgb(255, 255, 0),
 	},
 
 	selectedIndex: {

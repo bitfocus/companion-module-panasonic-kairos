@@ -1,11 +1,8 @@
-import tcp from '../../../tcp'
+import { InstanceStatus, TCPHelper } from '@companion-module/base'
 import KairosInstance from '.'
 
-// OK, Warning, Error, Unknown
-type TCPStatus = 0 | 1 | 2 | null
-
 interface TCPSockets {
-	main: tcp | null
+	main: TCPHelper | null
 }
 
 export class TCP {
@@ -17,16 +14,16 @@ export class TCP {
 	private tcpPort: number
 	private keepAliveInterval: NodeJS.Timer | undefined
 	private recvRemain = ''
-	private listQueue : string[] = [] // queue of outstanding command of list or info
+	private listQueue: string[] = [] // queue of outstanding command of list or info
 	private nCommand = 0 // number of outstanding command
 	private processCallback: ((data: Array<string>, cmd: string) => void) | null = null
 	private waitListCallback: (() => void) | null = null
 	private waitCommandCallback: (() => void) | null = null
 
-	constructor(instance: KairosInstance) {
+	constructor(instance: KairosInstance, host: string, port: number) {
 		this.instance = instance
-		this.tcpHost = instance.config.host
-		this.tcpPort = instance.config.port
+		this.tcpHost = host
+		this.tcpPort = port
 
 		// Want to Keep this as reminder for sorting key pair array's
 		// inputs.sort(function(a, b) {
@@ -118,20 +115,14 @@ export class TCP {
 			return
 		}
 
-		this.sockets.main = new tcp(this.tcpHost, this.tcpPort)
+		this.sockets.main = new TCPHelper(this.tcpHost, this.tcpPort)
 
-		this.sockets.main.on('status_change', (status: TCPStatus, message: string) => {
-			let state: 0 | 1 | 2 | null = this.instance.STATUS_UNKNOWN
-			if (status === 0) state = this.instance.STATUS_OK
-			if (status === 1) state = this.instance.STATUS_WARNING
-			if (status === 2) state = this.instance.STATUS_ERROR
-
-			this.instance.status(state, message)
-			this.instance.connected = status === 0
+		this.sockets.main.on('status_change', (status: InstanceStatus) => {
+			this.instance.updateStatus(status)
 		})
 
 		this.sockets.main.on('error', (err: Error) => {
-			this.instance.status(this.instance.STATUS_ERROR, err.message)
+			this.instance.updateStatus(InstanceStatus.UnknownError, err.message)
 		})
 		// Helpers
 		const addInternalSourceGroup = () => {
@@ -286,7 +277,7 @@ export class TCP {
 		}
 		const fetchVariableItems = () => {
 			return new Promise((resolve) => {
-				let begin:number, getA:number, getB:number
+				let begin: number, getA: number, getB: number
 
 				// Fetch all macros per scene
 				for (const item of this.instance.KairosObj.SCENES) {
@@ -313,65 +304,69 @@ export class TCP {
 					}
 				}
 
-				listFinish().then(() => {
-					// Fetch all input names
-					for (const INPUT of this.instance.KairosObj.INPUTS) {
-						if (INPUT.shortcut !== '') {
-							this.sendCommand(`${INPUT.shortcut}.name`)
+				listFinish()
+					.then(() => {
+						// Fetch all input names
+						for (const INPUT of this.instance.KairosObj.INPUTS) {
+							if (INPUT.shortcut !== '') {
+								this.sendCommand(`${INPUT.shortcut}.name`)
+							}
 						}
-					}
 
-					// Fetch all live sources for AUX
-					// Fetch all AUX names
-					// Check if AUX is available
-					for (const iterator of this.instance.KairosObj.AUX) {
-						if (iterator.aux !== '') {
-							this.sendCommand(`${iterator.aux}.source`)
-							this.sendCommand(`${iterator.aux}.name`)
-							//this.sendCommand(`${iterator.aux}.available`)
+						// Fetch all live sources for AUX
+						// Fetch all AUX names
+						// Check if AUX is available
+						for (const iterator of this.instance.KairosObj.AUX) {
+							if (iterator.aux !== '') {
+								this.sendCommand(`${iterator.aux}.source`)
+								this.sendCommand(`${iterator.aux}.name`)
+								//this.sendCommand(`${iterator.aux}.available`)
+							}
 						}
-					}
-					return commandFinish()
-				}).then(() => {
-					begin = Date.now()
-					console.log('number of layers', this.instance.combinedLayerArray.length)
+						return commandFinish()
+					})
+					.then(() => {
+						begin = Date.now()
+						console.log('number of layers', this.instance.combinedLayerArray.length)
 
-					// Get live source for each layer
-					for (const LAYER of this.instance.combinedLayerArray) {
-						this.sendCommand(`${LAYER.name}.sourceA`)
-					}
-					return commandFinish()
-				}).then(() => {
-					getA = Date.now()
-					console.log('get sourceA', getA - begin, 'ms')
+						// Get live source for each layer
+						for (const LAYER of this.instance.combinedLayerArray) {
+							this.sendCommand(`${LAYER.name}.sourceA`)
+						}
+						return commandFinish()
+					})
+					.then(() => {
+						getA = Date.now()
+						console.log('get sourceA', getA - begin, 'ms')
 
-					// Get live source for each layer
-					for (const LAYER of this.instance.combinedLayerArray) {
-						this.sendCommand(`${LAYER.name}.sourceB`)
-					}
-					return commandFinish()
-				}).then(() => {
-					getB = Date.now()
-					console.log('get sourceB', getB - getA, 'ms')
+						// Get live source for each layer
+						for (const LAYER of this.instance.combinedLayerArray) {
+							this.sendCommand(`${LAYER.name}.sourceB`)
+						}
+						return commandFinish()
+					})
+					.then(() => {
+						getB = Date.now()
+						console.log('get sourceB', getB - getA, 'ms')
 
-					// Get PVW enabled or not
-					for (const LAYER of this.instance.combinedLayerArray) {
-						this.sendCommand(`${LAYER.name}.preset_enabled`)
-					}
-					// Get repeat state for each player
-					for (const PLAYER of this.instance.KairosObj.PLAYERS) {
-						this.sendCommand(`${PLAYER.player}.repeat`)
-					}
-					// Get mute state for each audio mixer channel
-					//this.sendCommand(`Mixer.AudioMixers.AudioMixer.mute`)
-					this.sendCommand(`AUDIOMIXER.mute`)
-					for (const CHANNEL of this.instance.KairosObj.AUDIO_CHANNELS) {
-						//this.sendCommand(`Mixer.AudioMixers.AudioMixer.${CHANNEL.channel}.mute`)
-						this.sendCommand(`AUDIOMIXER.${CHANNEL.channel}.mute`)
-					}
-					
-					commandFinish().then(() => resolve('fetch ready'))
-				})
+						// Get PVW enabled or not
+						for (const LAYER of this.instance.combinedLayerArray) {
+							this.sendCommand(`${LAYER.name}.preset_enabled`)
+						}
+						// Get repeat state for each player
+						for (const PLAYER of this.instance.KairosObj.PLAYERS) {
+							this.sendCommand(`${PLAYER.player}.repeat`)
+						}
+						// Get mute state for each audio mixer channel
+						//this.sendCommand(`Mixer.AudioMixers.AudioMixer.mute`)
+						this.sendCommand(`AUDIOMIXER.mute`)
+						for (const CHANNEL of this.instance.KairosObj.AUDIO_CHANNELS) {
+							//this.sendCommand(`Mixer.AudioMixers.AudioMixer.${CHANNEL.channel}.mute`)
+							this.sendCommand(`AUDIOMIXER.${CHANNEL.channel}.mute`)
+						}
+
+						commandFinish().then(() => resolve('fetch ready'))
+					})
 			})
 		}
 
@@ -418,7 +413,7 @@ export class TCP {
 			})
 		}
 		this.sockets.main.on('connect', async () => {
-			this.instance.status(1)
+			this.instance.updateStatus(InstanceStatus.Ok, 'Connected')
 			this.instance.log('debug', 'Connected to mixer')
 			await fetchScenes()
 				.then(() => fetchStills())
@@ -428,10 +423,9 @@ export class TCP {
 				.then(() => fetchLayers())
 				.then(() => fetchVariableItems())
 				.then(() => subscribeToData())
-				.then(() => this.instance.status(0))
 				.then(() => this.instance.updateInstance())
 				.then(() => (this.keepAliveInterval = setInterval(keepAlive, 4500))) //session expires at 5 seconds
-//				.then(() => console.log('OBJ', this.instance.KairosObj))
+			//				.then(() => console.log('OBJ', this.instance.KairosObj))
 		})
 
 		let keepAlive = () => {
@@ -469,7 +463,8 @@ export class TCP {
 				//This is an AUX list
 				this.instance.KairosObj.AUX.length = 0
 				data.forEach((element) => {
-					if (element !== '') this.instance.KairosObj.AUX.push({ aux: element, name: element, liveSource: '', available: 1 })
+					if (element !== '')
+						this.instance.KairosObj.AUX.push({ aux: element, name: element, liveSource: '', available: 1 })
 				})
 			} else {
 				// Do a switch block to go fast through the rest of the data
@@ -698,9 +693,9 @@ export class TCP {
 				this.nCommand++
 			}
 			const message = `${command}\r\n`
-//			if (message != '\r\n') console.log('send:' + message.trim())
+			//			if (message != '\r\n') console.log('send:' + message.trim())
 
-			this.sockets.main.write(message, (err) => {
+			this.sockets.main.send(message).catch((err) => {
 				if (err) this.instance.log('debug', err.message)
 			})
 			if (message != '\r\n') this.instance.log('debug', `Sending command: ${message}`)
@@ -711,30 +706,23 @@ export class TCP {
 	 * @description Check for config changes and start new connections/polling if needed
 	 */
 	public readonly update = (): void => {
-		const hostCheck = this.instance.config.host !== this.tcpHost || this.instance.config.port !== this.tcpPort
+		if (this.keepAliveInterval != undefined) clearInterval(this.keepAliveInterval)
 
-		if (hostCheck) {
-			this.tcpHost = this.instance.config.host
-			this.tcpPort = this.instance.config.port
-			if (this.keepAliveInterval != undefined) clearInterval(this.keepAliveInterval)
+		let ready = true
 
-			let ready = true
-
-			const destroySocket = (type: 'main') => {
-				const socket = this.sockets[type] as any
-				if (socket && (socket.connected || socket.socket.connecting)) {
-					socket.destroy()
-				} else {
-					if (socket !== null) {
-						this.instance.log('debug', `socket error: Cannot update connections while they're initializing`)
-						ready = false
-					}
+		const destroySocket = (type: 'main') => {
+			const socket = this.sockets[type] as any
+			if (socket && (socket.connected || socket.socket.connecting)) {
+				socket.destroy()
+			} else {
+				if (socket !== null) {
+					this.instance.log('debug', `socket error: Cannot update connections while they're initializing`)
+					ready = false
 				}
 			}
-
-			if (this.sockets.main) destroySocket('main')
-
-			if (ready) this.init()
 		}
+
+		if (this.sockets.main) destroySocket('main')
+		if (ready) this.init()
 	}
 }

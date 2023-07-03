@@ -1,30 +1,21 @@
-import instance_skel = require('../../../instance_skel')
-import {
-	CompanionActions,
-	CompanionConfigField,
-	CompanionFeedbacks,
-	CompanionSystem,
-	CompanionPreset,
-	// CompanionStaticUpgradeScript,
-} from '../../../instance_skel_types'
-import { Config } from './config'
+import { config } from './config'
 import { getActions } from './actions'
 import { getConfigFields } from './config'
 import { getFeedbacks } from './feedback'
 import { getPresets } from './presets'
-import { TCP } from './tcp'
-// import { getUpgrades } from './upgrade'
 import { Variables } from './variables'
+import { TCP } from './tcp'
+import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from '@companion-module/base'
 
 /**
  * Companion instance class for Panasonic Kairos
  */
-class KairosInstance extends instance_skel<Config> {
-	constructor(system: CompanionSystem, id: string, config: Config) {
-		super(system, id, config)
-		this.system = system
-		this.config = config
+class KairosInstance extends InstanceBase<config> {
+	config: config | undefined
+	constructor(internal: unknown) {
+		super(internal)
 	}
+
 	public combinedLayerArray!: { name: string; sourceA: string; sourceB: string; preset_enabled: number }[]
 	public combinedTransitionsArray!: Array<string>
 	public combinedSmacrosArray!: Array<string>
@@ -54,22 +45,22 @@ class KairosInstance extends instance_skel<Config> {
 	/**
 	 * @description triggered on instance being enabled
 	 */
-	public init(): void {
+	async init(): Promise<void> {
 		// New Module warning
 		this.log('info', `Welcome, Panasonic module is loading`)
 		this.variables = new Variables(this)
-		this.tcp = new TCP(this)
-		this.status(this.STATUS_WARNING, 'Connecting')
+		this.updateStatus(InstanceStatus.Connecting, 'Connecting')
+		if(this.config?.host && this.config?.port){
+		this.tcp = new TCP(this, this.config.host, this.config.port)}
 
 		this.updateInstance()
 		this.variables.updateDefinitions()
 	}
 
 	/**
-	 * @returns config options
-	 * @description generates the config options available for this instance
+	 * Creates the configuration fields for web config.
 	 */
-	public readonly config_fields = (): CompanionConfigField[] => {
+	 public getConfigFields(): SomeCompanionConfigField[] {
 		return getConfigFields()
 	}
 
@@ -77,18 +68,20 @@ class KairosInstance extends instance_skel<Config> {
 	 * @param config new configuration data
 	 * @description triggered every time the config for this instance is saved
 	 */
-	public updateConfig(config: Config): void {
+	public configUpdated(config: config): Promise<void> {
 		this.config = config
+		this.tcp?.update()
+		this.tcp = new TCP(this, this.config.host, this.config.port)
 		this.updateInstance()
-		this.setPresetDefinitions(getPresets(this) as CompanionPreset[])
-		if (this.variables) this.variables.updateDefinitions()
+		return Promise.resolve()
 	}
 
 	/**
 	 * @description close connections and stop timers/intervals
 	 */
-	public readonly destroy = (): void => {
+	 public async destroy(): Promise<void> {
 		this.log('debug', `Instance destroyed: ${this.id}`)
+		this.tcp?.destroy()
 	}
 
 	//  /**
@@ -113,11 +106,11 @@ class KairosInstance extends instance_skel<Config> {
 	public updateInstance(): void {
 		const begin = Date.now();
 		// Cast actions and feedbacks from Kairos types to Companion types
-		const actions = getActions(this) as CompanionActions
-		const feedbacks = getFeedbacks(this) as CompanionFeedbacks
-		const presets = getPresets(this) as CompanionPreset[]
+		const actions = getActions(this)
+		const feedbacks = getFeedbacks(this)
+		const presets = getPresets(this)
 
-		this.setActions(actions)
+		this.setActionDefinitions(actions)
 		this.setFeedbackDefinitions(feedbacks)
 		this.setPresetDefinitions(presets)
 		const end = Date.now();
@@ -125,5 +118,7 @@ class KairosInstance extends instance_skel<Config> {
 		console.log('updateInstance', end - begin, 'ms')
 	}
 }
+
+runEntrypoint(KairosInstance, [])
 
 export = KairosInstance
