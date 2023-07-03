@@ -35,7 +35,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			functionName = action.options.functionID
 		}
 
-		if (instance.tcp) instance.tcp.send(functionName)
+		if (instance.tcp) instance.tcp.sendCommand(functionName)
 	}
 
 	const actions: { [id in ActionId]: CompanionActionDefinition | undefined } = {
