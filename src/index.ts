@@ -56,16 +56,12 @@ class KairosInstance extends InstanceBase<config> {
 	/**
 	 * @description triggered on instance being enabled
 	 */
-	async init(): Promise<void> {
+	async init(config: config): Promise<void> {
 		// New Module warning
 		this.log('info', `Welcome, Panasonic module is loading`)
 		this.updateStatus(InstanceStatus.Connecting, 'Connecting')
-		if (this.config?.host && this.config?.port) {
-			if(this.tcp) this.tcp.destroy()
-			this.tcp = new TCP(this, this.config.host, this.config.port)
-		}
-		
-		this.updateInstance()
+
+		await this.configUpdated(config)
 		this.variables = new Variables(this)
 		this.variables.updateVariables()
 	}
