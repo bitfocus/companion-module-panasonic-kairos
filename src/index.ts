@@ -16,11 +16,7 @@ class KairosInstance extends InstanceBase<config> {
 		super(internal)
 	}
 
-	public combinedLayerArray!: { name: string; sourceA: string; sourceB: string; preset_enabled: number }[]
-	public combinedTransitionsArray!: Array<string>
-	public combinedSmacrosArray!: Array<string>
-	public combinedSnapshotsArray!: Array<string>
-	public KairosObj!: {
+	public KairosObj: {
 		audio_master_mute: number
 		INPUTS: { shortcut: string; name: string }[]
 		MEDIA_STILLS: Array<string>
@@ -36,7 +32,22 @@ class KairosInstance extends InstanceBase<config> {
 		PLAYERS: { player: string; repeat: number }[]
 		MV_PRESETS: Array<string>
 		AUDIO_CHANNELS: { channel: string; mute: number }[]
+	} = {
+		audio_master_mute: 100,
+		INPUTS: [],
+		MEDIA_STILLS: [],
+		SCENES: [],
+		AUX: [],
+		MACROS: [],
+		PLAYERS: [],
+		MV_PRESETS: [],
+		AUDIO_CHANNELS: [],
 	}
+
+	public combinedLayerArray: { name: string; sourceA: string; sourceB: string; preset_enabled: number }[] = []
+	public combinedTransitionsArray: Array<string> = []
+	public combinedSmacrosArray: Array<string> = []
+	public combinedSnapshotsArray: Array<string> = []
 
 	public connected = false
 	public tcp: TCP | null = null
@@ -48,19 +59,21 @@ class KairosInstance extends InstanceBase<config> {
 	async init(): Promise<void> {
 		// New Module warning
 		this.log('info', `Welcome, Panasonic module is loading`)
-		this.variables = new Variables(this)
 		this.updateStatus(InstanceStatus.Connecting, 'Connecting')
-		if(this.config?.host && this.config?.port){
-		this.tcp = new TCP(this, this.config.host, this.config.port)}
-
+		if (this.config?.host && this.config?.port) {
+			if(this.tcp) this.tcp.destroy()
+			this.tcp = new TCP(this, this.config.host, this.config.port)
+		}
+		
 		this.updateInstance()
-		this.variables.updateDefinitions()
+		this.variables = new Variables(this)
+		this.variables.updateVariables()
 	}
 
 	/**
 	 * Creates the configuration fields for web config.
 	 */
-	 public getConfigFields(): SomeCompanionConfigField[] {
+	public getConfigFields(): SomeCompanionConfigField[] {
 		return getConfigFields()
 	}
 
@@ -70,7 +83,7 @@ class KairosInstance extends InstanceBase<config> {
 	 */
 	public configUpdated(config: config): Promise<void> {
 		this.config = config
-		this.tcp?.update()
+		this.tcp?.destroy()
 		this.tcp = new TCP(this, this.config.host, this.config.port)
 		this.updateInstance()
 		return Promise.resolve()
@@ -79,7 +92,7 @@ class KairosInstance extends InstanceBase<config> {
 	/**
 	 * @description close connections and stop timers/intervals
 	 */
-	 public async destroy(): Promise<void> {
+	public async destroy(): Promise<void> {
 		this.log('debug', `Instance destroyed: ${this.id}`)
 		this.tcp?.destroy()
 	}
@@ -104,7 +117,7 @@ class KairosInstance extends InstanceBase<config> {
 	 * @description sets actions and feedbacks available for this instance
 	 */
 	public updateInstance(): void {
-		const begin = Date.now();
+		const begin = Date.now()
 		// Cast actions and feedbacks from Kairos types to Companion types
 		const actions = getActions(this)
 		const feedbacks = getFeedbacks(this)
@@ -113,8 +126,7 @@ class KairosInstance extends InstanceBase<config> {
 		this.setActionDefinitions(actions)
 		this.setFeedbackDefinitions(feedbacks)
 		this.setPresetDefinitions(presets)
-		const end = Date.now();
-		console.log('number of presets', presets.length)
+		const end = Date.now()
 		console.log('updateInstance', end - begin, 'ms')
 	}
 }

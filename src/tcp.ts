@@ -118,6 +118,7 @@ export class TCP {
 		this.sockets.main = new TCPHelper(this.tcpHost, this.tcpPort)
 
 		this.sockets.main.on('status_change', (status: InstanceStatus) => {
+			console.log('status change', status)
 			this.instance.updateStatus(status)
 		})
 
@@ -125,307 +126,309 @@ export class TCP {
 			this.instance.updateStatus(InstanceStatus.UnknownError, err.message)
 		})
 		// Helpers
-		const addInternalSourceGroup = () => {
-			this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV1', name: 'MV1' })
-			this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV2', name: 'MV2' })
-			this.instance.KairosObj.INPUTS.push({ shortcut: 'BLACK', name: 'BLACK' })
-			this.instance.KairosObj.INPUTS.push({ shortcut: 'WHITE', name: 'WHITE' })
-			this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.ColorBar', name: 'ColorBar' })
-			this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.ColorCircle', name: 'ColorCircle' })
-		}
-		const addScene = (scene: string) => {
-			if (scene !== '')
-				this.instance.KairosObj.SCENES.push({
-					scene: scene,
-					smacros: [],
-					snapshots: [],
-					layers: [],
-					transitions: [],
-				})
-			this.instance.KairosObj.INPUTS.push({ shortcut: scene, name: scene.slice(7) })
-		}
-		const listFinish = () => {
-			return new Promise((resolve) => {
-				this.waitListCallback = () => resolve('done')
-			})
-		}
-		const commandFinish = () => {
-			return new Promise((resolve) => {
-				this.waitCommandCallback = () => resolve('done')
-			})
-		}
+		// const addInternalSourceGroup = () => {
+		// 	this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV1', name: 'MV1' })
+		// 	this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV2', name: 'MV2' })
+		// 	this.instance.KairosObj.INPUTS.push({ shortcut: 'BLACK', name: 'BLACK' })
+		// 	this.instance.KairosObj.INPUTS.push({ shortcut: 'WHITE', name: 'WHITE' })
+		// 	this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.ColorBar', name: 'ColorBar' })
+		// 	this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.ColorCircle', name: 'ColorCircle' })
+		// }
+		// const addScene = (scene: string) => {
+		// 	if (scene !== '')
+		// 		this.instance.KairosObj.SCENES.push({
+		// 			scene: scene,
+		// 			smacros: [],
+		// 			snapshots: [],
+		// 			layers: [],
+		// 			transitions: [],
+		// 		})
+		// 	this.instance.KairosObj.INPUTS.push({ shortcut: scene, name: scene.slice(7) })
+		// }
+		// const listFinish = () => {
+		// 	return new Promise((resolve) => {
+		// 		this.waitListCallback = () => resolve('done')
+		// 	})
+		// }
+		// const commandFinish = () => {
+		// 	return new Promise((resolve) => {
+		// 		this.waitCommandCallback = () => resolve('done')
+		// 	})
+		// }
 
-		const fetchScenes = () => {
-			return new Promise((resolve) => {
-				//This is an SCENES list, only at startup so reset
-				this.instance.KairosObj.SCENES.length = 0
+		// const fetchScenes = () => {
+		// 	return new Promise((resolve) => {
+		// 		//This is an SCENES list, only at startup so reset
+		// 		this.instance.KairosObj.SCENES.length = 0
 
-				this.sendCommand('list:SCENES')
-				this.processCallback = (data: Array<string>) => {
-					const layers = data.find((element) => element.endsWith('.Layers'))
-					if (layers) {
-						addScene(layers.substring(0, layers.length - 7))
-					} else {
-						data.forEach((element) => {
-							this.sendCommand(`list:${element}`)
-						})
-					}
+		// 		this.sendCommand('list:SCENES')
+		// 		this.processCallback = (data: Array<string>) => {
+		// 			const layers = data.find((element) => element.endsWith('.Layers'))
+		// 			if (layers) {
+		// 				addScene(layers.substring(0, layers.length - 7))
+		// 			} else {
+		// 				data.forEach((element) => {
+		// 					this.sendCommand(`list:${element}`)
+		// 				})
+		// 			}
 
-					listFinish().then(() => {
-						this.processCallback = null
-						resolve('fetch ready')
-					})
-				}
-			})
-		}
-		const fetchStills = () => {
-			return new Promise((resolve) => {
-				this.instance.KairosObj.MEDIA_STILLS.length = 0
+		// 			listFinish().then(() => {
+		// 				this.processCallback = null
+		// 				resolve('fetch ready')
+		// 			})
+		// 		}
+		// 	})
+		// }
+		// const fetchStills = () => {
+		// 	return new Promise((resolve) => {
+		// 		this.instance.KairosObj.MEDIA_STILLS.length = 0
 
-				this.sendCommand('list:MEDIA.stills')
-				this.processCallback = (data: Array<string>) => {
-					data.forEach((element) => {
-						if (element.endsWith('&#46;rr')) {
-							// receive top hierarchy
-							this.instance.KairosObj.MEDIA_STILLS.push(element)
-						} else {
-							this.sendCommand(`list:${element}`)
-						}
-					})
-				}
-				listFinish().then(() => {
-					this.processCallback = null
-					resolve('fetch ready')
-				})
-			})
-		}
-		const fetchFxinputs = () => {
-			return new Promise((resolve) => {
-				this.sendCommand('list:FXINPUTS')
-				this.processCallback = (data: Array<string>, cmd: string) => {
-					if (data.length === 0 && cmd !== 'FXINPUTS') {
-						this.instance.KairosObj.INPUTS.push({ shortcut: cmd, name: '' })
-					}
-					data.forEach((element) => {
-						this.sendCommand(`list:${element}`)
-					})
-				}
-				listFinish().then(() => {
-					this.processCallback = null
-					resolve('fetch ready')
-				})
-			})
-		}
-		const fetchMacros = () => {
-			return new Promise((resolve) => {
-				this.sendCommand('list:MACROS')
-				this.processCallback = (data: Array<string>, cmd: string) => {
-					if (data.length === 0 && cmd !== 'MACROS') {
-						this.instance.KairosObj.MACROS.push(cmd)
-					}
-					data.forEach((element) => {
-						this.sendCommand(`list:${element}`)
-					})
-				}
-				listFinish().then(() => {
-					this.processCallback = null
-					resolve('fetch ready')
-				})
-			})
-		}
-		const fetchFixedItems = () => {
-			return new Promise((resolve) => {
-				this.sendCommand('list:AUX')
-				//this.sendCommand('list:MACROS')
-				this.sendCommand('list:MVPRESETS')
-				this.sendCommand('list:INPUTS')
-				this.sendCommand('list:RAMRECORDERS')
-				this.sendCommand('list:PLAYERS')
-				//this.sendCommand('list:AUDIOPLAYERS')
-				this.sendCommand('list:GFXCHANNELS')
-				//this.sendCommand('list:FXINPUTS')
-				this.sendCommand('list:MATTES')
-				//this.sendCommand('list:MEDIA.stills')
-				addInternalSourceGroup()
-				listFinish().then(() => resolve('fetch ready'))
-			})
-		}
-		const fetchLayers = () => {
-			return new Promise((resolve) => {
-				for (const item of this.instance.KairosObj.SCENES) {
-					this.sendCommand(`list:${item.scene}.Layers`)
-					this.processCallback = (data: Array<string>, cmd: string) => {
-						data.forEach((element) => {
-							this.sendCommand(`list:${element}`)
-						})
-						if (data.length === 0) {
-							this.instance.combinedLayerArray.push({
-								name: cmd,
-								sourceA: '',
-								sourceB: '',
-								preset_enabled: 0,
-							})
-							item.layers.push({ layer: cmd, sourceA: '', sourceB: '' })
-						}
-					}
-				}
-				listFinish().then(() => {
-					this.processCallback = null
-					resolve('fetch ready')
-				})
-			})
-		}
-		const fetchVariableItems = () => {
-			return new Promise((resolve) => {
-				let begin: number, getA: number, getB: number
+		// 		this.sendCommand('list:MEDIA.stills')
+		// 		this.processCallback = (data: Array<string>) => {
+		// 			data.forEach((element) => {
+		// 				if (element.endsWith('&#46;rr')) {
+		// 					// receive top hierarchy
+		// 					this.instance.KairosObj.MEDIA_STILLS.push(element)
+		// 				} else {
+		// 					this.sendCommand(`list:${element}`)
+		// 				}
+		// 			})
+		// 		}
+		// 		listFinish().then(() => {
+		// 			this.processCallback = null
+		// 			resolve('fetch ready')
+		// 		})
+		// 	})
+		// }
+		// const fetchFxinputs = () => {
+		// 	return new Promise((resolve) => {
+		// 		this.sendCommand('list:FXINPUTS')
+		// 		this.processCallback = (data: Array<string>, cmd: string) => {
+		// 			if (data.length === 0 && cmd !== 'FXINPUTS') {
+		// 				this.instance.KairosObj.INPUTS.push({ shortcut: cmd, name: '' })
+		// 			}
+		// 			data.forEach((element) => {
+		// 				this.sendCommand(`list:${element}`)
+		// 			})
+		// 		}
+		// 		listFinish().then(() => {
+		// 			this.processCallback = null
+		// 			resolve('fetch ready')
+		// 		})
+		// 	})
+		// }
+		// const fetchMacros = () => {
+		// 	return new Promise((resolve) => {
+		// 		this.sendCommand('list:MACROS')
+		// 		this.processCallback = (data: Array<string>, cmd: string) => {
+		// 			if (data.length === 0 && cmd !== 'MACROS') {
+		// 				this.instance.KairosObj.MACROS.push(cmd)
+		// 			}
+		// 			data.forEach((element) => {
+		// 				this.sendCommand(`list:${element}`)
+		// 			})
+		// 		}
+		// 		listFinish().then(() => {
+		// 			this.processCallback = null
+		// 			resolve('fetch ready')
+		// 		})
+		// 	})
+		// }
+		// const fetchFixedItems = () => {
+		// 	return new Promise((resolve) => {
+		// 		this.sendCommand('list:AUX')
+		// 		//this.sendCommand('list:MACROS')
+		// 		this.sendCommand('list:MVPRESETS')
+		// 		this.sendCommand('list:INPUTS')
+		// 		this.sendCommand('list:RAMRECORDERS')
+		// 		this.sendCommand('list:PLAYERS')
+		// 		//this.sendCommand('list:AUDIOPLAYERS')
+		// 		this.sendCommand('list:GFXCHANNELS')
+		// 		//this.sendCommand('list:FXINPUTS')
+		// 		this.sendCommand('list:MATTES')
+		// 		//this.sendCommand('list:MEDIA.stills')
+		// 		addInternalSourceGroup()
+		// 		listFinish().then(() => resolve('fetch ready'))
+		// 	})
+		// }
+		// const fetchLayers = () => {
+		// 	return new Promise((resolve) => {
+		// 		for (const item of this.instance.KairosObj.SCENES) {
+		// 			this.sendCommand(`list:${item.scene}.Layers`)
+		// 			this.processCallback = (data: Array<string>, cmd: string) => {
+		// 				data.forEach((element) => {
+		// 					this.sendCommand(`list:${element}`)
+		// 				})
+		// 				if (data.length === 0) {
+		// 					this.instance.combinedLayerArray.push({
+		// 						name: cmd,
+		// 						sourceA: '',
+		// 						sourceB: '',
+		// 						preset_enabled: 0,
+		// 					})
+		// 					item.layers.push({ layer: cmd, sourceA: '', sourceB: '' })
+		// 				}
+		// 			}
+		// 		}
+		// 		listFinish().then(() => {
+		// 			this.processCallback = null
+		// 			resolve('fetch ready')
+		// 		})
+		// 	})
+		// }
+		// const fetchVariableItems = () => {
+		// 	return new Promise((resolve) => {
+		// 		let begin: number, getA: number, getB: number
 
-				// Fetch all macros per scene
-				for (const item of this.instance.KairosObj.SCENES) {
-					if (item.scene !== '') {
-						this.sendCommand(`list:${item.scene}.Macros`)
-					}
-				}
-				// Fetch all snapshots per scene
-				for (const item of this.instance.KairosObj.SCENES) {
-					if (item.scene !== '') {
-						this.sendCommand(`list:${item.scene}.Snapshots`)
-					}
-				}
-				// Fetch all layer per scene
-				//for (const item of this.instance.KairosObj.SCENES) {
-				//	if (item.scene !== '') {
-				//		this.sendCommand(`list:${item.scene}.Layers`)
-				//	}
-				//}
-				// Fetch all transitions per scene
-				for (const item of this.instance.KairosObj.SCENES) {
-					if (item.scene !== '') {
-						this.sendCommand(`list:${item.scene}.Transitions`)
-					}
-				}
+		// 		// Fetch all macros per scene
+		// 		for (const item of this.instance.KairosObj.SCENES) {
+		// 			if (item.scene !== '') {
+		// 				this.sendCommand(`list:${item.scene}.Macros`)
+		// 			}
+		// 		}
+		// 		// Fetch all snapshots per scene
+		// 		for (const item of this.instance.KairosObj.SCENES) {
+		// 			if (item.scene !== '') {
+		// 				this.sendCommand(`list:${item.scene}.Snapshots`)
+		// 			}
+		// 		}
+		// 		// Fetch all layer per scene
+		// 		//for (const item of this.instance.KairosObj.SCENES) {
+		// 		//	if (item.scene !== '') {
+		// 		//		this.sendCommand(`list:${item.scene}.Layers`)
+		// 		//	}
+		// 		//}
+		// 		// Fetch all transitions per scene
+		// 		for (const item of this.instance.KairosObj.SCENES) {
+		// 			if (item.scene !== '') {
+		// 				this.sendCommand(`list:${item.scene}.Transitions`)
+		// 			}
+		// 		}
 
-				listFinish()
-					.then(() => {
-						// Fetch all input names
-						for (const INPUT of this.instance.KairosObj.INPUTS) {
-							if (INPUT.shortcut !== '') {
-								this.sendCommand(`${INPUT.shortcut}.name`)
-							}
-						}
+		// 		listFinish()
+		// 			.then(() => {
+		// 				// Fetch all input names
+		// 				for (const INPUT of this.instance.KairosObj.INPUTS) {
+		// 					if (INPUT.shortcut !== '') {
+		// 						this.sendCommand(`${INPUT.shortcut}.name`)
+		// 					}
+		// 				}
 
-						// Fetch all live sources for AUX
-						// Fetch all AUX names
-						// Check if AUX is available
-						for (const iterator of this.instance.KairosObj.AUX) {
-							if (iterator.aux !== '') {
-								this.sendCommand(`${iterator.aux}.source`)
-								this.sendCommand(`${iterator.aux}.name`)
-								//this.sendCommand(`${iterator.aux}.available`)
-							}
-						}
-						return commandFinish()
-					})
-					.then(() => {
-						begin = Date.now()
-						console.log('number of layers', this.instance.combinedLayerArray.length)
+		// 				// Fetch all live sources for AUX
+		// 				// Fetch all AUX names
+		// 				// Check if AUX is available
+		// 				for (const iterator of this.instance.KairosObj.AUX) {
+		// 					if (iterator.aux !== '') {
+		// 						this.sendCommand(`${iterator.aux}.source`)
+		// 						this.sendCommand(`${iterator.aux}.name`)
+		// 						//this.sendCommand(`${iterator.aux}.available`)
+		// 					}
+		// 				}
+		// 				return commandFinish()
+		// 			})
+		// 			.then(() => {
+		// 				begin = Date.now()
+		// 				console.log('number of layers', this.instance.combinedLayerArray.length)
 
-						// Get live source for each layer
-						for (const LAYER of this.instance.combinedLayerArray) {
-							this.sendCommand(`${LAYER.name}.sourceA`)
-						}
-						return commandFinish()
-					})
-					.then(() => {
-						getA = Date.now()
-						console.log('get sourceA', getA - begin, 'ms')
+		// 				// Get live source for each layer
+		// 				for (const LAYER of this.instance.combinedLayerArray) {
+		// 					this.sendCommand(`${LAYER.name}.sourceA`)
+		// 				}
+		// 				return commandFinish()
+		// 			})
+		// 			.then(() => {
+		// 				getA = Date.now()
+		// 				console.log('get sourceA', getA - begin, 'ms')
 
-						// Get live source for each layer
-						for (const LAYER of this.instance.combinedLayerArray) {
-							this.sendCommand(`${LAYER.name}.sourceB`)
-						}
-						return commandFinish()
-					})
-					.then(() => {
-						getB = Date.now()
-						console.log('get sourceB', getB - getA, 'ms')
+		// 				// Get live source for each layer
+		// 				for (const LAYER of this.instance.combinedLayerArray) {
+		// 					this.sendCommand(`${LAYER.name}.sourceB`)
+		// 				}
+		// 				return commandFinish()
+		// 			})
+		// 			.then(() => {
+		// 				getB = Date.now()
+		// 				console.log('get sourceB', getB - getA, 'ms')
 
-						// Get PVW enabled or not
-						for (const LAYER of this.instance.combinedLayerArray) {
-							this.sendCommand(`${LAYER.name}.preset_enabled`)
-						}
-						// Get repeat state for each player
-						for (const PLAYER of this.instance.KairosObj.PLAYERS) {
-							this.sendCommand(`${PLAYER.player}.repeat`)
-						}
-						// Get mute state for each audio mixer channel
-						//this.sendCommand(`Mixer.AudioMixers.AudioMixer.mute`)
-						this.sendCommand(`AUDIOMIXER.mute`)
-						for (const CHANNEL of this.instance.KairosObj.AUDIO_CHANNELS) {
-							//this.sendCommand(`Mixer.AudioMixers.AudioMixer.${CHANNEL.channel}.mute`)
-							this.sendCommand(`AUDIOMIXER.${CHANNEL.channel}.mute`)
-						}
+		// 				// Get PVW enabled or not
+		// 				for (const LAYER of this.instance.combinedLayerArray) {
+		// 					this.sendCommand(`${LAYER.name}.preset_enabled`)
+		// 				}
+		// 				// Get repeat state for each player
+		// 				for (const PLAYER of this.instance.KairosObj.PLAYERS) {
+		// 					this.sendCommand(`${PLAYER.player}.repeat`)
+		// 				}
+		// 				// Get mute state for each audio mixer channel
+		// 				//this.sendCommand(`Mixer.AudioMixers.AudioMixer.mute`)
+		// 				this.sendCommand(`AUDIOMIXER.mute`)
+		// 				for (const CHANNEL of this.instance.KairosObj.AUDIO_CHANNELS) {
+		// 					//this.sendCommand(`Mixer.AudioMixers.AudioMixer.${CHANNEL.channel}.mute`)
+		// 					this.sendCommand(`AUDIOMIXER.${CHANNEL.channel}.mute`)
+		// 				}
 
-						commandFinish().then(() => resolve('fetch ready'))
-					})
-			})
-		}
+		// 				commandFinish().then(() => resolve('fetch ready'))
+		// 			})
+		// 	})
+		// }
 
-		const subscribeToData = () => {
-			return new Promise((resolve) => {
-				//this.sendCommand('subscribe:Mixer.AudioMixers.AudioMixer.mute')
-				this.sendCommand('subscribe:AUDIOMIXER.mute')
-				// Get all transitions together
-				for (const SCENE of this.instance.KairosObj.SCENES) {
-					this.instance.combinedTransitionsArray = this.instance.combinedTransitionsArray.concat(SCENE.transitions)
-				}
-				// Get all Scene Macros together
-				for (const SCENE of this.instance.KairosObj.SCENES) {
-					this.instance.combinedSmacrosArray = this.instance.combinedSmacrosArray.concat(SCENE.smacros)
-				}
-				// Get all Snapshots together
-				for (const SCENE of this.instance.KairosObj.SCENES) {
-					this.instance.combinedSnapshotsArray = this.instance.combinedSnapshotsArray.concat(SCENE.snapshots)
-				}
+		// const subscribeToData = () => {
+		// 	return new Promise((resolve) => {
+		// 		//this.sendCommand('subscribe:Mixer.AudioMixers.AudioMixer.mute')
+		// 		this.sendCommand('subscribe:AUDIOMIXER.mute')
+		// 		// Get all transitions together
+		// 		for (const SCENE of this.instance.KairosObj.SCENES) {
+		// 			this.instance.combinedTransitionsArray = this.instance.combinedTransitionsArray.concat(SCENE.transitions)
+		// 		}
+		// 		// Get all Scene Macros together
+		// 		for (const SCENE of this.instance.KairosObj.SCENES) {
+		// 			this.instance.combinedSmacrosArray = this.instance.combinedSmacrosArray.concat(SCENE.smacros)
+		// 		}
+		// 		// Get all Snapshots together
+		// 		for (const SCENE of this.instance.KairosObj.SCENES) {
+		// 			this.instance.combinedSnapshotsArray = this.instance.combinedSnapshotsArray.concat(SCENE.snapshots)
+		// 		}
 
-				this.instance.KairosObj.PLAYERS.forEach((element) => {
-					this.sendCommand(`subscribe:${element.player}.repeat`)
-				})
-				this.instance.KairosObj.AUDIO_CHANNELS.forEach((element) => {
-					//this.sendCommand(`subscribe:Mixer.AudioMixers.AudioMixer.${element.channel}.mute`)
-					this.sendCommand(`subscribe:AUDIOMIXER.${element.channel}.mute`)
-				})
-				this.instance.KairosObj.AUX.forEach((element) => {
-					this.sendCommand(`subscribe:${element.aux}.source`)
-					this.sendCommand(`subscribe:${element.aux}.name`)
-				})
-				this.instance.KairosObj.INPUTS.forEach((element) => {
-					this.sendCommand(`subscribe:${element.shortcut}.name`)
-				})
+		// 		this.instance.KairosObj.PLAYERS.forEach((element) => {
+		// 			this.sendCommand(`subscribe:${element.player}.repeat`)
+		// 		})
+		// 		this.instance.KairosObj.AUDIO_CHANNELS.forEach((element) => {
+		// 			//this.sendCommand(`subscribe:Mixer.AudioMixers.AudioMixer.${element.channel}.mute`)
+		// 			this.sendCommand(`subscribe:AUDIOMIXER.${element.channel}.mute`)
+		// 		})
+		// 		this.instance.KairosObj.AUX.forEach((element) => {
+		// 			this.sendCommand(`subscribe:${element.aux}.source`)
+		// 			this.sendCommand(`subscribe:${element.aux}.name`)
+		// 		})
+		// 		this.instance.KairosObj.INPUTS.forEach((element) => {
+		// 			this.sendCommand(`subscribe:${element.shortcut}.name`)
+		// 		})
 
-				for (const LAYER of this.instance.combinedLayerArray) {
-					this.sendCommand(`subscribe:${LAYER.name}.sourceA`)
-				}
+		// 		for (const LAYER of this.instance.combinedLayerArray) {
+		// 			this.sendCommand(`subscribe:${LAYER.name}.sourceA`)
+		// 		}
 
-				for (const LAYER of this.instance.combinedLayerArray) {
-					this.sendCommand(`subscribe:${LAYER.name}.sourceB`)
-				}
-				commandFinish().then(() => resolve('subscribe ready'))
-			})
-		}
+		// 		for (const LAYER of this.instance.combinedLayerArray) {
+		// 			this.sendCommand(`subscribe:${LAYER.name}.sourceB`)
+		// 		}
+		// 		commandFinish().then(() => resolve('subscribe ready'))
+		// 	})
+		// }
 		this.sockets.main.on('connect', async () => {
 			this.instance.updateStatus(InstanceStatus.Ok, 'Connected')
 			this.instance.log('debug', 'Connected to mixer')
-			await fetchScenes()
-				.then(() => fetchStills())
-				.then(() => fetchFxinputs())
-				.then(() => fetchMacros())
-				.then(() => fetchFixedItems())
-				.then(() => fetchLayers())
-				.then(() => fetchVariableItems())
-				.then(() => subscribeToData())
-				.then(() => this.instance.updateInstance())
-				.then(() => (this.keepAliveInterval = setInterval(keepAlive, 4500))) //session expires at 5 seconds
-			//				.then(() => console.log('OBJ', this.instance.KairosObj))
+			this.keepAliveInterval = setInterval(keepAlive, 4500)
+
+			// await fetchScenes()
+			// 	// .then(() => fetchStills())
+			// 	// .then(() => fetchFxinputs())
+			// 	// .then(() => fetchMacros())
+			// 	// .then(() => fetchFixedItems())
+			// 	// .then(() => fetchLayers())
+			// 	// .then(() => fetchVariableItems())
+			// 	.then(() => (this.keepAliveInterval = setInterval(keepAlive, 1000))) //session expires at 5 seconds
+			// 	.then(() => subscribeToData())
+			// 	.then(() => this.instance.updateInstance())
+			// 	.then(() => console.log('OBJ', JSON.stringify(this.instance.KairosObj)))
 		})
 
 		let keepAlive = () => {
@@ -437,6 +440,7 @@ export class TCP {
 		 */
 
 		const processData = (data: Array<string>, cmd: string) => {
+			this.instance.log('debug','Received data:'+JSON.stringify(data))
 			if (this.processCallback) {
 				this.processCallback(data, cmd)
 			} else if (data.find((element) => element === 'IP1')) {
@@ -624,6 +628,7 @@ export class TCP {
 
 		// ToDo: It should operate call back function with each transitions
 		this.sockets.main.on('data', (data: Buffer) => {
+			// this.instance.log('debug', 'Data:'+data.toString())
 			let str = this.recvRemain + data.toString()
 			this.recvRemain = ''
 			if (str.endsWith('\r\n') === false) {

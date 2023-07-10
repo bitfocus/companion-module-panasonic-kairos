@@ -123,6 +123,7 @@ export class Variables {
 		// AUDIO
 		newVariables['mute_master_audio'] = this.instance.KairosObj.audio_master_mute == 0 ? 'unmuted' : 'muted'
 		for (let index = 0; index < 16; index++) {
+			if(this.instance.KairosObj.AUDIO_CHANNELS[index] == undefined) continue
 			newVariables[`mute_channel_${index + 1}`] =
 				this.instance.KairosObj.AUDIO_CHANNELS[index].mute == 0 ? 'unmuted' : 'muted'
 		}
