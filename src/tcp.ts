@@ -147,11 +147,13 @@ export class TCP {
 		}
 		const listFinish = () => {
 			return new Promise((resolve) => {
+				// resolve('done')
 				this.waitListCallback = () => resolve('done')
 			})
 		}
 		const commandFinish = () => {
 			return new Promise((resolve) => {
+				// resolve('done')
 				this.waitCommandCallback = () => resolve('done')
 			})
 		}
@@ -416,7 +418,8 @@ export class TCP {
 		this.sockets.main.on('connect', async () => {
 			this.instance.updateStatus(InstanceStatus.Ok, 'Connected')
 			this.instance.log('debug', 'Connected to mixer')
-			this.keepAliveInterval = setInterval(keepAlive, 4500)
+			if (this.keepAliveInterval != undefined) clearInterval(this.keepAliveInterval)
+			this.keepAliveInterval = setInterval(keepAlive, 4500) //session expires at 5 seconds
 
 			await fetchScenes()
 				.then(() => fetchStills())
@@ -425,7 +428,6 @@ export class TCP {
 				.then(() => fetchFixedItems())
 				.then(() => fetchLayers())
 				.then(() => fetchVariableItems())
-				.then(() => (this.keepAliveInterval = setInterval(keepAlive, 1000))) //session expires at 5 seconds
 				.then(() => subscribeToData())
 				.then(() => this.instance.updateInstance())
 				.then(() => console.log('OBJ', JSON.stringify(this.instance.KairosObj)))
@@ -433,6 +435,7 @@ export class TCP {
 
 		let keepAlive = () => {
 			this.sendCommand('')
+			// this.instance.log('debug', 'sending keep alive')
 		}
 
 		// ToDo: It should operate call back function with each transitions
@@ -440,16 +443,16 @@ export class TCP {
 			// this.instance.log('debug', 'Data:'+data.toString())
 			let str = this.recvRemain + data.toString()
 			this.recvRemain = ''
-			// if (str.endsWith('\r\n') === false) {
-			// 	// store uncompleted line
-			// 	const end = str.lastIndexOf('\r\n')
-			// 	if (end < 0) {
-			// 		this.recvRemain = str
-			// 		return
-			// 	}
-			// 	this.recvRemain = str.substring(end + 2)
-			// 	str = str.substring(0, end + 2)
-			// }
+			if (str.endsWith('\r\n') === false) {
+				// store uncompleted line
+				const end = str.lastIndexOf('\r\n')
+				if (end < 0) {
+					this.recvRemain = str
+					return
+				}
+				this.recvRemain = str.substring(end + 2)
+				str = str.substring(0, end + 2)
+			}
 			while (this.listQueue.length > 0) {
 				if (str.startsWith('\r\n')) {
 					// empty list
@@ -499,8 +502,7 @@ export class TCP {
 	 * @todo It should provide callback or promise of each transaction
 	 */
 	public readonly sendCommand = (command: string): void => {
-		// @ts-expect-error Types doesn't include 'connected' property
-		if (this.sockets.main && this.sockets.main.connected) {
+		if (this.sockets.main) {
 			if (command.startsWith('list:') || command.startsWith('info:')) {
 				this.listQueue.push(command.replace(/^(list|info):/, ''))
 			} else if (command !== '') {
@@ -521,10 +523,10 @@ export class TCP {
 	 */
 	public readonly processData = (data: Array<string>, cmd: string) => {
 		this.instance.log('debug', 'Received data:' + cmd)
-		if (this.processCallback) this.instance.log('debug','keep trying')
+		if (this.processCallback) this.instance.log('debug', 'keep trying')
 		// if (this.processCallback) {
 		// 	this.processCallback(data, cmd)
-		// } else 
+		// } else
 		if (data.find((element) => element === 'IP1')) {
 			//This is an input list
 			data.forEach((element) => {
