@@ -3,7 +3,7 @@ import { InstanceBase, SomeCompanionConfigField } from "@companion-module/base"
 export interface config {
 	label: string
 	host: string
-	port: number
+	tcpPort: number
 	username: string
 	password: string
 }
@@ -36,8 +36,8 @@ export const getConfigFields = (): SomeCompanionConfigField[] => {
 		},
 		{
 			type: 'number',
-			id: 'port',
-			label: 'Port',
+			id: 'tcpPort',
+			label: 'TCP Port',
 			width: 6,
 			default: 3005,
 			min: 1,

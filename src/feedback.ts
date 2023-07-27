@@ -39,8 +39,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
+					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].uuid : '1',
+					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.uuid, label: id.name })),
 				},
 			],
 			defaultStyle: {
@@ -142,15 +142,15 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'AUX',
 					id: 'aux',
-					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].aux : '1',
-					choices: instance.KairosObj.AUX.map((id) => ({ id: id.aux, label: id.aux })),
+					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].uuid : '1',
+					choices: instance.KairosObj.AUX.map((id) => ({ id: id.uuid, label: id.name })),
 				},
 				{
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
+					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].uuid : '1',
+					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.uuid, label: id.name })),
 				},
 			],
 			defaultStyle: {
@@ -158,7 +158,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				bgcolor: combineRgb(0, 255, 0),
 			},
 			callback: (feedback): boolean => {
-				let index = instance.KairosObj.AUX.findIndex((x) => x.aux === feedback.options.aux)
+				let index = instance.KairosObj.AUX.findIndex((x) => x.uuid === feedback.options.aux)
 				if (instance.KairosObj.AUX[index].liveSource === feedback.options.source) return true
 				else return false
 			},

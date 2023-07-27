@@ -10,17 +10,10 @@ interface InstanceVariableValue {
 	[key: string]: string | number | undefined
 }
 
-export class Variables {
-	private readonly instance: KairosInstance
-
-	constructor(instance: KairosInstance) {
-		this.instance = instance
-	}
-
 	/**
 	 * @description Sets variable definitions
 	 */
-	public readonly updateDefinitions = (): void => {
+	export function updateBasicVariables(instance: KairosInstance) {
 		const audio_mute: Set<InstanceVariableDefinition> = new Set([
 			// Status
 			{ name: 'Mute Master', variableId: 'mute_master_audio' },
@@ -43,36 +36,36 @@ export class Variables {
 		])
 
 		let inputSources = []
-		for (const input of this.instance.KairosObj.INPUTS) {
-			inputSources.push({ name: `${input.shortcut} name`, variableId: `${input.shortcut}` })
+
+		for (const INPUT of instance.KairosObj.INPUTS) {
+			inputSources.push({ name: `Source index ${INPUT.index} name`, variableId: `SourceIndex${INPUT.index}` })
 		}
 		let auxSources = []
-		for (const AUX of this.instance.KairosObj.AUX) {
-			auxSources.push({ name: `Source in ${AUX.aux}`, variableId: `${AUX.aux}.source` })
+		for (const AUX of instance.KairosObj.AUX) {
+			auxSources.push({ name: `Source in ${AUX.name}`, variableId: `AUX${AUX.index}.source` })
 		}
 		let auxNames = []
-		for (const AUX of this.instance.KairosObj.AUX) {
-			auxNames.push({ name: `${AUX.aux} variableId`, variableId: AUX.aux })
+		for (const AUX of instance.KairosObj.AUX) {
+			auxNames.push({ name: `AUX ID ${AUX.index} name`, variableId: `AUX_ID_${AUX.index}` })
 		}
 		let layerSources = []
-		for (const LAYER of this.instance.combinedLayerArray) {
+		for (const LAYER of instance.combinedLayerArray) {
 			layerSources.push({ name: `SourceA in ${LAYER.name.slice(7)}`, variableId: `${LAYER.name}.sourceA` })
 			layerSources.push({ name: `SourceB in ${LAYER.name.slice(7)}`, variableId: `${LAYER.name}.sourceB` })
 		}
-		//let auxAvailable = []
-		//for (const AUX of this.instance.KairosObj.AUX) {
-		//	auxAvailable.push({ name: `${AUX.aux} available`, variableId: `${AUX.aux}.available` })
-		//}
+		// let auxAvailable = []
+		// for (const AUX of instance.KairosObj.AUX) {
+		// 	auxAvailable.push({ name: `${AUX.aux} available`, variableId: `${AUX.aux}.available` })
+		// }
 		let playerRepeat = []
-		for (const PLAYER of this.instance.KairosObj.PLAYERS) {
+		for (const PLAYER of instance.KairosObj.PLAYERS) {
 			playerRepeat.push({ name: `${PLAYER.player} in repeat mode`, variableId: `${PLAYER.player}.repeat` })
 		}
 
 		//let presetEnabled = []
-		//for (const LAYER of this.instance.combinedLayerArray) {
+		//for (const LAYER of instance.combinedLayerArray) {
 		//	presetEnabled.push({ name: `PVW bus for ${LAYER.name.slice(7)}`, variableId: `${LAYER.name}.preset_enabled` })
 		//}
-
 		let filteredVariables = [
 			...layerSources,
 			...inputSources,
@@ -83,51 +76,41 @@ export class Variables {
 			//...auxAvailable,
 			//...presetEnabled,
 		]
-
-		this.instance.setVariableDefinitions(filteredVariables)
-	}
-
-	/**
-	 * @description Update variables
-	 */
-	public readonly updateVariables = (): void => {
-		this.updateDefinitions()
-
+		instance.setVariableDefinitions(filteredVariables)
+	
 		const newVariables: InstanceVariableValue = {}
 
 		// LIVE LAYERS
-		for (const LAYER of this.instance.combinedLayerArray) {
-			newVariables[`${LAYER.name}.sourceA`] = this.instance.KairosObj.INPUTS.find(
-				(o) => o.shortcut === LAYER.sourceA
+		for (const LAYER of instance.combinedLayerArray) {
+			newVariables[`${LAYER.name}.sourceA`] = instance.KairosObj.INPUTS.find(
+				(o) => o.uuid === LAYER.sourceA
 			)?.name
-			newVariables[`${LAYER.name}.sourceB`] = this.instance.KairosObj.INPUTS.find(
-				(o) => o.shortcut === LAYER.sourceB
+			newVariables[`${LAYER.name}.sourceB`] = instance.KairosObj.INPUTS.find(
+				(o) => o.uuid === LAYER.sourceB
 			)?.name
 			//newVariables[`${LAYER.name}.preset_enabled`] = LAYER.preset_enabled === 1 ? 'enabled' : 'disabled'
 		}
 		// AUX
-		for (const AUX of this.instance.KairosObj.AUX) {
-			// newVariables[AUX.aux] = this.instance.KairosObj.INPUTS.find((x) => x.input == AUX.live)
-			newVariables[`${AUX.aux}.source`] = this.instance.KairosObj.INPUTS.find((o) => o.shortcut === AUX.liveSource)?.name
-			newVariables[AUX.aux] = AUX.name
+		for (const AUX of instance.KairosObj.AUX) {
+			// newVariables[AUX.aux] = instance.KairosObj.INPUTS.find((x) => x.input == AUX.live)
+			newVariables[`AUX${AUX.index}.source`] = instance.KairosObj.INPUTS.find((o) => o.name === AUX.liveSource)?.name
+			newVariables[`AUX_ID_${AUX.index}`] = AUX.name
 			//newVariables[`${AUX.aux}.available`] = AUX.available == 0 ? 'disabled' : 'enabled'
 		}
 		// PLAYERS
-		for (const PLAYER of this.instance.KairosObj.PLAYERS) {
+		for (const PLAYER of instance.KairosObj.PLAYERS) {
 			newVariables[`${PLAYER.player}.repeat`] = PLAYER.repeat == 0 ? 'repeat off' : 'repeat on'
 		}
 		// INPUTS
-		for (const INPUT of this.instance.KairosObj.INPUTS) {
-			newVariables[INPUT.shortcut] = INPUT.name
+		for (const INPUT of instance.KairosObj.INPUTS) {
+			newVariables[`SourceIndex${INPUT.index}`] = INPUT.name
 		}
 		// AUDIO
-		newVariables['mute_master_audio'] = this.instance.KairosObj.audio_master_mute == 0 ? 'unmuted' : 'muted'
+		newVariables['mute_master_audio'] = instance.KairosObj.audio_master_mute == 0 ? 'unmuted' : 'muted'
 		for (let index = 0; index < 16; index++) {
-			if(this.instance.KairosObj.AUDIO_CHANNELS[index] == undefined) continue
+			if(instance.KairosObj.AUDIO_CHANNELS[index] == undefined) continue
 			newVariables[`mute_channel_${index + 1}`] =
-				this.instance.KairosObj.AUDIO_CHANNELS[index].mute == 0 ? 'unmuted' : 'muted'
+				instance.KairosObj.AUDIO_CHANNELS[index].mute == 0 ? 'unmuted' : 'muted'
 		}
-
-		this.instance.setVariableValues(newVariables)
+		instance.setVariableValues(newVariables)
 	}
-}

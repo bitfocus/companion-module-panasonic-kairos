@@ -3,7 +3,7 @@ import { getActions } from './actions'
 import { getConfigFields } from './config'
 import { getFeedbacks } from './feedback'
 import { getPresets } from './presets'
-import { Variables } from './variables'
+import { updateBasicVariables } from './variables'
 import { TCP } from './tcp'
 import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from '@companion-module/base'
 
@@ -18,7 +18,7 @@ class KairosInstance extends InstanceBase<config> {
 
 	public KairosObj: {
 		audio_master_mute: number
-		INPUTS: { shortcut: string; name: string }[]
+		INPUTS: { index: string; name: string; uuid: string; }[]
 		MEDIA_STILLS: Array<string>
 		SCENES: {
 			scene: string
@@ -27,7 +27,7 @@ class KairosInstance extends InstanceBase<config> {
 			layers: { layer: string; sourceA: string; sourceB: string }[]
 			transitions: Array<string>
 		}[]
-		AUX: { aux: string; name: string; liveSource: string; available: number }[]
+		AUX: { index: string, uuid: string; name: string; liveSource: string }[]
 		MACROS: Array<string>
 		PLAYERS: { player: string; repeat: number }[]
 		MV_PRESETS: Array<string>
@@ -51,7 +51,6 @@ class KairosInstance extends InstanceBase<config> {
 
 	public connected = false
 	public tcp: TCP | null = null
-	public variables: Variables | null = null
 
 	/**
 	 * @description triggered on instance being enabled
@@ -62,8 +61,7 @@ class KairosInstance extends InstanceBase<config> {
 		this.updateStatus(InstanceStatus.Connecting, 'Connecting')
 
 		await this.configUpdated(config)
-		this.variables = new Variables(this)
-		this.variables.updateVariables()
+		updateBasicVariables(this)
 	}
 
 	/**
@@ -80,7 +78,7 @@ class KairosInstance extends InstanceBase<config> {
 	public configUpdated(config: config): Promise<void> {
 		this.config = config
 		this.tcp?.destroy()
-		this.tcp = new TCP(this, this.config.host, this.config.port)
+		this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
 		this.updateInstance()
 		return Promise.resolve()
 	}
@@ -122,6 +120,8 @@ class KairosInstance extends InstanceBase<config> {
 		this.setActionDefinitions(actions)
 		this.setFeedbackDefinitions(feedbacks)
 		this.setPresetDefinitions(presets)
+		
+		updateBasicVariables(this)
 		const end = Date.now()
 		console.log('updateInstance', end - begin, 'ms')
 	}

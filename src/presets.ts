@@ -36,9 +36,9 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				category: `${LAYER.name.slice(7, LAYER.name.search('.Layers.'))} | ${LAYER.name.slice(
 					LAYER.name.search('.Layers.') + 8
 				)} | PGM`,
-				name: INPUT.shortcut,
+				name: INPUT.uuid,
 				style: {
-					text: `$(kairos:${INPUT.shortcut})`,
+					text: `$(kairos:${INPUT.uuid})`,
 					//text: INPUT.name,
 					size: '18',
 					color: combineRgb(255, 255, 255),
@@ -49,7 +49,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 						down: [
 							{
 								actionId: ActionId.setSource,
-								options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceA', source: INPUT.shortcut },
+								options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceA', source: INPUT.uuid },
 							},
 						],
 						up: [],
@@ -59,7 +59,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 					{
 						feedbackId: FeedbackId.inputSource,
 						options: {
-							source: INPUT.shortcut,
+							source: INPUT.uuid,
 							sourceAB: 'sourceA',
 							layer: LAYER.name,
 							fg: combineRgb(255, 255, 255),
@@ -77,9 +77,9 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				category: `${LAYER.name.slice(7, LAYER.name.search('.Layers.'))} | ${LAYER.name.slice(
 					LAYER.name.search('.Layers.') + 8
 				)} | PVW`,
-				name: INPUT.shortcut,
+				name: INPUT.uuid,
 				style: {
-					text: `$(kairos:${INPUT.shortcut})`,
+					text: `$(kairos:${INPUT.uuid})`,
 					//text: INPUT.name,
 					size: '18',
 					color: combineRgb(255, 255, 255),
@@ -90,7 +90,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 						down: [
 							{
 								actionId: ActionId.setSource,
-								options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceB', source: INPUT.shortcut },
+								options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceB', source: INPUT.uuid },
 							},
 						],
 						up: [],
@@ -100,7 +100,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 					{
 						feedbackId: FeedbackId.inputSource,
 						options: {
-							source: INPUT.shortcut,
+							source: INPUT.uuid,
 							sourceAB: 'sourceB',
 							layer: LAYER.name,
 							fg: combineRgb(255, 255, 255),
@@ -543,12 +543,12 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 	// AUX
 	instance.KairosObj.AUX.forEach((element) => {
 		instance.KairosObj.INPUTS.forEach((INPUT) => {
-			presets[`${element.aux}.${INPUT.name}.setAux`] = {
+			presets[`${element.uuid}.${INPUT.name}.setAux`] = {
 				type: 'button',
 				category: element.name,
-				name: element.aux,
+				name: element.uuid,
 				style: {
-					text: `$(kairos:${element.aux})\\n$(kairos:${INPUT.shortcut})`,
+					text: `$(kairos:${element.uuid})\\n$(kairos:${INPUT.uuid})`,
 					//text: `${element.name}\\n${INPUT.name}`,
 					size: 'auto',
 					color: combineRgb(255, 255, 255),
@@ -557,7 +557,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				steps: [
 					{
 						down: [
-							{ actionId: ActionId.setAUX, options: { functionID: '', aux: element.aux, source: INPUT.shortcut } },
+							{ actionId: ActionId.setAUX, options: { functionID: '', aux: element.uuid, source: INPUT.uuid } },
 						],
 						up: [],
 					},
@@ -566,8 +566,8 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 					{
 						feedbackId: FeedbackId.aux,
 						options: {
-							aux: element.aux,
-							source: INPUT.shortcut,
+							aux: element.uuid,
+							source: INPUT.uuid,
 							fg: combineRgb(255, 255, 255),
 							bg: combineRgb(0, 255, 0),
 						},
