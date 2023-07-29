@@ -18,7 +18,7 @@ class KairosInstance extends InstanceBase<config> {
 
 	public KairosObj: {
 		audio_master_mute: number
-		INPUTS: { index: string; name: string; uuid: string; }[]
+		INPUTS: { name: string; shortcut: string; }[]
 		MEDIA_STILLS: Array<string>
 		SCENES: {
 			scene: string
@@ -27,7 +27,7 @@ class KairosInstance extends InstanceBase<config> {
 			layers: { layer: string; sourceA: string; sourceB: string }[]
 			transitions: Array<string>
 		}[]
-		AUX: { index: string, uuid: string; name: string; liveSource: string }[]
+		AUX: { aux: string; name: string; liveSource: string }[]
 		MACROS: Array<string>
 		PLAYERS: { player: string; repeat: number }[]
 		MV_PRESETS: Array<string>

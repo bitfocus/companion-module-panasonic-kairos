@@ -66,8 +66,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].uuid : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.uuid, label: id.name })),
+					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
+					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
 				},
 			],
 			callback: (action) => {
@@ -258,15 +258,15 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'AUX',
 					id: 'aux',
-					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].uuid : '1',
-					choices: instance.KairosObj.AUX.map((id) => ({ id: id.uuid, label: id.name })),
+					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].aux : '1',
+					choices: instance.KairosObj.AUX.map((id) => ({ id: id.aux, label: id.name })),
 				},
 				{
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].uuid : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.uuid, label: id.name })),
+					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
+					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
 				},
 			],
 			callback: (action) => {
@@ -277,7 +277,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					},
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.KairosObj.AUX.findIndex((x) => x.uuid === action.options.aux)
+				let index = instance.KairosObj.AUX.findIndex((x) => x.aux === action.options.aux)
 				instance.KairosObj.AUX[index].liveSource = action.options.source as string
 				instance.checkFeedbacks('aux')
 				updateBasicVariables(instance)

@@ -112,7 +112,7 @@ export class TCP {
 		this.sockets.main = new TCPHelper(this.tcpHost, this.tcpPort)
 
 		this.sockets.main.on('status_change', (status: InstanceStatus) => {
-			console.log('status change', status)
+			this.instance.log('debug', 'status change' + status)
 			this.instance.updateStatus(status)
 		})
 
@@ -121,18 +121,16 @@ export class TCP {
 		})
 		// Helpers
 		const addInternalSourceGroup = () => {
-			this.instance.KairosObj.INPUTS.push({ index: 'INTSOURCES.MV1', uuid: 'INTSOURCES.MV1', name: 'MV1' })
-			this.instance.KairosObj.INPUTS.push({ index: 'INTSOURCES.MV2', uuid: 'INTSOURCES.MV2', name: 'MV2' })
-			this.instance.KairosObj.INPUTS.push({ index: 'BLACK', uuid: 'BLACK', name: 'BLACK' })
-			this.instance.KairosObj.INPUTS.push({ index: 'WHITE', uuid: 'WHITE', name: 'WHITE' })
+			this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV1', name: 'MV1' })
+			this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV2', name: 'MV2' })
+			this.instance.KairosObj.INPUTS.push({ shortcut: 'BLACK', name: 'BLACK' })
+			this.instance.KairosObj.INPUTS.push({ shortcut: 'WHITE', name: 'WHITE' })
 			this.instance.KairosObj.INPUTS.push({
-				index: 'INTSOURCES.ColorBar',
-				uuid: 'INTSOURCES.ColorBar',
+				shortcut: 'INTSOURCES.ColorBar',
 				name: 'ColorBar',
 			})
 			this.instance.KairosObj.INPUTS.push({
-				index: 'INTSOURCES.ColorCircle',
-				uuid: 'INTSOURCES.ColorCircle',
+				shortcut: 'INTSOURCES.ColorCircle',
 				name: 'ColorCircle',
 			})
 		}
@@ -145,7 +143,7 @@ export class TCP {
 					layers: [],
 					transitions: [],
 				})
-			this.instance.KairosObj.INPUTS.push({ uuid: scene, index: scene, name: scene.slice(7) })
+			this.instance.KairosObj.INPUTS.push({ shortcut: scene, name: scene.slice(7) })
 		}
 		const listFinish = () => {
 			return new Promise((resolve) => {
@@ -207,7 +205,7 @@ export class TCP {
 				this.sendCommand('list:FXINPUTS')
 				this.processCallback = (data: Array<string>, cmd: string) => {
 					if (data.length === 0 && cmd !== 'FXINPUTS') {
-						this.instance.KairosObj.INPUTS.push({ index: cmd, uuid: cmd, name: '' })
+						this.instance.KairosObj.INPUTS.push({ shortcut: cmd, name: '' })
 					}
 					data.forEach((element) => {
 						this.sendCommand(`list:${element}`)
@@ -311,8 +309,8 @@ export class TCP {
 					.then(() => {
 						// Fetch all input names
 						for (const INPUT of this.instance.KairosObj.INPUTS) {
-							if (INPUT.uuid !== '') {
-								this.sendCommand(`${INPUT.uuid}.name`)
+							if (INPUT.shortcut !== '') {
+								this.sendCommand(`${INPUT.shortcut}.name`)
 							}
 						}
 
@@ -320,9 +318,9 @@ export class TCP {
 						// Fetch all AUX names
 						// Check if AUX is available
 						for (const iterator of this.instance.KairosObj.AUX) {
-							if (iterator.index !== '') {
-								this.sendCommand(`${iterator.index}.source`)
-								this.sendCommand(`${iterator.index}.name`)
+							if (iterator.aux !== '') {
+								this.sendCommand(`${iterator.aux}.source`)
+								this.sendCommand(`${iterator.aux}.name`)
 								//this.sendCommand(`${iterator.aux}.available`)
 							}
 						}
@@ -330,7 +328,7 @@ export class TCP {
 					})
 					.then(() => {
 						begin = Date.now()
-						console.log('number of layers', this.instance.combinedLayerArray.length)
+						this.instance.log('debug', 'number of layers ' + this.instance.combinedLayerArray.length)
 
 						// Get live source for each layer
 						for (const LAYER of this.instance.combinedLayerArray) {
@@ -340,7 +338,7 @@ export class TCP {
 					})
 					.then(() => {
 						getA = Date.now()
-						console.log('get sourceA', getA - begin, 'ms')
+						this.instance.log('debug', `get sourceA ${getA - begin} ms`)
 
 						// Get live source for each layer
 						for (const LAYER of this.instance.combinedLayerArray) {
@@ -350,7 +348,7 @@ export class TCP {
 					})
 					.then(() => {
 						getB = Date.now()
-						console.log('get sourceB', getB - getA, 'ms')
+						this.instance.log('debug', `get sourceB ${getB - getA} ms`)
 
 						// Get PVW enabled or not
 						for (const LAYER of this.instance.combinedLayerArray) {
@@ -398,11 +396,11 @@ export class TCP {
 					this.sendCommand(`subscribe:AUDIOMIXER.${element.channel}.mute`)
 				})
 				this.instance.KairosObj.AUX.forEach((element) => {
-					this.sendCommand(`subscribe:${element.index}.source`)
-					this.sendCommand(`subscribe:${element.index}.name`)
+					this.sendCommand(`subscribe:${element.aux}.source`)
+					this.sendCommand(`subscribe:${element.aux}.name`)
 				})
 				this.instance.KairosObj.INPUTS.forEach((element) => {
-					this.sendCommand(`subscribe:${element.uuid}.name`)
+					this.sendCommand(`subscribe:${element.shortcut}.name`)
 				})
 
 				for (const LAYER of this.instance.combinedLayerArray) {
@@ -446,29 +444,28 @@ export class TCP {
 			} else if (data.find((element) => element === 'IP1')) {
 				//This is an input list
 				data.forEach((element) => {
-					if (element !== '') this.instance.KairosObj.INPUTS.push({ index: element, uuid: element, name: element })
+					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
 				})
 			} else if (data.find((element) => element === 'GFX1')) {
 				//This is an input list
 				data.forEach((element) => {
-					if (element !== '') this.instance.KairosObj.INPUTS.push({ index: element, uuid: element, name: element })
+					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
 				})
 			} else if (data.find((element) => element === 'RR1')) {
 				//This is an input list
 				data.forEach((element) => {
-					if (element !== '') this.instance.KairosObj.INPUTS.push({ index: element, uuid: element, name: element })
+					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
 				})
 			} else if (data.find((element) => element === 'CP1')) {
 				//This is an input list
 				data.forEach((element) => {
-					if (element !== '') this.instance.KairosObj.INPUTS.push({ index: element, uuid: element, name: element })
+					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
 				})
 			} else if (data.find((element) => element === 'IP-AUX1')) {
 				//This is an AUX list
 				this.instance.KairosObj.AUX.length = 0
 				data.forEach((element) => {
-					if (element !== '')
-						this.instance.KairosObj.AUX.push({ uuid: element, index: element, name: element, liveSource: '' })
+					if (element !== '') this.instance.KairosObj.AUX.push({ aux: element, name: element, liveSource: '' })
 				})
 			} else {
 				// Do a switch block to go fast through the rest of the data
@@ -522,7 +519,7 @@ export class TCP {
 						case /\.source=/i.test(returningData): // This is an AUX source
 							{
 								let index = this.instance.KairosObj.AUX.findIndex(
-									(x) => x.index === returningData.split('=')[0].slice(0, returningData.split('=')[0].search('.source'))
+									(x) => x.aux === returningData.split('=')[0].slice(0, returningData.split('=')[0].search('.source'))
 								)
 								if (index != -1) this.instance.KairosObj.AUX[index].liveSource = returningData.split('=')[1]
 								this.instance.checkFeedbacks('aux')
@@ -602,8 +599,8 @@ export class TCP {
 							{
 								let source = returningData.split('=')[0].slice(0, -5)
 								let name = returningData.split('=')[1]
-								let index_i = this.instance.KairosObj.INPUTS.findIndex((x) => x.uuid === source)
-								let index_a = this.instance.KairosObj.AUX.findIndex((x) => x.index === source)
+								let index_i = this.instance.KairosObj.INPUTS.findIndex((x) => x.shortcut === source)
+								let index_a = this.instance.KairosObj.AUX.findIndex((x) => x.aux === source)
 								if (index_i != -1) this.instance.KairosObj.INPUTS[index_i].name = name
 								else if (index_a != -1) this.instance.KairosObj.AUX[index_a].name = name
 								updateBasicVariables(this.instance)
@@ -613,14 +610,17 @@ export class TCP {
 						//	this.instance.KairosObj.INPUTS.push({ shortcut: returningData, name: returningData })
 						//	break
 						case /^MATTES\./i.test(returningData):
-							this.instance.KairosObj.INPUTS.push({ index: returningData, uuid: returningData, name: returningData })
+							this.instance.KairosObj.INPUTS.push({
+								shortcut: returningData,
+								name: returningData,
+							})
 							break
 						//case /^MEDIA\.stills\./i.test(returningData):
 						//	this.instance.KairosObj.MEDIA_STILLS.push(returningData)
 						//	break
 
 						default:
-							console.log('ERROR No Case provided for: ' + returningData)
+							this.instance.log('error', 'No Case provided for: ' + returningData)
 					}
 				}
 			}
