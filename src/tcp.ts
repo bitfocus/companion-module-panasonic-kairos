@@ -431,7 +431,7 @@ export class TCP {
 
 		let keepAlive = () => {
 			this.sendCommand('')
-			this.instance.log('debug', 'Keepalive sent')
+			// this.instance.log('debug', 'Keepalive sent')
 		}
 
 		/**
@@ -445,7 +445,9 @@ export class TCP {
 				//This is an input list
 				data.forEach((element) => {
 					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
+					this.instance.log('debug',`${element}`)
 				})
+				
 			} else if (data.find((element) => element === 'GFX1')) {
 				//This is an input list
 				data.forEach((element) => {
@@ -474,10 +476,10 @@ export class TCP {
 						case /^$/i.test(returningData):
 							break
 						case /^OK$/i.test(returningData):
-							this.instance.log('debug', 'Command succeeded')
+							// this.instance.log('debug', 'Command succeeded')
 							break
 						case /^Error$/i.test(returningData):
-							this.instance.log('debug', 'Command failed')
+							// this.instance.log('debug', 'Command failed')
 							break
 						case /\.sourceA/i.test(returningData):
 							{
@@ -574,20 +576,20 @@ export class TCP {
 									this.instance.combinedLayerArray[index].preset_enabled = parseInt(returningData.split('=')[1])
 							}
 							break
-						//case /\.Layers\./i.test(returningData): // This is a Layer list
-						//	{
-						//		this.instance.combinedLayerArray.push({
-						//			name: returningData,
-						//			sourceA: '',
-						//			sourceB: '',
-						//			preset_enabled: 0,
-						//		})
-						//		let sceneName = returningData.slice(0, returningData.search('.Layers.'))
-						//		let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
-						//		if (index != -1)
-						//			this.instance.KairosObj.SCENES[index].layers.push({ layer: returningData, sourceA: '', sourceB: '' })
-						//	}
-						//	break
+						// case /\.Layers\./i.test(returningData): // This is a Layer list
+						// 	{
+						// 		this.instance.combinedLayerArray.push({
+						// 			name: returningData,
+						// 			sourceA: '',
+						// 			sourceB: '',
+						// 			preset_enabled: 0,
+						// 		})
+						// 		let sceneName = returningData.slice(0, returningData.search('.Layers.'))
+						// 		let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
+						// 		if (index != -1)
+						// 			this.instance.KairosObj.SCENES[index].layers.push({ layer: returningData, sourceA: '', sourceB: '' })
+						// 	}
+						// 	break
 						case /\.Transitions\./i.test(returningData): // This is an Transition list, SCENES.Main.Transitions.BgdMix
 							{
 								let sceneName = returningData.slice(0, returningData.search('.Transitions.'))
@@ -679,6 +681,7 @@ export class TCP {
 						}
 					}
 				}
+				this.instance.updateInstance()
 			}
 		})
 	}
@@ -701,7 +704,7 @@ export class TCP {
 			this.sockets.main.send(message).catch((err) => {
 				if (err) this.instance.log('debug', err.message)
 			})
-			if (message != '\r\n') this.instance.log('debug', `Sending command: ${message}`)
+			// if (message != '\r\n') this.instance.log('debug', `Sending command: ${message}`)
 		}
 	}
 

@@ -38,7 +38,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				)} | PGM`,
 				name: INPUT.shortcut,
 				style: {
-					text: `$(kairos:${INPUT.shortcut.replace(/ /g,"_")})`,
+					text: `$(kairos:${INPUT.shortcut.replace(/ /g, '_')})`,
 					//text: INPUT.name,
 					size: '18',
 					color: combineRgb(255, 255, 255),
@@ -62,9 +62,10 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 							source: INPUT.shortcut,
 							sourceAB: 'sourceA',
 							layer: LAYER.name,
-							fg: combineRgb(255, 255, 255),
-							bg: combineRgb(255, 0, 0),
-							bg_pvw: combineRgb(0, 255, 0),
+						},
+						style: {
+							color: combineRgb(255, 255, 255),
+							bgcolor: combineRgb(255, 0, 0),
 						},
 					},
 				],
@@ -79,7 +80,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				)} | PVW`,
 				name: INPUT.shortcut,
 				style: {
-					text: `$(kairos:${INPUT.shortcut.replace(/ /g,"_")})`,
+					text: `$(kairos:${INPUT.shortcut.replace(/ /g, '_')})`,
 					//text: INPUT.name,
 					size: '18',
 					color: combineRgb(255, 255, 255),
@@ -103,9 +104,10 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 							source: INPUT.shortcut,
 							sourceAB: 'sourceB',
 							layer: LAYER.name,
-							fg: combineRgb(255, 255, 255),
-							bg: combineRgb(255, 0, 0),
-							bg_pvw: combineRgb(0, 255, 0),
+						},
+						style: {
+							color: combineRgb(255, 255, 255),
+							bgcolor: combineRgb(0, 255, 0),
 						},
 					},
 				],
@@ -548,7 +550,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				category: element.name,
 				name: element.aux,
 				style: {
-					text: `$(kairos:${element.aux.replace(/ /g,"_")})\\n$(kairos:${INPUT.shortcut.replace(/ /g,"_")})`,
+					text: `$(kairos:${element.aux.replace(/ /g, '_')})\\n$(kairos:${INPUT.shortcut.replace(/ /g, '_')})`,
 					//text: `${element.name}\\n${INPUT.name}`,
 					size: 'auto',
 					color: combineRgb(255, 255, 255),
@@ -568,8 +570,10 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 						options: {
 							aux: element.aux,
 							source: INPUT.shortcut,
-							fg: combineRgb(255, 255, 255),
-							bg: combineRgb(0, 255, 0),
+						},
+						style: {
+							color: combineRgb(255, 255, 255),
+							bgcolor: combineRgb(0, 255, 0),
 						},
 					},
 				],
@@ -650,7 +654,9 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		//
 		//		text: `${MACRO.slice(7)}\\nstop_rec`,
 		//		size: 'auto',
-		//		color: combineRgb(255, 255, 255),
+		//		},
+		// style: {
+		// 	color: combineRgb(255, 255, 255),
 		//		bgcolor: combineRgb(0, 0, 0),
 		//	},
 		//	steps: [ { down: [{ actionId: 'macroControl', options: { functionID: '', macro: MACRO, action: 'stop_record' } }],up:[]}],
@@ -710,11 +716,11 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		steps: [
 			{
 				down: [{ actionId: ActionId.muteMaster, options: { mute: 1 } }],
-				up:[],
+				up: [],
 			},
 			{
 				down: [{ actionId: ActionId.muteMaster, options: { mute: 0 } }],
-				up:[],
+				up: [],
 			},
 		],
 		feedbacks: [
@@ -722,8 +728,10 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				feedbackId: FeedbackId.audioMuteMaster,
 				options: {
 					mute: 1,
-					fg: combineRgb(255, 255, 255),
-					bg: combineRgb(0, 255, 255),
+				},
+				style: {
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 255, 255),
 				},
 			},
 		],
@@ -755,8 +763,10 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 					options: {
 						channel: CHANNEL.channel,
 						mute: 1,
-						fg: combineRgb(255, 255, 255),
-						bg: combineRgb(0, 255, 255),
+					},
+					style: {
+						color: combineRgb(255, 255, 255),
+						bgcolor: combineRgb(0, 255, 255),
 					},
 				},
 			],
