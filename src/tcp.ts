@@ -445,9 +445,7 @@ export class TCP {
 				//This is an input list
 				data.forEach((element) => {
 					if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
-					this.instance.log('debug',`${element}`)
 				})
-				
 			} else if (data.find((element) => element === 'GFX1')) {
 				//This is an input list
 				data.forEach((element) => {
