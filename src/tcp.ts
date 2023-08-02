@@ -6,6 +6,12 @@ interface TCPSockets {
 	main: TCPHelper | null
 }
 
+enum updateFlags {
+	None = 0,
+	onlyVariables = 1,
+	All = 2,
+}
+
 export class TCP {
 	private readonly instance: KairosInstance
 	private sockets: TCPSockets = {
@@ -425,7 +431,7 @@ export class TCP {
 			await fetchLayers()
 			await fetchVariableItems()
 			await subscribeToData()
-			await this.instance.updateInstance()
+			this.instance.updateInstance(updateFlags.All as number)
 			//	console.log('OBJ', this.instance.KairosObj))
 		})
 
@@ -438,7 +444,8 @@ export class TCP {
 		 * Processing here
 		 */
 
-		const processData = (data: Array<string>, cmd: string) => {
+		const processData = async (data: Array<string>, cmd: string): Promise<number> => {
+			let whatTodo = updateFlags.All
 			if (this.processCallback) {
 				this.processCallback(data, cmd)
 			} else if (data.find((element) => element === 'IP1')) {
@@ -467,7 +474,19 @@ export class TCP {
 				data.forEach((element) => {
 					if (element !== '') this.instance.KairosObj.AUX.push({ aux: element, name: element, liveSource: '' })
 				})
+			} else if (data.find((element) => element === 'APPLICATION:NEW')) {
+				//Complete refresh of all data
+				await fetchScenes()
+				await fetchStills()
+				await fetchFxinputs()
+				await fetchMacros()
+				await fetchFixedItems()
+				await fetchLayers()
+				await fetchVariableItems()
+				await subscribeToData()
+				this.instance.updateInstance(updateFlags.All as number)
 			} else {
+				whatTodo = updateFlags.None
 				// Do a switch block to go fast through the rest of the data
 				for (const returningData of data) {
 					switch (true) {
@@ -624,10 +643,11 @@ export class TCP {
 					}
 				}
 			}
+			return whatTodo
 		}
 
 		// ToDo: It should operate call back function with each transitions
-		this.sockets.main.on('data', (data: Buffer) => {
+		this.sockets.main.on('data', async (data: Buffer) => {
 			let str = this.recvRemain + data.toString()
 			this.recvRemain = ''
 			if (str.endsWith('\r\n') === false) {
@@ -644,7 +664,7 @@ export class TCP {
 				if (str.startsWith('\r\n')) {
 					// empty list
 					str = str.substring(2)
-					processData([], this.listQueue[0])
+					this.instance.updateInstance(await processData([], this.listQueue[0]))
 				} else if (str.startsWith('Error\r\n')) {
 					// error return
 					str = str.substring(7)
@@ -655,7 +675,7 @@ export class TCP {
 						return
 					}
 					const message = str.substring(0, end).split('\r\n')
-					processData(message, this.listQueue[0])
+					this.instance.updateInstance(await processData(message, this.listQueue[0]))
 					str = str.substring(end + 4)
 				}
 				this.listQueue.shift()
@@ -667,7 +687,7 @@ export class TCP {
 			}
 			if (str !== '') {
 				const message = str.split('\r\n')
-				processData(message, '')
+				this.instance.updateInstance(await processData(message, ''))
 				if (this.nCommand > 0) {
 					this.nCommand -= message.length - 1
 					if (this.nCommand <= 0) {
@@ -679,7 +699,6 @@ export class TCP {
 						}
 					}
 				}
-				this.instance.updateInstance()
 			}
 		})
 	}

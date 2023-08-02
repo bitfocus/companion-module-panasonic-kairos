@@ -7,6 +7,11 @@ import { updateBasicVariables } from './variables'
 import { TCP } from './tcp'
 import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from '@companion-module/base'
 
+enum updateFlags {
+	NONE = 0,
+	onlyVariables = 1,
+	All = 2,
+}
 /**
  * Companion instance class for Panasonic Kairos
  */
@@ -18,7 +23,7 @@ class KairosInstance extends InstanceBase<config> {
 
 	public KairosObj: {
 		audio_master_mute: number
-		INPUTS: { name: string; shortcut: string; }[]
+		INPUTS: { name: string; shortcut: string }[]
 		MEDIA_STILLS: Array<string>
 		SCENES: {
 			scene: string
@@ -79,7 +84,7 @@ class KairosInstance extends InstanceBase<config> {
 		this.config = config
 		this.tcp?.destroy()
 		this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
-		this.updateInstance()
+		this.updateInstance(updateFlags.All)
 		return Promise.resolve()
 	}
 
@@ -110,18 +115,23 @@ class KairosInstance extends InstanceBase<config> {
 	/**
 	 * @description sets actions and feedbacks available for this instance
 	 */
-	public updateInstance(): void {
+	public updateInstance(updateFlag: updateFlags): void {
 		const begin = Date.now()
 		// Cast actions and feedbacks from Kairos types to Companion types
-		const actions = getActions(this)
-		const feedbacks = getFeedbacks(this)
-		const presets = getPresets(this)
 
-		this.setActionDefinitions(actions)
-		this.setFeedbackDefinitions(feedbacks)
-		this.setPresetDefinitions(presets)
-		
-		updateBasicVariables(this)
+		if (updateFlag === updateFlags.All) {
+			const actions = getActions(this)
+			const feedbacks = getFeedbacks(this)
+			const presets = getPresets(this)
+
+			this.setActionDefinitions(actions)
+			this.setFeedbackDefinitions(feedbacks)
+			this.setPresetDefinitions(presets)
+
+			updateBasicVariables(this)
+		} else if (updateFlag === updateFlags.onlyVariables) {
+			updateBasicVariables(this)
+		}
 		const end = Date.now()
 		console.log('updateInstance', end - begin, 'ms')
 	}
