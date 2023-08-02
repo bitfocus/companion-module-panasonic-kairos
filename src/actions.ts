@@ -1,191 +1,36 @@
-import { CompanionActionEventInfo, CompanionActionEvent, SomeCompanionInputField } from '../../../instance_skel_types'
+import { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { options } from './utils'
 import KairosInstance from './index'
+import { updateBasicVariables } from './variables';
 
-export interface KairosActions {
-	// playerControl
-	playerControl: KairosAction<PlayerControlCallback>
-	macroControl: KairosAction<MacroControlCallback>
-	// AUX
-	setAUX: KairosAction<SetAUXCallback>
-	// mv Recall
-	mvRecall: KairosAction<MvRecallCallback>
-	// Layer Source Assignment
-	setSource: KairosAction<SetSourceCallback>
-	setMediaStill: KairosAction<SetMediaStillCallback>
-	// Transition
-	programCut: KairosAction<ProgramCutCallback>
-	programAuto: KairosAction<ProgramAutoCallback>
-	//nextTransition: KairosAction<NextTransitionCallback>
-	autoTransition: KairosAction<AutoTransitionCallback>
-	cutTransition: KairosAction<CutTransitionCallback>
-	// Scene Macros
-	smacroControl: KairosAction<SmacroControlCallback>
-	// Snapshots
-	triggerSnapshot: KairosAction<TriggerSnapshotCallback>
-	// Audio mixer control
-	muteMaster: KairosAction<MuteMasterCallback>
-	muteChannel: KairosAction<MuteChannelCallback>
-	// Index signature
-	[key: string]: KairosAction<any>
+export enum ActionId {
+	setSource = 'setSource',
+	setMediaStill = 'setMediaStill',
+	programCut = 'programCut',
+	programAuto = 'programAuto',
+	//nextTransition = 'nextTransition',
+	autoTransition = 'autoTransition',
+	cutTransition = 'cutTransition',
+	setAUX = 'setAUX',
+	playerControl = 'playerControl',
+	macroControl = 'macroControl',
+	mvRecall = 'mvRecall',
+	smacroControl = 'smacroControl',
+	triggerSnapshot = 'triggerSnapshot',
+	muteMaster = 'muteMaster',
+	muteChannel = 'muteChannel',
+	custom = 'custom',
 }
 
-// Player Control
-interface PlayerControlCallback {
-	action: 'playerControl'
-	options: Readonly<{
-		functionID: ''
-		player: string
-		action: string
-	}>
-}
-interface MacroControlCallback {
-	action: 'macroControl'
-	options: Readonly<{
-		functionID: ''
-		macro: string
-		action: string
-	}>
-}
-// AUX
-interface SetAUXCallback {
-	action: 'setAUX'
-	options: Readonly<{
-		functionID: ''
-		aux: string
-		source: string
-	}>
-}
-// MV recall
-interface MvRecallCallback {
-	action: 'mvRecall'
-	options: Readonly<{
-		functionID: ''
-		mv: string
-		preset: string
-	}>
-}
-// Layer Source Assignment
-interface SetSourceCallback {
-	action: 'setSource'
-	options: Readonly<{
-		layer: string
-		sourceAB: string
-		source: string
-	}>
-}
-// Layer Source Assignment
-interface SetMediaStillCallback {
-	action: 'setMediaStill'
-	options: Readonly<{
-		layer: string
-		sourceAB: string
-		source: string
-	}>
-}
-// Transition
-interface ProgramCutCallback {
-	action: 'programCut'
-	options: Readonly<{
-		scene: string
-	}>
-}
-interface ProgramAutoCallback {
-	action: 'programAuto'
-	options: Readonly<{
-		scene: string
-	}>
-}
-//interface NextTransitionCallback {
-//	action: 'nextTransition'
-//	options: Readonly<{
-//		transition: string
-//	}>
-//}
-interface AutoTransitionCallback {
-	action: 'autoTransition'
-	options: Readonly<{
-		layer: string
-	}>
-}
-interface CutTransitionCallback {
-	action: 'cutTransition'
-	options: Readonly<{
-		layer: string
-	}>
-}
-// Scene Macros
-interface SmacroControlCallback {
-	action: 'smacroControl'
-	options: Readonly<{
-	functionID: ''
-	smacro: string
-	action: string
-	}>
-}
-// Snapshots
-interface TriggerSnapshotCallback {
-	action: 'triggerSnapshot'
-	options: Readonly<{
-		snapshot: string
-	}>
-}
-// Audio
-interface MuteMasterCallback {
-	action: 'muteMaster'
-	options: Readonly<{
-		mute: number
-	}>
-}
-interface MuteChannelCallback {
-	action: 'muteChannel'
-	options: Readonly<{
-		channel: string
-		mute: number
-	}>
-}
-export type ActionCallbacks =
-	| MacroControlCallback
-	| PlayerControlCallback
-	| SetAUXCallback
-	| MvRecallCallback
-	| SetSourceCallback
-	| SetMediaStillCallback
-	| ProgramAutoCallback
-	| ProgramCutCallback
-	| SmacroControlCallback
-	| TriggerSnapshotCallback
-	| MuteMasterCallback
-	| MuteChannelCallback
-	//| NextTransitionCallback
-	| AutoTransitionCallback
-	| CutTransitionCallback
-
-// Force options to have a default to prevent sending undefined values
-type InputFieldWithDefault = Exclude<SomeCompanionInputField, 'default'> & { default: string | number | boolean | null }
-
-// Actions specific to Kairos
-export interface KairosAction<T> {
-	label: string
-	description?: string
-	options: InputFieldWithDefault[]
-	callback: (
-		action: Readonly<Omit<CompanionActionEvent, 'options' | 'id'> & T>,
-		info: Readonly<CompanionActionEventInfo | null>
-	) => void
-	subscribe?: (action: Readonly<Omit<CompanionActionEvent, 'options' | 'id'> & T>) => void
-	unsubscribe?: (action: Readonly<Omit<CompanionActionEvent, 'options' | 'id'> & T>) => void
-}
-
-export function getActions(instance: KairosInstance): KairosActions {
+export function getActions(instance: KairosInstance): CompanionActionDefinitions {
 	/**
 	 * @param action Action callback object
 	 * @param _info Unused
 	 * @description Sends functions/params from actions that don't require complex logic
 	 */
 
-	const sendBasicCommand = (action: Readonly<ActionCallbacks>, _info?: CompanionActionEventInfo | null): void => {
-		let functionName: string = action.action
+	const sendBasicCommand = (action: { id: string, options: { functionID: any;} }, _info?: CompanionActionDefinition | null): void => {
+		let functionName: string = action.id
 
 		if ('functionID' in action.options) {
 			functionName = action.options.functionID
@@ -194,16 +39,16 @@ export function getActions(instance: KairosInstance): KairosActions {
 		if (instance.tcp) instance.tcp.sendCommand(functionName)
 	}
 
-	return {
+	const actions: { [id in ActionId]: CompanionActionDefinition | undefined } = {
 		// Layer Source Assignment
-		setSource: {
-			label: 'Set Source',
+		[ActionId.setSource]: {
+			name: 'Set Source',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: instance.combinedLayerArray[0].name,
+					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '1',
 					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
 					minChoicesForSearch: 8,
 				},
@@ -221,7 +66,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0].shortcut,
+					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
 					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
 				},
 			],
@@ -237,8 +82,8 @@ export function getActions(instance: KairosInstance): KairosActions {
 				let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
 				if (index != -1) {
 					action.options.sourceAB == 'sourceA'
-						? (instance.combinedLayerArray[index].sourceA = action.options.source)
-						: (instance.combinedLayerArray[index].sourceB = action.options.source)
+						? (instance.combinedLayerArray[index].sourceA = action.options.source as string)
+						: (instance.combinedLayerArray[index].sourceB = action.options.source as string)
 				}
 				instance.checkFeedbacks('inputSource')
 
@@ -246,14 +91,14 @@ export function getActions(instance: KairosInstance): KairosActions {
 			},
 		},
 		// Layer Source Assignment
-		setMediaStill: {
-			label: 'Set Media Still',
+		[ActionId.setMediaStill]: {
+			name: 'Set Media Still',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: instance.combinedLayerArray[0].name,
+					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '1',
 					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
 					minChoicesForSearch: 8,
 				},
@@ -271,7 +116,7 @@ export function getActions(instance: KairosInstance): KairosActions {
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.MEDIA_STILLS[0],
+					default: instance.KairosObj.MEDIA_STILLS[0] ? instance.KairosObj.MEDIA_STILLS[0] : '1',
 					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: id })),
 				},
 			],
@@ -286,8 +131,8 @@ export function getActions(instance: KairosInstance): KairosActions {
 				let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
 				if (index != -1) {
 					action.options.sourceAB == 'sourceA'
-						? (instance.combinedLayerArray[index].sourceA = action.options.source)
-						: (instance.combinedLayerArray[index].sourceB = action.options.source)
+						? (instance.combinedLayerArray[index].sourceA = action.options.source as string)
+						: (instance.combinedLayerArray[index].sourceB = action.options.source as string)
 				}
 				instance.checkFeedbacks('inputSource')
 
@@ -295,14 +140,14 @@ export function getActions(instance: KairosInstance): KairosActions {
 			},
 		},
 		// Transition
-		programCut: {
-			label: 'Master CUT Transition',
+		[ActionId.programCut]: {
+			name: 'Master CUT Transition',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Scene',
 					id: 'scene',
-					default: instance.KairosObj.SCENES[0].scene,
+					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].scene : '1',
 					choices: instance.KairosObj.SCENES.map((id) => ({ id: id.scene, label: id.scene.slice(7) })),
 				},
 			],
@@ -317,14 +162,14 @@ export function getActions(instance: KairosInstance): KairosActions {
 				sendBasicCommand(programCut)
 			},
 		},
-		programAuto: {
-			label: 'Master AUTO Transition',
+		[ActionId.programAuto]: {
+			name: 'Master AUTO Transition',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Scene',
 					id: 'scene',
-					default: instance.KairosObj.SCENES[0].scene,
+					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].scene : '1',
 					choices: instance.KairosObj.SCENES.map((id) => ({ id: id.scene, label: id.scene.slice(7) })),
 				},
 			],
@@ -340,8 +185,8 @@ export function getActions(instance: KairosInstance): KairosActions {
 				sendBasicCommand(programAuto)
 			},
 		},
-		//nextTransition: {
-		//	label: 'Transition - NEXT for Layer',
+		//[ActionId.nextTransition]: {
+		//	name: 'Transition - NEXT for Layer',
 		//	options: [
 		//		{
 		//			type: 'dropdown',
@@ -363,14 +208,14 @@ export function getActions(instance: KairosInstance): KairosActions {
 		//		sendBasicCommand(nextTransition)
 		//	},
 		//},
-		autoTransition: {
-			label: 'AUTO Transition',
+		[ActionId.autoTransition]: {
+			name: 'AUTO Transition',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Transition',
 					id: 'layer',
-					default: instance.combinedTransitionsArray[0],
+					default: instance.combinedTransitionsArray[0] ? instance.combinedTransitionsArray[0] : '1',
 					choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
 				},
 			],
@@ -384,14 +229,14 @@ export function getActions(instance: KairosInstance): KairosActions {
 				sendBasicCommand(autoTransition)
 			},
 		},
-		cutTransition: {
-			label: 'CUT Transition',
+		[ActionId.cutTransition]: {
+			name: 'CUT Transition',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Transition',
 					id: 'layer',
-					default: instance.combinedTransitionsArray[0],
+					default: instance.combinedTransitionsArray[0] ? instance.combinedTransitionsArray[0] : '1',
 					choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
 				},
 			],
@@ -406,21 +251,21 @@ export function getActions(instance: KairosInstance): KairosActions {
 			},
 		},
 		//AUX
-		setAUX: {
-			label: 'Set AUX',
+		[ActionId.setAUX]: {
+			name: 'Set AUX',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'AUX',
 					id: 'aux',
-					default: instance.KairosObj.AUX[0].aux,
-					choices: instance.KairosObj.AUX.map((id) => ({ id: id.aux, label: id.aux })),
+					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].aux : '1',
+					choices: instance.KairosObj.AUX.map((id) => ({ id: id.aux, label: id.name })),
 				},
 				{
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0].shortcut,
+					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
 					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
 				},
 			],
@@ -433,21 +278,21 @@ export function getActions(instance: KairosInstance): KairosActions {
 				}
 				// Don't wait for the value to return from the mixer, set it directly
 				let index = instance.KairosObj.AUX.findIndex((x) => x.aux === action.options.aux)
-				instance.KairosObj.AUX[index].liveSource = action.options.source
+				instance.KairosObj.AUX[index].liveSource = action.options.source as string
 				instance.checkFeedbacks('aux')
-				instance.variables?.updateVariables()
+				updateBasicVariables(instance)
 				sendBasicCommand(setAUX)
 			},
 		},
 		//Control
-		playerControl: {
-			label: 'RAM/Clip Player action',
+		[ActionId.playerControl]: {
+			name: 'RAM/Clip Player action',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Player Source',
 					id: 'player',
-					default: instance.KairosObj.PLAYERS[0].player,
+					default: instance.KairosObj.PLAYERS[0] ? instance.KairosObj.PLAYERS[0].player : '1',
 					choices: instance.KairosObj.PLAYERS.map((element) => ({ id: element.player, label: element.player })),
 				},
 				options.playerControl,
@@ -462,14 +307,14 @@ export function getActions(instance: KairosInstance): KairosActions {
 				sendBasicCommand(playerControl)
 			},
 		},
-		macroControl: {
-			label: 'Macro action',
+		[ActionId.macroControl]: {
+			name: 'Macro action',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Macro',
 					id: 'macro',
-					default: instance.KairosObj.MACROS[0],
+					default: instance.KairosObj.MACROS[0] ? instance.KairosObj.MACROS[0] : '1',
 					choices: instance.KairosObj.MACROS.map((id) => ({ id, label: id.slice(7) })),
 					minChoicesForSearch: 8,
 				},
@@ -486,14 +331,14 @@ export function getActions(instance: KairosInstance): KairosActions {
 			},
 		},
 		// Recall MV presets
-		mvRecall: {
-			label: 'Recall Multiviewer preset',
+		[ActionId.mvRecall]: {
+			name: 'Recall Multiviewer preset',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Preset',
 					id: 'preset',
-					default: instance.KairosObj.MV_PRESETS[0],
+					default: instance.KairosObj.MV_PRESETS[0] ? instance.KairosObj.MV_PRESETS[0] : '1',
 					choices: instance.KairosObj.MV_PRESETS.map((id) => ({ id, label: id.slice(10) })),
 				},
 				options.mvRecall,
@@ -509,14 +354,14 @@ export function getActions(instance: KairosInstance): KairosActions {
 			},
 		},
 		// Scene Macros
-		smacroControl: {
-			label: 'Scene Macro action',
+		[ActionId.smacroControl]: {
+			name: 'Scene Macro action',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Scene Macro',
 					id: 'smacro',
-					default: instance.combinedSmacrosArray[0],
+					default: instance.combinedSmacrosArray[0] ? instance.combinedSmacrosArray[0] : '1',
 					choices: instance.combinedSmacrosArray.map((id) => ({ id, label: id })),
 					minChoicesForSearch: 8,
 				},
@@ -533,14 +378,14 @@ export function getActions(instance: KairosInstance): KairosActions {
 			},
 		},
 		// Snapshots
-		triggerSnapshot: {
-			label: 'Trigger Snapshots',
+		[ActionId.triggerSnapshot]: {
+			name: 'Trigger Snapshots',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Snapshot',
 					id: 'snapshot',
-					default: instance.combinedSnapshotsArray[0],
+					default: instance.combinedSnapshotsArray[0] ? instance.combinedSnapshotsArray[0] : '1',
 					choices: instance.combinedSnapshotsArray.map((id) => ({ id, label: id })),
 					minChoicesForSearch: 8,
 				},
@@ -557,8 +402,8 @@ export function getActions(instance: KairosInstance): KairosActions {
 			},
 		},
 		//Audio
-		muteMaster: {
-			label: 'Audio Mixer Master Mute',
+		[ActionId.muteMaster]: {
+			name: 'Audio Mixer Master Mute',
 			options: [options.mute],
 			callback: (action) => {
 				const muteMaster: any = {
@@ -568,14 +413,14 @@ export function getActions(instance: KairosInstance): KairosActions {
 						functionID: `AUDIOMIXER.mute=${action.options.mute}`,
 					},
 				}
-				instance.KairosObj.audio_master_mute = action.options.mute
+				instance.KairosObj.audio_master_mute = action.options.mute as number
 				instance.checkFeedbacks('audioMuteMaster')
-				instance.variables?.updateVariables()
+				updateBasicVariables(instance)
 				sendBasicCommand(muteMaster)
 			},
 		},
-		muteChannel: {
-			label: 'Audio Mixer Channel Mute',
+		[ActionId.muteChannel]: {
+			name: 'Audio Mixer Channel Mute',
 			options: [options.channel, options.mute],
 			callback: (action) => {
 				const muteChannel: any = {
@@ -585,16 +430,19 @@ export function getActions(instance: KairosInstance): KairosActions {
 						functionID: `AUDIOMIXER.${action.options.channel}.mute=${action.options.mute}`,
 					},
 				}
-				let channelNumber = parseInt(action.options.channel.slice(7)) - 1
-				instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute = action.options.mute
-				instance.checkFeedbacks('audioMuteChannel')
-				instance.variables?.updateVariables()
-				sendBasicCommand(muteChannel)
+				if (action.options.channel) {
+					let channelNumberString = action.options.channel as string
+					let channelNumber = parseInt(channelNumberString.slice(7)) - 1
+					instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute = action.options.mute as number
+					instance.checkFeedbacks('audioMuteChannel')
+					updateBasicVariables(instance)
+					sendBasicCommand(muteChannel)
+				}
 			},
 		},
 		// Custom
-		custom: {
-			label: 'Send custom command',
+		[ActionId.custom]: {
+			name: 'Send custom command',
 			options: [
 				{
 					label: 'command',
@@ -603,7 +451,15 @@ export function getActions(instance: KairosInstance): KairosActions {
 					default: '',
 				},
 			],
-			callback: sendBasicCommand,
+			callback: () => {
+				const custom: any = {
+					id: 'custom',
+					options: {},
+				}
+				sendBasicCommand(custom)
+			},
 		},
 	}
+
+	return actions
 }

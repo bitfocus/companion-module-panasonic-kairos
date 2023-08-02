@@ -1,17 +1,25 @@
-import { SomeCompanionConfigField } from '../../../instance_skel_types'
+import { InstanceBase, SomeCompanionConfigField } from "@companion-module/base"
 
-export interface Config {
+export interface config {
 	label: string
 	host: string
-	port: number
+	tcpPort: number
 	username: string
 	password: string
+}
+
+export interface InstanceBaseExt<TConfig> extends InstanceBase<TConfig> {
+	[x: string]: any
+	tcp: any
+	config: TConfig
+	UpdateVariablesValues(): void
+	InitVariables(): void
 }
 
 export const getConfigFields = (): SomeCompanionConfigField[] => {
 	return [
 		{
-			type: 'text',
+			type: 'static-text',
 			id: 'info',
 			width: 12,
 			label: 'Startup warning',
@@ -28,8 +36,8 @@ export const getConfigFields = (): SomeCompanionConfigField[] => {
 		},
 		{
 			type: 'number',
-			id: 'port',
-			label: 'Port',
+			id: 'tcpPort',
+			label: 'TCP Port',
 			width: 6,
 			default: 3005,
 			min: 1,

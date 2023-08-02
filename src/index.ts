@@ -1,37 +1,29 @@
-import instance_skel = require('../../../instance_skel')
-import {
-	CompanionActions,
-	CompanionConfigField,
-	CompanionFeedbacks,
-	CompanionSystem,
-	CompanionPreset,
-	// CompanionStaticUpgradeScript,
-} from '../../../instance_skel_types'
-import { Config } from './config'
+import { config } from './config'
 import { getActions } from './actions'
 import { getConfigFields } from './config'
 import { getFeedbacks } from './feedback'
 import { getPresets } from './presets'
+import { updateBasicVariables } from './variables'
 import { TCP } from './tcp'
-// import { getUpgrades } from './upgrade'
-import { Variables } from './variables'
+import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from '@companion-module/base'
 
+enum updateFlags {
+	NONE = 0,
+	onlyVariables = 1,
+	All = 2,
+}
 /**
  * Companion instance class for Panasonic Kairos
  */
-class KairosInstance extends instance_skel<Config> {
-	constructor(system: CompanionSystem, id: string, config: Config) {
-		super(system, id, config)
-		this.system = system
-		this.config = config
+class KairosInstance extends InstanceBase<config> {
+	config: config | undefined
+	constructor(internal: unknown) {
+		super(internal)
 	}
-	public combinedLayerArray!: { name: string; sourceA: string; sourceB: string; preset_enabled: number }[]
-	public combinedTransitionsArray!: Array<string>
-	public combinedSmacrosArray!: Array<string>
-	public combinedSnapshotsArray!: Array<string>
-	public KairosObj!: {
+
+	public KairosObj: {
 		audio_master_mute: number
-		INPUTS: { shortcut: string; name: string }[]
+		INPUTS: { name: string; shortcut: string }[]
 		MEDIA_STILLS: Array<string>
 		SCENES: {
 			scene: string
@@ -40,36 +32,47 @@ class KairosInstance extends instance_skel<Config> {
 			layers: { layer: string; sourceA: string; sourceB: string }[]
 			transitions: Array<string>
 		}[]
-		AUX: { aux: string; name: string; liveSource: string; available: number }[]
+		AUX: { aux: string; name: string; liveSource: string }[]
 		MACROS: Array<string>
 		PLAYERS: { player: string; repeat: number }[]
 		MV_PRESETS: Array<string>
 		AUDIO_CHANNELS: { channel: string; mute: number }[]
+	} = {
+		audio_master_mute: 100,
+		INPUTS: [],
+		MEDIA_STILLS: [],
+		SCENES: [],
+		AUX: [],
+		MACROS: [],
+		PLAYERS: [],
+		MV_PRESETS: [],
+		AUDIO_CHANNELS: [],
 	}
+
+	public combinedLayerArray: { name: string; sourceA: string; sourceB: string; preset_enabled: number }[] = []
+	public combinedTransitionsArray: Array<string> = []
+	public combinedSmacrosArray: Array<string> = []
+	public combinedSnapshotsArray: Array<string> = []
 
 	public connected = false
 	public tcp: TCP | null = null
-	public variables: Variables | null = null
 
 	/**
 	 * @description triggered on instance being enabled
 	 */
-	public init(): void {
+	async init(config: config): Promise<void> {
 		// New Module warning
 		this.log('info', `Welcome, Panasonic module is loading`)
-		this.variables = new Variables(this)
-		this.tcp = new TCP(this)
-		this.status(this.STATUS_WARNING, 'Connecting')
+		this.updateStatus(InstanceStatus.Connecting, 'Connecting')
 
-		this.updateInstance()
-		this.variables.updateDefinitions()
+		await this.configUpdated(config)
+		updateBasicVariables(this)
 	}
 
 	/**
-	 * @returns config options
-	 * @description generates the config options available for this instance
+	 * Creates the configuration fields for web config.
 	 */
-	public readonly config_fields = (): CompanionConfigField[] => {
+	public getConfigFields(): SomeCompanionConfigField[] {
 		return getConfigFields()
 	}
 
@@ -77,17 +80,19 @@ class KairosInstance extends instance_skel<Config> {
 	 * @param config new configuration data
 	 * @description triggered every time the config for this instance is saved
 	 */
-	public updateConfig(config: Config): void {
+	public configUpdated(config: config): Promise<void> {
 		this.config = config
-		this.updateInstance()
-		this.setPresetDefinitions(getPresets(this) as CompanionPreset[])
-		if (this.variables) this.variables.updateDefinitions()
+		this.tcp?.destroy()
+		this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
+		this.updateInstance(updateFlags.All)
+		return Promise.resolve()
 	}
 
 	/**
 	 * @description close connections and stop timers/intervals
 	 */
-	public readonly destroy = (): void => {
+	public async destroy(): Promise<void> {
+		this.tcp?.destroy()
 		this.log('debug', `Instance destroyed: ${this.id}`)
 	}
 
@@ -110,20 +115,28 @@ class KairosInstance extends instance_skel<Config> {
 	/**
 	 * @description sets actions and feedbacks available for this instance
 	 */
-	public updateInstance(): void {
-		const begin = Date.now();
+	public updateInstance(updateFlag: updateFlags): void {
+		const begin = Date.now()
 		// Cast actions and feedbacks from Kairos types to Companion types
-		const actions = getActions(this) as CompanionActions
-		const feedbacks = getFeedbacks(this) as CompanionFeedbacks
-		const presets = getPresets(this) as CompanionPreset[]
 
-		this.setActions(actions)
-		this.setFeedbackDefinitions(feedbacks)
-		this.setPresetDefinitions(presets)
-		const end = Date.now();
-		console.log('number of presets', presets.length)
+		if (updateFlag === updateFlags.All) {
+			const actions = getActions(this)
+			const feedbacks = getFeedbacks(this)
+			const presets = getPresets(this)
+
+			this.setActionDefinitions(actions)
+			this.setFeedbackDefinitions(feedbacks)
+			this.setPresetDefinitions(presets)
+
+			updateBasicVariables(this)
+		} else if (updateFlag === updateFlags.onlyVariables) {
+			updateBasicVariables(this)
+		}
+		const end = Date.now()
 		console.log('updateInstance', end - begin, 'ms')
 	}
 }
+
+runEntrypoint(KairosInstance, [])
 
 export = KairosInstance
