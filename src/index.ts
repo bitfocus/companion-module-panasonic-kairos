@@ -92,8 +92,8 @@ class KairosInstance extends InstanceBase<config> {
 	 * @description close connections and stop timers/intervals
 	 */
 	public async destroy(): Promise<void> {
-		this.log('debug', `Instance destroyed: ${this.id}`)
 		this.tcp?.destroy()
+		this.log('debug', `Instance destroyed: ${this.id}`)
 	}
 
 	//  /**
