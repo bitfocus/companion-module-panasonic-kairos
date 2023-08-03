@@ -133,7 +133,7 @@ class KairosInstance extends InstanceBase<config> {
 			updateBasicVariables(this)
 		}
 		const end = Date.now()
-		console.log('updateInstance', end - begin, 'ms')
+		this.log('debug',`updateInstance:${updateFlag === updateFlags.onlyVariables ? 'variables' : 'all'} ${end - begin}, 'ms'`)
 	}
 }
 
