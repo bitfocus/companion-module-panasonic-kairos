@@ -476,6 +476,7 @@ export class TCP {
 				})
 			} else if (data.find((element) => element === 'APPLICATION:NEW')) {
 				//Complete refresh of all data
+				this.instance.log('debug', 'Complete refresh of all data')
 				await fetchScenes()
 				await fetchStills()
 				await fetchFxinputs()
@@ -570,6 +571,10 @@ export class TCP {
 							break
 						case /^MVPRESETS\./i.test(returningData): // This is an MV Preset list
 							this.instance.KairosObj.MV_PRESETS.push(returningData)
+							break
+						case /\.sourceOptions=/i.test(returningData): // This is scene source options list
+						//per scene source options
+						// this.instance.kairosObj.SCENES.SOURCE_OPTIONS.push(returningData)
 							break
 						case /\.Macros\./i.test(returningData): // This is a Scene Macro
 							{
