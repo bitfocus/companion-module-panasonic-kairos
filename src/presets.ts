@@ -133,7 +133,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 							actionId: ActionId.setMediaStill,
 							options: {
 								functionID: '',
-								layer: instance.combinedLayerArray[0].name,
+								layer: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '',
 								sourceAB: 'sourceA',
 								source: STILL,
 							},
@@ -148,7 +148,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 					options: {
 						source: STILL,
 						sourceAB: 'sourceA',
-						layer: instance.combinedLayerArray[0].name,
+						layer: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '',
 					},
 					style: {
 						bgcolor: combineRgb(0, 255, 0),
