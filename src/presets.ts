@@ -550,7 +550,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				category: element.name,
 				name: element.aux,
 				style: {
-					text: `$(kairos:${element.aux.replace(/ /g, '_')})\\n$(kairos:${INPUT.shortcut.replace(/ /g, '_')})`,
+					text: `$(kairos:AUX_ID_${element.aux.replace(/ /g, '_')})\\n$(kairos:${INPUT.shortcut.replace(/ /g, '_')})`,
 					//text: `${element.name}\\n${INPUT.name}`,
 					size: 'auto',
 					color: combineRgb(255, 255, 255),
