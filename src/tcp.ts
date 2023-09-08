@@ -211,7 +211,11 @@ export class TCP {
 				this.sendCommand('list:FXINPUTS')
 				this.processCallback = (data: Array<string>, cmd: string) => {
 					if (data.length === 0 && cmd !== 'FXINPUTS') {
-						this.instance.KairosObj.INPUTS.push({ shortcut: cmd, name: '' })
+						// this.instance.log('debug', 'FXINPUT: ' + cmd.replace(/ /g, '_').split('.SourceEffectGroup')[0])
+						this.instance.KairosObj.INPUTS.push({
+							shortcut: cmd.split('.SourceEffectGroup')[0],
+							name: cmd.replace(/ /g, '_').split('.SourceEffectGroup')[0],
+						})
 					}
 					data.forEach((element) => {
 						this.sendCommand(`list:${element}`)
@@ -573,8 +577,8 @@ export class TCP {
 							this.instance.KairosObj.MV_PRESETS.push(returningData)
 							break
 						case /\.sourceOptions=/i.test(returningData): // This is scene source options list
-						//per scene source options
-						// this.instance.kairosObj.SCENES.SOURCE_OPTIONS.push(returningData)
+							//per scene source options
+							// this.instance.kairosObj.SCENES.SOURCE_OPTIONS.push(returningData)
 							break
 						case /\.Macros\./i.test(returningData): // This is a Scene Macro
 							{
