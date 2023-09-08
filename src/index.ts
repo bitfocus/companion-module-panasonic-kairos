@@ -116,7 +116,7 @@ class KairosInstance extends InstanceBase<config> {
 	 * @description sets actions and feedbacks available for this instance
 	 */
 	public updateInstance(updateFlag: updateFlags): void {
-		const begin = Date.now()
+		// const begin = Date.now()
 		// Cast actions and feedbacks from Kairos types to Companion types
 
 		if (updateFlag === updateFlags.All) {
@@ -132,8 +132,8 @@ class KairosInstance extends InstanceBase<config> {
 		} else if (updateFlag === updateFlags.onlyVariables) {
 			updateBasicVariables(this)
 		}
-		const end = Date.now()
-		this.log('debug',`updateInstance:${updateFlag === updateFlags.onlyVariables ? 'variables' : 'all'} ${end - begin}, 'ms'`)
+		// const end = Date.now()
+		// this.log('debug',`updateInstance:${updateFlag === updateFlags.onlyVariables ? 'variables' : 'all'} ${end - begin}, 'ms'`)
 	}
 }
 
