@@ -1,7 +1,7 @@
 import { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { options } from './utils'
 import KairosInstance from './index'
-import { updateBasicVariables } from './variables';
+import { updateBasicVariables } from './variables'
 
 export enum ActionId {
 	setSource = 'setSource',
@@ -24,19 +24,48 @@ export enum ActionId {
 
 export function getActions(instance: KairosInstance): CompanionActionDefinitions {
 	/**
-	 * @param action Action callback object
-	 * @param _info Unused
-	 * @description Sends functions/params from actions that don't require complex logic
+	 * Send PATCH Request
+	 * @param action
+	 * @param _info
 	 */
+	const sendPatchCommand = (
+		action: { patchCommand: string; options: string; body: {} },
+		_info?: CompanionActionDefinition | null
+	): void => {
+		const base64Credentials = Buffer.from(`${instance.config?.username}:${instance.config?.password}`).toString(
+			'base64'
+		)
+		try {
+			instance.log(
+				'debug',
+				`Sending PATCH command: http://${instance.config?.host}:${instance.config?.restPort}${action.patchCommand}${
+					action.options
+				} + ${JSON.stringify(action.body)}`
+			)
+			fetch(`http://${instance.config?.host}:${instance.config?.restPort}${action.patchCommand}${action.options}`, {
+				method: 'PATCH',
+				headers: {
+					Authorization: `Basic ${base64Credentials}`,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(action.body),
+			})
+		} catch (error) {
+			instance.log('error', `Error sending PATCH command: ${error}`)
+		}
+	}
 
-	const sendBasicCommand = (action: { id: string, options: { functionID: any;} }, _info?: CompanionActionDefinition | null): void => {
+	const sendSimpleProtocolCommand = (
+		action: { id: string; options: { functionID: any } },
+		_info?: CompanionActionDefinition | null
+	): void => {
 		let functionName: string = action.id
 
 		if ('functionID' in action.options) {
 			functionName = action.options.functionID
 		}
 
-		if (instance.rest) instance.rest.sendCommand(functionName)
+		if (instance.tcp) instance.tcp.sendCommand(functionName)
 	}
 
 	const actions: { [id in ActionId]: CompanionActionDefinition | undefined } = {
@@ -48,8 +77,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '1',
-					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+					default: '',
+					choices: instance.combinedLayerArray.map((item) => ({ id: item.name, label: item.name })),
 					minChoicesForSearch: 8,
 				},
 				{
@@ -66,17 +95,15 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
+					default: '',
+					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
 				},
 			],
 			callback: (action) => {
 				const setSource: any = {
-					id: 'setSource',
-					options: {
-						// functionID: `${action.options.scene}.Layers.${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
-						functionID: `${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
-					},
+					patchCommand: '/scenes',
+					options: action.options.layer,
+					body: { [`${action.options.sourceAB}`]: action.options.source },
 				}
 				// Don't wait for the value to return from the mixer, set it directly
 				let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
@@ -87,7 +114,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				}
 				instance.checkFeedbacks('inputSource')
 
-				sendBasicCommand(setSource)
+				sendPatchCommand(setSource)
 			},
 		},
 		// Layer Source Assignment
@@ -136,7 +163,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				}
 				instance.checkFeedbacks('inputSource')
 
-				sendBasicCommand(setMediaStill)
+				sendSimpleProtocolCommand(setMediaStill)
 			},
 		},
 		// Transition
@@ -159,7 +186,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					},
 				}
 
-				sendBasicCommand(programCut)
+				sendSimpleProtocolCommand(programCut)
 			},
 		},
 		[ActionId.programAuto]: {
@@ -182,7 +209,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					},
 				}
 
-				sendBasicCommand(programAuto)
+				sendSimpleProtocolCommand(programAuto)
 			},
 		},
 		//[ActionId.nextTransition]: {
@@ -205,7 +232,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		//				)}`,
 		//			},
 		//		}
-		//		sendBasicCommand(nextTransition)
+		//		sendSimpleProtocolCommand(nextTransition)
 		//	},
 		//},
 		[ActionId.autoTransition]: {
@@ -226,7 +253,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						functionID: `${action.options.layer}.transition_auto`,
 					},
 				}
-				sendBasicCommand(autoTransition)
+				sendSimpleProtocolCommand(autoTransition)
 			},
 		},
 		[ActionId.cutTransition]: {
@@ -247,7 +274,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						functionID: `${action.options.layer}.transition_cut`,
 					},
 				}
-				sendBasicCommand(cutTransition)
+				sendSimpleProtocolCommand(cutTransition)
 			},
 		},
 		//AUX
@@ -258,30 +285,29 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'AUX',
 					id: 'aux',
-					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].aux : '1',
-					choices: instance.KairosObj.AUX.map((id) => ({ id: id.aux, label: id.name })),
+					default: '',
+					choices: instance.KairosObj.AUX.map((item) => ({ id: item.name, label: item.name })),
 				},
 				{
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
+					default: '',
+					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.shortcut, label: item.name })),
 				},
 			],
 			callback: (action) => {
 				const setAUX: any = {
-					id: 'setAUX',
-					options: {
-						functionID: `${action.options.aux}.source=${action.options.source}`,
-					},
+					patchCommmand: '/aux',
+					options: action.options.aux,
+					body: { source: action.options.source },
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.KairosObj.AUX.findIndex((x) => x.aux === action.options.aux)
-				instance.KairosObj.AUX[index].liveSource = action.options.source as string
+				let index = instance.KairosObj.AUX.findIndex((x) => x.name === action.options.aux)
+				instance.KairosObj.AUX[index].source = action.options.source as string
 				instance.checkFeedbacks('aux')
 				updateBasicVariables(instance)
-				sendBasicCommand(setAUX)
+				sendPatchCommand(setAUX)
 			},
 		},
 		//Control
@@ -304,7 +330,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						functionID: `${action.options.player}.${action.options.action}`,
 					},
 				}
-				sendBasicCommand(playerControl)
+				sendSimpleProtocolCommand(playerControl)
 			},
 		},
 		[ActionId.macroControl]: {
@@ -327,7 +353,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						functionID: `${action.options.macro}.${action.options.action}`,
 					},
 				}
-				sendBasicCommand(macroControl)
+				sendSimpleProtocolCommand(macroControl)
 			},
 		},
 		// Recall MV presets
@@ -350,7 +376,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						functionID: `${action.options.preset}.${action.options.mv}`,
 					},
 				}
-				sendBasicCommand(mvRecall)
+				sendSimpleProtocolCommand(mvRecall)
 			},
 		},
 		// Scene Macros
@@ -374,7 +400,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						functionID: `${action.options.smacro}.${action.options.action}`,
 					},
 				}
-				sendBasicCommand(smacroControl)
+				sendSimpleProtocolCommand(smacroControl)
 			},
 		},
 		// Snapshots
@@ -398,7 +424,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					},
 				}
 
-				sendBasicCommand(triggerSnapshot)
+				sendSimpleProtocolCommand(triggerSnapshot)
 			},
 		},
 		//Audio
@@ -416,7 +442,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				instance.KairosObj.audio_master_mute = action.options.mute as number
 				instance.checkFeedbacks('audioMuteMaster')
 				updateBasicVariables(instance)
-				sendBasicCommand(muteMaster)
+				sendSimpleProtocolCommand(muteMaster)
 			},
 		},
 		[ActionId.muteChannel]: {
@@ -436,7 +462,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute = action.options.mute as number
 					instance.checkFeedbacks('audioMuteChannel')
 					updateBasicVariables(instance)
-					sendBasicCommand(muteChannel)
+					sendSimpleProtocolCommand(muteChannel)
 				}
 			},
 		},
@@ -456,7 +482,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					id: 'custom',
 					options: {},
 				}
-				sendBasicCommand(custom)
+				sendSimpleProtocolCommand(custom)
 			},
 		},
 	}
