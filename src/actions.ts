@@ -36,7 +36,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			functionName = action.options.functionID
 		}
 
-		if (instance.tcp) instance.tcp.sendCommand(functionName)
+		if (instance.rest) instance.rest.sendCommand(functionName)
 	}
 
 	const actions: { [id in ActionId]: CompanionActionDefinition | undefined } = {
@@ -147,8 +147,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene',
 					id: 'scene',
-					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].scene : '1',
-					choices: instance.KairosObj.SCENES.map((id) => ({ id: id.scene, label: id.scene.slice(7) })),
+					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].name : '1',
+					choices: instance.KairosObj.SCENES.map((id) => ({ id: id.name, label: id.name.slice(7) })),
 				},
 			],
 			callback: (action) => {
@@ -169,8 +169,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene',
 					id: 'scene',
-					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].scene : '1',
-					choices: instance.KairosObj.SCENES.map((id) => ({ id: id.scene, label: id.scene.slice(7) })),
+					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].name : '1',
+					choices: instance.KairosObj.SCENES.map((id) => ({ id: id.name, label: id.name.slice(7) })),
 				},
 			],
 			callback: (action) => {

@@ -391,156 +391,156 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 	})
 	// Snapshots & scene transitions
 	instance.KairosObj.SCENES.forEach((SCENE) => {
-		presets[`${SCENE.scene}.cut`] = {
+		presets[`${SCENE.name}.cut`] = {
 			type: 'button',
 			category: 'TRANSITIONS',
 			name: 'Master Cut',
 			style: {
-				text: `${SCENE.scene.slice(7)}\\nCUT`,
+				text: `${SCENE.name.slice(7)}\\nCUT`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(255, 0, 0),
 			},
-			steps: [{ down: [{ actionId: ActionId.programCut, options: { scene: SCENE.scene } }], up: [] }],
+			steps: [{ down: [{ actionId: ActionId.programCut, options: { scene: SCENE.name } }], up: [] }],
 			feedbacks: [],
 		}
-		presets[`${SCENE.scene}.auto`] = {
+		presets[`${SCENE.name}.auto`] = {
 			type: 'button',
 			category: 'TRANSITIONS',
 			name: 'Master Auto',
 			style: {
-				text: `${SCENE.scene.slice(7)}\\nAUTO`,
+				text: `${SCENE.name.slice(7)}\\nAUTO`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(255, 0, 0),
 			},
-			steps: [{ down: [{ actionId: ActionId.programAuto, options: { scene: SCENE.scene } }], up: [] }],
+			steps: [{ down: [{ actionId: ActionId.programAuto, options: { scene: SCENE.name } }], up: [] }],
 			feedbacks: [],
 		}
-		SCENE.transitions.forEach((TRANSITION) => {
-			presets[`${TRANSITION}.cut`] = {
-				type: 'button',
-				category: 'TRANSITIONS',
-				name: 'transition Cut',
-				style: {
-					text: `${SCENE.scene.slice(7)}\\n${TRANSITION.slice(TRANSITION.search('.Transitions.') + 13)}\\nCUT`,
-					size: 'auto',
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 0, 0),
-				},
-				steps: [{ down: [{ actionId: ActionId.cutTransition, options: { layer: TRANSITION } }], up: [] }],
-				feedbacks: [],
-			}
-			presets[`${TRANSITION}.auto`] = {
-				type: 'button',
-				category: 'TRANSITIONS',
-				name: 'transition Auto',
-				style: {
-					text: `${SCENE.scene.slice(7)}\\n${TRANSITION.slice(TRANSITION.search('.Transitions.') + 13)}\\nAUTO`,
-					size: 'auto',
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 0, 0),
-				},
-				steps: [{ down: [{ actionId: ActionId.autoTransition, options: { layer: TRANSITION } }], up: [] }],
-				feedbacks: [],
-			}
-		})
-		SCENE.smacros.forEach((SMACRO) => {
-			presets[`${SMACRO}.play`] = {
-				type: 'button',
-				category: 'SCENE MACROS',
-				name: SMACRO,
-				style: {
-					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nplay`,
-					size: 'auto',
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 0, 0),
-				},
-				steps: [
-					{
-						down: [{ actionId: ActionId.smacroControl, options: { functionID: '', smacro: SMACRO, action: 'play' } }],
-						up: [],
-					},
-				],
-				feedbacks: [],
-			}
-			//presets[`${SMACRO}.pause`]={
-			//	type: 'button',
-			//	category: 'SCENE MACROS',
-			//	name: SMACRO,
-			//	style: {
-			//
-			//		text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\npause`,
-			//		size: 'auto',
-			//		color: combineRgb(255, 255, 255),
-			//		bgcolor: combineRgb(0, 0, 0),
-			//	},
-			//	steps: [ { down: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'pause' } }],up:[]}],
-			//	feedbacks: [],
-			//}
-			presets[`${SMACRO}.stop`] = {
-				type: 'button',
-				category: 'SCENE MACROS',
-				name: SMACRO,
-				style: {
-					text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop`,
-					size: 'auto',
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 0, 0),
-				},
-				steps: [
-					{
-						down: [{ actionId: ActionId.smacroControl, options: { functionID: '', smacro: SMACRO, action: 'stop' } }],
-						up: [],
-					},
-				],
-				feedbacks: [],
-			}
-			//presets[`${SMACRO}.record`]={
-			//	type: 'button',
-			//	category: 'SCENE MACROS',
-			//	name: SMACRO,
-			//	style: {
-			//
-			//		text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nrecord`,
-			//		size: 'auto',
-			//		color: combineRgb(255, 255, 255),
-			//		bgcolor: combineRgb(0, 0, 0),
-			//	},
-			//	steps: [ { down: [{ actionId: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'record' } }],up:[]}],
-			//	feedbacks: [],
-			//}
-			//presets[`${SMACRO}.stop_rec`]={
-			//	type: 'button',
-			//	category: 'SCENE MACROS',
-			//	name: SMACRO,
-			//	style: {
-			//
-			//		text: `${SCENE.scene.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop_rec`,
-			//		size: 'auto',
-			//		color: combineRgb(255, 255, 255),
-			//		bgcolor: combineRgb(0, 0, 0),
-			//	},
-			//	steps: [ { down: [{ actionId: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop_record' } }],up:[]}],
-			//	feedbacks: [],
-			//}
-		})
-		SCENE.snapshots.forEach((SNAPSHOT) => {
-			presets[`${SNAPSHOT}.trigger`] = {
-				type: 'button',
-				category: 'SNAPSHOTS',
-				name: SNAPSHOT,
-				style: {
-					//text: SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11),
-					text: `${SCENE.scene.slice(7)}\\n${SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11)}`,
-					size: 'auto',
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 0, 0),
-				},
-				steps: [{ down: [{ actionId: ActionId.triggerSnapshot, options: { snapshot: SNAPSHOT } }], up: [] }],
-				feedbacks: [],
-			}
-		})
+		// SCENE.transitions.forEach((TRANSITION) => {
+		// 	presets[`${TRANSITION}.cut`] = {
+		// 		type: 'button',
+		// 		category: 'TRANSITIONS',
+		// 		name: 'transition Cut',
+		// 		style: {
+		// 			text: `${SCENE.name.slice(7)}\\n${TRANSITION.slice(TRANSITION.search('.Transitions.') + 13)}\\nCUT`,
+		// 			size: 'auto',
+		// 			color: combineRgb(255, 255, 255),
+		// 			bgcolor: combineRgb(0, 0, 0),
+		// 		},
+		// 		steps: [{ down: [{ actionId: ActionId.cutTransition, options: { layer: TRANSITION } }], up: [] }],
+		// 		feedbacks: [],
+		// 	}
+		// 	presets[`${TRANSITION}.auto`] = {
+		// 		type: 'button',
+		// 		category: 'TRANSITIONS',
+		// 		name: 'transition Auto',
+		// 		style: {
+		// 			text: `${SCENE.name.slice(7)}\\n${TRANSITION.slice(TRANSITION.search('.Transitions.') + 13)}\\nAUTO`,
+		// 			size: 'auto',
+		// 			color: combineRgb(255, 255, 255),
+		// 			bgcolor: combineRgb(0, 0, 0),
+		// 		},
+		// 		steps: [{ down: [{ actionId: ActionId.autoTransition, options: { layer: TRANSITION } }], up: [] }],
+		// 		feedbacks: [],
+		// 	}
+		// })
+		// SCENE.smacros.forEach((SMACRO) => {
+		// 	presets[`${SMACRO}.play`] = {
+		// 		type: 'button',
+		// 		category: 'SCENE MACROS',
+		// 		name: SMACRO,
+		// 		style: {
+		// 			text: `${SCENE.name.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nplay`,
+		// 			size: 'auto',
+		// 			color: combineRgb(255, 255, 255),
+		// 			bgcolor: combineRgb(0, 0, 0),
+		// 		},
+		// 		steps: [
+		// 			{
+		// 				down: [{ actionId: ActionId.smacroControl, options: { functionID: '', smacro: SMACRO, action: 'play' } }],
+		// 				up: [],
+		// 			},
+		// 		],
+		// 		feedbacks: [],
+		// 	}
+		// 	//presets[`${SMACRO}.pause`]={
+		// 	//	type: 'button',
+		// 	//	category: 'SCENE MACROS',
+		// 	//	name: SMACRO,
+		// 	//	style: {
+		// 	//
+		// 	//		text: `${SCENE.name.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\npause`,
+		// 	//		size: 'auto',
+		// 	//		color: combineRgb(255, 255, 255),
+		// 	//		bgcolor: combineRgb(0, 0, 0),
+		// 	//	},
+		// 	//	steps: [ { down: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'pause' } }],up:[]}],
+		// 	//	feedbacks: [],
+		// 	//}
+		// 	presets[`${SMACRO}.stop`] = {
+		// 		type: 'button',
+		// 		category: 'SCENE MACROS',
+		// 		name: SMACRO,
+		// 		style: {
+		// 			text: `${SCENE.name.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop`,
+		// 			size: 'auto',
+		// 			color: combineRgb(255, 255, 255),
+		// 			bgcolor: combineRgb(0, 0, 0),
+		// 		},
+		// 		steps: [
+		// 			{
+		// 				down: [{ actionId: ActionId.smacroControl, options: { functionID: '', smacro: SMACRO, action: 'stop' } }],
+		// 				up: [],
+		// 			},
+		// 		],
+		// 		feedbacks: [],
+		// 	}
+		// 	//presets[`${SMACRO}.record`]={
+		// 	//	type: 'button',
+		// 	//	category: 'SCENE MACROS',
+		// 	//	name: SMACRO,
+		// 	//	style: {
+		// 	//
+		// 	//		text: `${SCENE.name.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nrecord`,
+		// 	//		size: 'auto',
+		// 	//		color: combineRgb(255, 255, 255),
+		// 	//		bgcolor: combineRgb(0, 0, 0),
+		// 	//	},
+		// 	//	steps: [ { down: [{ actionId: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'record' } }],up:[]}],
+		// 	//	feedbacks: [],
+		// 	//}
+		// 	//presets[`${SMACRO}.stop_rec`]={
+		// 	//	type: 'button',
+		// 	//	category: 'SCENE MACROS',
+		// 	//	name: SMACRO,
+		// 	//	style: {
+		// 	//
+		// 	//		text: `${SCENE.name.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop_rec`,
+		// 	//		size: 'auto',
+		// 	//		color: combineRgb(255, 255, 255),
+		// 	//		bgcolor: combineRgb(0, 0, 0),
+		// 	//	},
+		// 	//	steps: [ { down: [{ actionId: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop_record' } }],up:[]}],
+		// 	//	feedbacks: [],
+		// 	//}
+		// })
+		// SCENE.snapshots.forEach((SNAPSHOT) => {
+		// 	presets[`${SNAPSHOT}.trigger`] = {
+		// 		type: 'button',
+		// 		category: 'SNAPSHOTS',
+		// 		name: SNAPSHOT,
+		// 		style: {
+		// 			//text: SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11),
+		// 			text: `${SCENE.name.slice(7)}\\n${SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11)}`,
+		// 			size: 'auto',
+		// 			color: combineRgb(255, 255, 255),
+		// 			bgcolor: combineRgb(0, 0, 0),
+		// 		},
+		// 		steps: [{ down: [{ actionId: ActionId.triggerSnapshot, options: { snapshot: SNAPSHOT } }], up: [] }],
+		// 		feedbacks: [],
+		// 	}
+		// })
 	})
 	// AUX
 	instance.KairosObj.AUX.forEach((element) => {

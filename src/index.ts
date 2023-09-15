@@ -4,7 +4,8 @@ import { getConfigFields } from './config'
 import { getFeedbacks } from './feedback'
 import { getPresets } from './presets'
 import { updateBasicVariables } from './variables'
-import { TCP } from './tcp'
+// import { TCP } from './tcp'
+import { REST } from './rest'
 import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from '@companion-module/base'
 
 enum updateFlags {
@@ -17,6 +18,7 @@ enum updateFlags {
  */
 class KairosInstance extends InstanceBase<config> {
 	config: config | undefined
+	rest: REST | undefined
 	constructor(internal: unknown) {
 		super(internal)
 	}
@@ -25,12 +27,18 @@ class KairosInstance extends InstanceBase<config> {
 		audio_master_mute: number
 		INPUTS: { name: string; shortcut: string }[]
 		MEDIA_STILLS: Array<string>
+		// SCENES: {
+		// 	scene: string
+		// 	smacros: Array<string>
+		// 	snapshots: Array<string>
+		// 	layers: { layer: string; sourceA: string; sourceB: string }[]
+		// 	transitions: Array<string>
+		// }[]
 		SCENES: {
-			scene: string
-			smacros: Array<string>
-			snapshots: Array<string>
-			layers: { layer: string; sourceA: string; sourceB: string }[]
-			transitions: Array<string>
+			layers: [{ name: string; sourceA: string; sourceB?: string, sources: string[], uuid: string}[]],
+			name: string,
+			tally: string,
+			uuid: string,
 		}[]
 		AUX: { aux: string; name: string; liveSource: string }[]
 		MACROS: Array<string>
@@ -55,7 +63,6 @@ class KairosInstance extends InstanceBase<config> {
 	public combinedSnapshotsArray: Array<string> = []
 
 	public connected = false
-	public tcp: TCP | null = null
 
 	/**
 	 * @description triggered on instance being enabled
@@ -82,8 +89,9 @@ class KairosInstance extends InstanceBase<config> {
 	 */
 	public configUpdated(config: config): Promise<void> {
 		this.config = config
-		this.tcp?.destroy()
-		this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
+		// this.tcp?.destroy()
+		// this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
+		this.rest = new REST(this, this.config.host, this.config.restPort, this.config.username, this.config.password)
 		this.updateInstance(updateFlags.All)
 		return Promise.resolve()
 	}
@@ -92,7 +100,7 @@ class KairosInstance extends InstanceBase<config> {
 	 * @description close connections and stop timers/intervals
 	 */
 	public async destroy(): Promise<void> {
-		this.tcp?.destroy()
+		// this.tcp?.destroy()
 		this.log('debug', `Instance destroyed: ${this.id}`)
 	}
 
