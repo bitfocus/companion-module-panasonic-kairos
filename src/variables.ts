@@ -50,8 +50,8 @@ interface InstanceVariableValue {
 		}
 		let layerSources = []
 		for (const LAYER of instance.combinedLayerArray) {
-			layerSources.push({ name: `SourceA in ${LAYER.name.slice(7)}`, variableId: `${LAYER.name.replace(/ /g,"_")}.sourceA` })
-			layerSources.push({ name: `SourceB in ${LAYER.name.slice(7)}`, variableId: `${LAYER.name.replace(/ /g,"_")}.sourceB` })
+			layerSources.push({ name: `SourceA in ${LAYER.name.slice(7)}`, variableId: `${LAYER.name.replace(/[\/ ()]/g,"")}.sourceA` })
+			layerSources.push({ name: `SourceB in ${LAYER.name.slice(7)}`, variableId: `${LAYER.name.replace(/[\/ ()]/g,"")}.sourceB` })
 		}
 		// let auxAvailable = []
 		// for (const AUX of instance.KairosObj.AUX) {
@@ -83,10 +83,10 @@ interface InstanceVariableValue {
 
 		// LIVE LAYERS
 		for (const LAYER of instance.combinedLayerArray) {
-			newVariables[`${LAYER.name.replace(/ /g,"_")}.sourceA`] = instance.KairosObj.INPUTS.find(
+			newVariables[`${LAYER.name.replace(/[\/ ()]/g,"")}.sourceA`] = instance.KairosObj.INPUTS.find(
 				(o) => o.name === LAYER.sourceA
 			)?.name
-			newVariables[`${LAYER.name.replace(/ /g,"_")}.sourceB`] = instance.KairosObj.INPUTS.find(
+			newVariables[`${LAYER.name.replace(/[\/ ()]/g,"")}.sourceB`] = instance.KairosObj.INPUTS.find(
 				(o) => o.name === LAYER.sourceB
 			)?.name
 			//newVariables[`${LAYER.name}.preset_enabled`] = LAYER.preset_enabled === 1 ? 'enabled' : 'disabled'
