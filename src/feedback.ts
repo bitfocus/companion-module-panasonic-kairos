@@ -22,8 +22,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : 'layer1',
-					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+					default: '',
+					choices: instance.combinedLayerArray.map((item) => ({ id: item.name, label: item.name })),
 				},
 				{
 					type: 'dropdown',
@@ -39,8 +39,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
+					default: '',
+					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
 				},
 			],
 			defaultStyle: {
