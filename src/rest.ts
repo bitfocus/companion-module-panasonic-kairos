@@ -1,6 +1,15 @@
 import KairosInstance from '.'
 import { InstanceStatus } from '@companion-module/base'
 import { FeedbackId } from './feedback'
+import { createUUID } from './utils'
+
+interface input {
+	index: number
+	name: string
+	tally: number
+	uuid: string
+	shortcut: string
+}
 
 enum updateFlags {
 	None = 0,
@@ -79,30 +88,34 @@ export class REST {
 			{ channel: 'Channel 16', mute: 0 },
 		]
 		// Load scenes into Kairos
-		let sceneResult = await this.sendCommand('/scenes')
 		try {
+			// this.instance.KairosObj.SCENES = []
+			let sceneResult = await this.sendCommand('/scenes')
 			let converted = JSON.parse(sceneResult)
 			this.instance.KairosObj.SCENES = converted
 		} catch (error) {
 			this.instance.log('error', 'Error parsing scenes: ' + error)
 		}
 		// Load inputs into Kairos
-		let inputResult = await this.sendCommand('/inputs')
 		try {
+			// this.instance.KairosObj.INPUTS = []
+			let inputResult = await this.sendCommand('/inputs')
 			let converted = JSON.parse(inputResult)
 			this.instance.KairosObj.INPUTS = converted
 		} catch (error) {
 			this.instance.log('error', 'Error parsing inputs: ' + error)
 		}
 		// Load aux into Kairos
-		let auxResult = await this.sendCommand('/aux')
 		try {
+			// this.instance.KairosObj.AUX = []
+			let auxResult = await this.sendCommand('/aux')
 			let converted = JSON.parse(auxResult)
 			this.instance.KairosObj.AUX = converted
 		} catch (error) {
 			this.instance.log('error', 'Error parsing aux: ' + error)
 		}
 		// Connect the layers to the scenes
+		// this.instance.combinedLayerArray = []
 		this.instance.KairosObj.SCENES.forEach((scene: any) => {
 			scene.layers.forEach((layer: any) => {
 				this.instance.combinedLayerArray.push({
@@ -115,24 +128,26 @@ export class REST {
 		})
 
 		// Helpers
+		const createInputWithName = (name: string): input => {
+			return {
+				index: 999,
+				name: name,
+				tally: 0,
+				uuid: createUUID(),
+				shortcut: name
+			}
+		}
+
 		const addInternalSources = async () => {
 			this.instance.log('info', 'Adding internal sources')
-			let Black = await this.sendCommand('/inputs/black')
-			let IP1 = await this.sendCommand('/inputs/IP1')
-			let White = await this.sendCommand('/inputs/White')
-			let ColorBar = await this.sendCommand('/inputs/COLORBAR')
-			let ColorCircle = await this.sendCommand('/inputs/colorcircle')
-			this.instance.log('debug', 'Black: ' + Black)
-			this.instance.log('debug', 'IP1: ' + IP1)
-			this.instance.log('debug', 'White: ' + White)
-			this.instance.log('debug', 'ColorBar: ' + ColorBar)
-			this.instance.log('debug', 'ColorCircle: ' + ColorCircle)
-			// this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV1', name: 'MV1' })
-			// this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV2', name: 'MV2' })
+			this.instance.KairosObj.INPUTS.push(createInputWithName('Black'))
+			this.instance.KairosObj.INPUTS.push(createInputWithName('White'))
+			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorBar'))
+			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorCircle'))
 		}
 		addInternalSources()
 
-		// this.instance.updateInstance(updateFlags.All as number)
+		
 
 		/**
 		 * Pulls the current state of the switcher, for now a double function
@@ -156,11 +171,11 @@ export class REST {
 				})
 				this.instance.checkFeedbacks(FeedbackId.inputSource)
 				this.instance.updateInstance(updateFlags.All as number)
-			} catch (error) {
-				this.instance.log('error', 'Error parsing scenes: ' + error)
+			} catch (error: any) {
+				this.instance.log('error', 'Error processing scenes: ' + error.message)
 			}
 		}
-		this.pullerInterval = setInterval(pullScenes, 2000) //Change pulling Time?
+		this.pullerInterval = setInterval(pullScenes, 5000) //Change pulling Time?
 	}
 
 	/**
@@ -180,7 +195,7 @@ export class REST {
 		const headers = new Headers({
 			Authorization: `Basic ${base64Credentials}`,
 		})
-		this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
+		if(command !== '/scenes') this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
 		try {
 			const response = await fetch(formattedRestRequest, { headers })
 			const result = await response.text()
