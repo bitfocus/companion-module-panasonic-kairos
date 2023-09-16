@@ -26,7 +26,7 @@ class KairosInstance extends InstanceBase<config> {
 
 	public KairosObj: {
 		audio_master_mute: number
-		INPUTS: { index: string; name: string; tally: number; uuid: string; shortcut: string }[]
+		INPUTS: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
 		MEDIA_STILLS: Array<string>
 		SCENES: {
 			layers: [{ name: string; sourceA: string; sourceB?: string; sources: string[]; uuid: string }[]]
@@ -95,6 +95,7 @@ class KairosInstance extends InstanceBase<config> {
 	 */
 	public async destroy(): Promise<void> {
 		this.tcp?.destroy()
+		this.rest?.destroy()
 		this.log('debug', `Instance destroyed: ${this.id}`)
 	}
 
