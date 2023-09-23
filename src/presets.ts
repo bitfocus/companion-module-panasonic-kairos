@@ -549,22 +549,22 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		// })
 	})
 	// AUX
-	instance.KairosObj.AUX.forEach((element) => {
-		instance.KairosObj.INPUTS.forEach((INPUT) => {
-			presets[`${element.name}.${INPUT.name}.setAux`] = {
+	instance.KairosObj.AUX.forEach((aux) => {
+		if(!aux.sources) return
+		aux.sources.forEach((source) => {
+			presets[`${aux.name}.${source}.setAux`] = {
 				type: 'button',
-				category: element.name,
-				name: element.name,
+				category: aux.name,
+				name: aux.name,
 				style: {
-					text: `$(kairos:AUX.${element.name.replace(/ /g, '_')})\\n$(kairos:INPUT.${INPUT.name.replace(/ /g, '_')})`,
-					//text: `${element.name}\\n${INPUT.name}`,
+					text: `$(kairos:AUX.${aux.name.replace(/ /g, '_')})\\n$(kairos:INPUT.${source.replace(/ /g, '_')})`,
 					size: 'auto',
 					color: combineRgb(255, 255, 255),
 					bgcolor: combineRgb(0, 0, 0),
 				},
 				steps: [
 					{
-						down: [{ actionId: ActionId.setAUX, options: { functionID: '', aux: element.name, source: INPUT.name } }],
+						down: [{ actionId: ActionId.setAUX, options: { functionID: '', aux: aux.name, source: source } }],
 						up: [],
 					},
 				],
@@ -572,8 +572,8 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 					{
 						feedbackId: FeedbackId.aux,
 						options: {
-							aux: element.name,
-							source: INPUT.name,
+							aux: aux.name,
+							source: source,
 						},
 						style: {
 							color: combineRgb(255, 255, 255),

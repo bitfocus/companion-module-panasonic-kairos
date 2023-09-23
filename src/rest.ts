@@ -75,19 +75,19 @@ export class REST {
 		]
 		// Load scenes into Kairos
 		try {
-			// this.instance.KairosObj.SCENES = []
 			let sceneResult = await this.sendCommand('/scenes')
 			let converted = JSON.parse(sceneResult)
 			this.instance.KairosObj.SCENES = converted
 		} catch (error) {
 			this.instance.log('error', 'Error parsing scenes: ' + error)
 		}
-		// Load inputs into Kairos
+		// Load inputs from scenes into Kairos
 		this.instance.KairosObj.SCENES.forEach((scene: any) => {
 			scene.layers.forEach((layer: any) => {
-				if(!layer.sources) return
+				if (!layer.sources) return
 				layer.sources.forEach((source: any) => {
-					if (this.instance.KairosObj.INPUTS.findIndex(x => x.name == source) == -1) this.instance.KairosObj.INPUTS.push(createInputWithName(source))
+					if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
+						this.instance.KairosObj.INPUTS.push(createInputWithName(source))
 				})
 			})
 		})
@@ -101,13 +101,20 @@ export class REST {
 
 		// Load aux into Kairos
 		try {
-			// this.instance.KairosObj.AUX = []
 			let auxResult = await this.sendCommand('/aux')
 			let converted = JSON.parse(auxResult)
 			this.instance.KairosObj.AUX = converted
 		} catch (error) {
 			this.instance.log('error', 'Error parsing aux: ' + error)
 		}
+		// Load inputs from aux into Kairos
+		this.instance.KairosObj.AUX.forEach((aux: any) => {
+			if (!aux.sources) return
+			aux.sources.forEach((source: any) => {
+				if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
+					this.instance.KairosObj.INPUTS.push(createInputWithName(source))
+			})
+		})
 		// Connect the layers to the scenes
 		// this.instance.combinedLayerArray = []
 		this.instance.KairosObj.SCENES.forEach((scene: any) => {
