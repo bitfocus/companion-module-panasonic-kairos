@@ -1,6 +1,6 @@
 import { InstanceStatus, TCPHelper } from '@companion-module/base'
 import KairosInstance from '.'
-import { createInputWithName, updateFlags } from './utils'
+import { updateFlags } from './utils'
 import { updateBasicVariables } from './variables'
 
 interface TCPSockets {
@@ -78,19 +78,19 @@ export class TCP {
 
 		// 	}
 
-		const fetchFxinputs = () => {
-			this.sendCommand('list:FXINPUTS')
-			this.processCallback = (data: Array<string>, cmd: string) => {
-				if (cmd === 'FXINPUTS') {
-					for (const returningData of data) {
-						if (returningData !== 'OK') {
-							this.instance.KairosObj.INPUTS.push(createInputWithName(returningData))
-						}
-					}
-				}
-				this.instance.updateInstance(updateFlags.All as number)
-			}
-		}
+		// const fetchFxinputs = () => {
+		// 	this.sendCommand('list:FXINPUTS')
+		// 	this.processCallback = (data: Array<string>, cmd: string) => {
+		// 		if (cmd === 'FXINPUTS') {
+		// 			for (const returningData of data) {
+		// 				if (returningData !== 'OK') {
+		// 					this.instance.KairosObj.INPUTS.push(createInputWithName(returningData))
+		// 				}
+		// 			}
+		// 		}
+		// 		this.instance.updateInstance(updateFlags.All as number)
+		// 	}
+		// }
 
 		// const fetchMacros = () => {
 		// 	return new Promise((resolve) => {
@@ -163,7 +163,7 @@ export class TCP {
 			this.instance.updateStatus(InstanceStatus.Ok, 'Connected')
 			this.keepAliveInterval = setInterval(keepAlive, 4500) //session expires at 5 seconds
 			await subscribeToData()
-			fetchFxinputs()
+			// fetchFxinputs()
 			this.instance.updateInstance(updateFlags.All as number)
 		})
 
