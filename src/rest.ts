@@ -73,78 +73,39 @@ export class REST {
 			{ channel: 'Channel 15', mute: 0 },
 			{ channel: 'Channel 16', mute: 0 },
 		]
-		// Load scenes into Kairos
-		try {
-			let sceneResult = await this.sendCommand('/scenes')
-			let converted = JSON.parse(sceneResult)
-			this.instance.KairosObj.SCENES = converted
-		} catch (error) {
-			this.instance.log('error', 'Error parsing scenes: ' + error)
-		}
-		// Load inputs from scenes into Kairos
-		this.instance.KairosObj.SCENES.forEach((scene: any) => {
-			scene.layers.forEach((layer: any) => {
-				if (!layer.sources) return
-				layer.sources.forEach((source: any) => {
-					if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
-						this.instance.KairosObj.INPUTS.push(createInputWithName(source))
-				})
-			})
-		})
-
-		// let inputResult = await this.sendCommand('/inputs')
-		// let converted = JSON.parse(inputResult)
-		// converted.reverse()
-		// for (const input of converted) {
-		// 	this.instance.KairosObj.INPUTS.unshift(input)
-		// }
-
-		// Load aux into Kairos
-		try {
-			let auxResult = await this.sendCommand('/aux')
-			let converted = JSON.parse(auxResult)
-			this.instance.KairosObj.AUX = converted
-		} catch (error) {
-			this.instance.log('error', 'Error parsing aux: ' + error)
-		}
-		// Load inputs from aux into Kairos
-		this.instance.KairosObj.AUX.forEach((aux: any) => {
-			if (!aux.sources) return
-			aux.sources.forEach((source: any) => {
-				if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
-					this.instance.KairosObj.INPUTS.push(createInputWithName(source))
-			})
-		})
-		// Connect the layers to the scenes
-		// this.instance.combinedLayerArray = []
-		this.instance.KairosObj.SCENES.forEach((scene: any) => {
-			scene.layers.forEach((layer: any) => {
-				this.instance.combinedLayerArray.push({
-					name: `/${scene.name}/${layer.name}`,
-					sourceA: layer.sourceA,
-					sourceB: layer.sourceB,
-					uuid: layer.uuid,
-				})
-			})
-		})
-
-		const addInternalSources = () => {
-			this.instance.KairosObj.INPUTS.push(createInputWithName('Black'))
-			this.instance.KairosObj.INPUTS.push(createInputWithName('White'))
-			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorBar'))
-			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorCircle'))
-		}
-		addInternalSources()
-		this.instance.updateInstance(updateFlags.All as number)
-
 		/**
-		 * Pulls the current state of the switcher, for now a double function
+		 * Pulls the current state of the switcher
 		 */
 		let pullScenes = async () => {
 			try {
 				let sceneResult = await this.sendCommand('/scenes')
-				let converted = JSON.parse(sceneResult)
-				this.instance.KairosObj.SCENES = converted
+				let convertedScenes = JSON.parse(sceneResult)
+				this.instance.KairosObj.SCENES = convertedScenes
+
+				// Load inputs from scenes into Kairos
+				this.instance.KairosObj.SCENES.forEach((scene: any) => {
+					scene.layers.forEach((layer: any) => {
+						if (!layer.sources) return
+						layer.sources.forEach((source: any) => {
+							if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
+								this.instance.KairosObj.INPUTS.push(createInputWithName(source))
+						})
+					})
+				})
+
+				let auxResult = await this.sendCommand('/aux')
+				let convertedAux = JSON.parse(auxResult)
+				this.instance.KairosObj.AUX = convertedAux
+
+				// Load inputs from aux into Kairos
+				this.instance.KairosObj.AUX.forEach((aux: any) => {
+					if (!aux.sources) return
+					aux.sources.forEach((source: any) => {
+						if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
+							this.instance.KairosObj.INPUTS.push(createInputWithName(source))
+					})
+				})
+
 				// Connect the layers to the scenes
 				this.instance.combinedLayerArray = []
 				this.instance.KairosObj.SCENES.forEach((scene: any) => {
@@ -157,12 +118,26 @@ export class REST {
 						})
 					})
 				})
+
+				this.instance.checkFeedbacks(FeedbackId.aux)
 				this.instance.checkFeedbacks(FeedbackId.inputSource)
 				this.instance.updateInstance(updateFlags.All as number)
 			} catch (error: any) {
-				this.instance.log('error', 'Error processing scenes: ' + error.message)
+				this.instance.log('error', 'Error pulling and auxes scenes : ' + error.message)
 			}
 		}
+
+		const addInternalSources = () => {
+			this.instance.KairosObj.INPUTS.push(createInputWithName('Black'))
+			this.instance.KairosObj.INPUTS.push(createInputWithName('White'))
+			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorBar'))
+			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorCircle'))
+		}
+
+		pullScenes()
+		addInternalSources()
+		this.instance.updateInstance(updateFlags.All as number)
+
 		this.pullerInterval = setInterval(pullScenes, 5000) //Change pulling Time?
 	}
 
@@ -183,7 +158,7 @@ export class REST {
 		const headers = new Headers({
 			Authorization: `Basic ${base64Credentials}`,
 		})
-		if (command !== '/scenes') this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
+		if (command !== '/scenes' && command !== '/aux') this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
 		try {
 			const response = await fetch(formattedRestRequest, { headers })
 			const result = await response.text()
