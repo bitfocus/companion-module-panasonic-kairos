@@ -175,7 +175,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Scene',
 					id: 'scene',
 					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].name : '1',
-					choices: instance.KairosObj.SCENES.map((id) => ({ id: id.name, label: id.name.slice(7) })),
+					choices: instance.KairosObj.SCENES.map((item) => ({ id: item.name, label: item.name })),
 				},
 			],
 			callback: (action) => {
@@ -197,7 +197,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Scene',
 					id: 'scene',
 					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].name : '1',
-					choices: instance.KairosObj.SCENES.map((id) => ({ id: id.name, label: id.name.slice(7) })),
+					choices: instance.KairosObj.SCENES.map((item) => ({ id: item.name, label: item.name })),
 				},
 			],
 			callback: (action) => {
@@ -293,7 +293,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Source',
 					id: 'source',
 					default: '',
-					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.shortcut, label: item.name })),
+					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
 				},
 			],
 			callback: (action) => {
