@@ -1,5 +1,23 @@
-import { CompanionInputFieldColor, CompanionInputFieldDropdown, CompanionInputFieldNumber, CompanionInputFieldTextInput } from "@companion-module/base"
+import {
+	CompanionInputFieldColor,
+	CompanionInputFieldDropdown,
+	CompanionInputFieldNumber,
+	CompanionInputFieldTextInput,
+} from '@companion-module/base'
 
+interface input {
+	index: number
+	name: string
+	tally: number
+	uuid: string
+	shortcut: string
+}
+
+export enum updateFlags {
+	None = 0,
+	onlyVariables = 1,
+	All = 2,
+}
 
 type TimeFormat = 'hh:mm:ss' | 'hh:mm:ss.ms' | 'mm:ss' | 'mm:ss.ms'
 
@@ -240,11 +258,22 @@ export const formatTime = (time: number, interval: 'ms' | 's', format: TimeForma
 }
 
 export const createUUID = (): string => {
-    let dt: number = new Date().getTime();
-    let uuid: string = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-        const r: number = (dt + Math.random() * 16) % 16 | 0;
-        dt = Math.floor(dt / 16);
-        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-    });
-    return uuid;
-};
+	let dt: number = new Date().getTime()
+	let uuid: string = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+		const r: number = (dt + Math.random() * 16) % 16 | 0
+		dt = Math.floor(dt / 16)
+		return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+	})
+	return uuid
+}
+
+// Helpers
+export const createInputWithName = (name: string): input => {
+	return {
+		index: 999,
+		name: name,
+		tally: 0,
+		uuid: createUUID(),
+		shortcut: name,
+	}
+}
