@@ -83,16 +83,22 @@ export class REST {
 			this.instance.log('error', 'Error parsing scenes: ' + error)
 		}
 		// Load inputs into Kairos
-		try {
-			let inputResult = await this.sendCommand('/inputs')
-			let converted = JSON.parse(inputResult)
-			converted.reverse()
-			for (const input of converted) {
-				this.instance.KairosObj.INPUTS.unshift(input)
-			}
-		} catch (error) {
-			this.instance.log('error', 'Error parsing inputs: ' + error)
-		}
+		this.instance.KairosObj.SCENES.forEach((scene: any) => {
+			scene.layers.forEach((layer: any) => {
+				if(!layer.sources) return
+				layer.sources.forEach((source: any) => {
+					if (this.instance.KairosObj.INPUTS.findIndex(x => x.name == source) == -1) this.instance.KairosObj.INPUTS.push(createInputWithName(source))
+				})
+			})
+		})
+
+		// let inputResult = await this.sendCommand('/inputs')
+		// let converted = JSON.parse(inputResult)
+		// converted.reverse()
+		// for (const input of converted) {
+		// 	this.instance.KairosObj.INPUTS.unshift(input)
+		// }
+
 		// Load aux into Kairos
 		try {
 			// this.instance.KairosObj.AUX = []
@@ -122,6 +128,7 @@ export class REST {
 			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorCircle'))
 		}
 		addInternalSources()
+		this.instance.updateInstance(updateFlags.All as number)
 
 		/**
 		 * Pulls the current state of the switcher, for now a double function
