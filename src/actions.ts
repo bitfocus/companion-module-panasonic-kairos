@@ -298,7 +298,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			],
 			callback: (action) => {
 				const setAUX: any = {
-					patchCommmand: '/aux',
+					patchCommand: '/aux/',
 					options: action.options.aux,
 					body: { source: action.options.source },
 				}
