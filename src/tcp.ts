@@ -1,15 +1,10 @@
 import { InstanceStatus, TCPHelper } from '@companion-module/base'
 import KairosInstance from '.'
+import { createInputWithName, updateFlags } from './utils'
 import { updateBasicVariables } from './variables'
 
 interface TCPSockets {
 	main: TCPHelper | null
-}
-
-enum updateFlags {
-	None = 0,
-	onlyVariables = 1,
-	All = 2,
 }
 
 export class TCP {
@@ -31,11 +26,6 @@ export class TCP {
 		this.instance = instance
 		this.tcpHost = host
 		this.tcpPort = tcpPort
-
-		// this.instance.combinedLayerArray = []
-		// this.instance.combinedTransitionsArray = []
-		// this.instance.combinedSmacrosArray = []
-		// this.instance.combinedSnapshotsArray = []
 
 		this.init()
 	}
@@ -63,28 +53,14 @@ export class TCP {
 		this.sockets.main = new TCPHelper(this.tcpHost, this.tcpPort)
 
 		this.sockets.main.on('status_change', (status: InstanceStatus) => {
-			this.instance.log('debug', 'status change' + status)
+			this.instance.log('debug', 'status change ' + status)
 			this.instance.updateStatus(status)
 		})
 
 		this.sockets.main.on('error', (err: Error) => {
 			this.instance.updateStatus(InstanceStatus.UnknownError, err.message)
 		})
-		// Helpers
-		// const addInternalSourceGroup = () => {
-		// 	this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV1', name: 'MV1' })
-		// 	this.instance.KairosObj.INPUTS.push({ shortcut: 'INTSOURCES.MV2', name: 'MV2' })
-		// 	this.instance.KairosObj.INPUTS.push({ shortcut: 'BLACK', name: 'BLACK' })
-		// 	this.instance.KairosObj.INPUTS.push({ shortcut: 'WHITE', name: 'WHITE' })
-		// 	this.instance.KairosObj.INPUTS.push({
-		// 		shortcut: 'INTSOURCES.ColorBar',
-		// 		name: 'ColorBar',
-		// 	})
-		// 	this.instance.KairosObj.INPUTS.push({
-		// 		shortcut: 'INTSOURCES.ColorCircle',
-		// 		name: 'ColorCircle',
-		// 	})
-		// }
+
 		// const fetchStills = () => {
 		// 		this.instance.KairosObj.MEDIA_STILLS.length = 0
 
@@ -102,26 +78,20 @@ export class TCP {
 
 		// 	}
 
-		// const fetchFxinputs = () => {
-		// 		this.sendCommand('list:FXINPUTS')
-		// 		this.processCallback = (data: Array<string>, cmd: string) => {
-		// 			if (data.length === 0 && cmd !== 'FXINPUTS') {
-		// 				// this.instance.log('debug', 'FXINPUT: ' + cmd.replace(/ /g, '_').split('.SourceEffectGroup')[0])
-		// 				this.instance.KairosObj.INPUTS.push({
-		// 					shortcut: cmd.split('.SourceEffectGroup')[0],
-		// 					name: cmd.replace(/ /g, '_').split('.SourceEffectGroup')[0],
-		// 				})
-		// 			}
-		// 			data.forEach((element) => {
-		// 				this.sendCommand(`list:${element}`)
-		// 			})
-		// 		}
-		// 		listFinish().then(() => {
-		// 			this.processCallback = null
-		// 			resolve('fetch ready')
-		// 		})
-		// 	})
-		// }
+		const fetchFxinputs = () => {
+			this.sendCommand('list:FXINPUTS')
+			this.processCallback = (data: Array<string>, cmd: string) => {
+				if (cmd === 'FXINPUTS') {
+					for (const returningData of data) {
+						if (returningData !== 'OK') {
+							this.instance.KairosObj.INPUTS.push(createInputWithName(returningData))
+						}
+					}
+				}
+				this.instance.updateInstance(updateFlags.All as number)
+			}
+		}
+
 		// const fetchMacros = () => {
 		// 	return new Promise((resolve) => {
 		// 		this.sendCommand('list:MACROS')
@@ -140,13 +110,13 @@ export class TCP {
 		// 	})
 		// }
 		// const fetchFixedItems = () => {
-		// 		this.sendCommand('list:RAMRECORDERS')
-		// 		this.sendCommand('list:PLAYERS')
-		// 		//this.sendCommand('list:AUDIOPLAYERS')
-		// 		this.sendCommand('list:GFXCHANNELS')
-		// 		//this.sendCommand('list:FXINPUTS')
-		// 		this.sendCommand('list:MATTES')
-		// 		//this.sendCommand('list:MEDIA.stills')
+		// this.sendCommand('list:RAMRECORDERS')
+		// this.sendCommand('list:PLAYERS')
+		//this.sendCommand('list:AUDIOPLAYERS')
+		// this.sendCommand('list:GFXCHANNELS')
+		//this.sendCommand('list:FXINPUTS')
+		// this.sendCommand('list:MATTES')
+		//this.sendCommand('list:MEDIA.stills')
 		// }
 
 		const subscribeToData = () => {
@@ -193,8 +163,8 @@ export class TCP {
 			this.instance.updateStatus(InstanceStatus.Ok, 'Connected')
 			this.keepAliveInterval = setInterval(keepAlive, 4500) //session expires at 5 seconds
 			await subscribeToData()
+			fetchFxinputs()
 			this.instance.updateInstance(updateFlags.All as number)
-			//	console.log('OBJ', this.instance.KairosObj))
 		})
 
 		let keepAlive = () => {
@@ -206,38 +176,18 @@ export class TCP {
 		 * Processing here
 		 */
 
-		const processData = async (data: Array<string>, cmd: string): Promise<number> => {
+		const processData = (data: Array<string>, cmd: string): number => {
 			let whatTodo = updateFlags.All
 			if (this.processCallback) {
 				this.processCallback(data, cmd)
-				// } else if (data.find((element) => element === 'IP1')) {
-				// 	//This is an input list
-				// 	data.forEach((element) => {
-				// 		if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
-				// 	})
-				// } else if (data.find((element) => element === 'GFX1')) {
-				// 	//This is an input list
-				// 	data.forEach((element) => {
-				// 		if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
-				// 	})
-				// } else if (data.find((element) => element === 'RR1')) {
-				// 	//This is an input list
-				// 	data.forEach((element) => {
-				// 		if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
-				// 	})
-				// } else if (data.find((element) => element === 'CP1')) {
-				// 	//This is an input list
-				// 	data.forEach((element) => {
-				// 		if (element !== '') this.instance.KairosObj.INPUTS.push({ shortcut: element, name: element })
-				// 	})
 			} else if (data.find((element) => element === 'APPLICATION:NEW')) {
 				//Complete refresh of all data
 				this.instance.log('debug', 'Complete refresh of all data')
 				// SEND UPDATE ALL??????
-				await subscribeToData()
+				subscribeToData()
 				this.instance.updateInstance(updateFlags.All as number)
 			} else {
-				whatTodo = updateFlags.None
+				whatTodo = updateFlags.onlyVariables
 				// Do a switch block to go fast through the rest of the data
 				for (const returningData of data) {
 					switch (true) {
@@ -255,7 +205,6 @@ export class TCP {
 									(x) => x.name === returningData.split('=')[0].slice(0, -8)
 								)
 								if (index != -1) this.instance.combinedLayerArray[index].sourceA = returningData.split('=')[1]
-								updateBasicVariables(this.instance)
 								this.instance.checkFeedbacks('inputSource')
 							}
 							break
@@ -265,7 +214,6 @@ export class TCP {
 									(x) => x.name === returningData.split('=')[0].slice(0, -8)
 								)
 								if (index != -1) this.instance.combinedLayerArray[index].sourceB = returningData.split('=')[1]
-								updateBasicVariables(this.instance)
 								this.instance.checkFeedbacks('inputSource')
 							}
 							break
@@ -274,7 +222,6 @@ export class TCP {
 							{
 								this.instance.KairosObj.audio_master_mute = parseInt(returningData.split('=')[1])
 								this.instance.checkFeedbacks('audioMuteMaster')
-								updateBasicVariables(this.instance)
 							}
 							break
 						//case /^Mixer\.AudioMixers\.AudioMixer\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
@@ -283,7 +230,6 @@ export class TCP {
 								let index = parseInt(returningData.slice(returningData.search('.Channel') + 9, -7)) - 1
 								this.instance.KairosObj.AUDIO_CHANNELS[index].mute = parseInt(returningData.split('=')[1])
 								this.instance.checkFeedbacks('audioMuteChannel')
-								updateBasicVariables(this.instance)
 							}
 							break
 						case /\.source=/i.test(returningData): // This is an AUX source
@@ -293,7 +239,6 @@ export class TCP {
 								)
 								if (index != -1) this.instance.KairosObj.AUX[index].source = returningData.split('=')[1]
 								this.instance.checkFeedbacks('aux')
-								updateBasicVariables(this.instance)
 							}
 							break
 						//case /^MACROS\./i.test(returningData): // This is an MACRO
@@ -377,12 +322,8 @@ export class TCP {
 								let index_a = this.instance.KairosObj.AUX.findIndex((x) => x.name === source)
 								if (index_i != -1) this.instance.KairosObj.INPUTS[index_i].name = name
 								else if (index_a != -1) this.instance.KairosObj.AUX[index_a].name = name
-								updateBasicVariables(this.instance)
 							}
 							break
-						//case /^FXINPUTS\./i.test(returningData):
-						//	this.instance.KairosObj.INPUTS.push({ shortcut: returningData, name: returningData })
-						//	break
 						case /^MATTES\./i.test(returningData):
 							// this.instance.KairosObj.INPUTS.push({
 							// 	shortcut: returningData,
@@ -404,6 +345,7 @@ export class TCP {
 		// ToDo: It should operate call back function with each transitions
 		this.sockets.main.on('data', async (data: Buffer) => {
 			let str = this.recvRemain + data.toString()
+			// this.instance.log('debug', 'Received: ' + str)
 			this.recvRemain = ''
 			if (str.endsWith('\r\n') === false) {
 				// store uncompleted line
@@ -419,7 +361,7 @@ export class TCP {
 				if (str.startsWith('\r\n')) {
 					// empty list
 					str = str.substring(2)
-					this.instance.updateInstance(await processData([], this.listQueue[0]))
+					this.instance.updateInstance(processData([], this.listQueue[0]))
 				} else if (str.startsWith('Error\r\n')) {
 					// error return
 					str = str.substring(7)
@@ -430,7 +372,7 @@ export class TCP {
 						return
 					}
 					const message = str.substring(0, end).split('\r\n')
-					this.instance.updateInstance(await processData(message, this.listQueue[0]))
+					this.instance.updateInstance(processData(message, this.listQueue[0]))
 					str = str.substring(end + 4)
 				}
 				this.listQueue.shift()
@@ -442,7 +384,7 @@ export class TCP {
 			}
 			if (str !== '') {
 				const message = str.split('\r\n')
-				this.instance.updateInstance(await processData(message, ''))
+				this.instance.updateInstance(processData(message, ''))
 				if (this.nCommand > 0) {
 					this.nCommand -= message.length - 1
 					if (this.nCommand <= 0) {
@@ -476,7 +418,7 @@ export class TCP {
 			this.sockets.main.send(message).catch((err) => {
 				if (err) this.instance.log('debug', err.message)
 			})
-			// if (message != '\r\n') this.instance.log('debug', `Sending command: ${message}`)
+			if (message != '\r\n') this.instance.log('debug', `Sending command: ${message}`)
 		}
 	}
 
