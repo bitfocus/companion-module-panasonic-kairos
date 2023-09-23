@@ -29,7 +29,7 @@ class KairosInstance extends InstanceBase<config> {
 		INPUTS: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
 		MEDIA_STILLS: Array<string>
 		SCENES: {
-			layers: [{ name: string; sourceA: string; sourceB?: string; sources: string[]; uuid: string }[]]
+			layers: { name: string; sourceA: string; sourceB?: string; sources: string[]; uuid: string }[]
 			name: string
 			tally: string
 			uuid: string
