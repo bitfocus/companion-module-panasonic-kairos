@@ -86,6 +86,7 @@ export class REST {
 		try {
 			let inputResult = await this.sendCommand('/inputs')
 			let converted = JSON.parse(inputResult)
+			converted.reverse()
 			for (const input of converted) {
 				this.instance.KairosObj.INPUTS.unshift(input)
 			}
