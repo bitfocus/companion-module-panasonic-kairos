@@ -33,13 +33,10 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		instance.KairosObj.INPUTS.forEach((INPUT) => {
 			presets[`${LAYER.name}.${INPUT.name}.PGM`] = {
 				type: 'button',
-				category: `${LAYER.name.slice(7, LAYER.name.search('.Layers.'))} | ${LAYER.name.slice(
-					LAYER.name.search('.Layers.') + 8
-				)} | PGM`,
+				category: `Scene:\n${LAYER.name.substring(1).replace(/\//g, '_')} | sourceA`,
 				name: INPUT.name,
 				style: {
-					text: `$(kairos:${INPUT.name.replace(/ /g, '_')})`,
-					//text: INPUT.name,
+					text: `$(kairos:INPUT.${INPUT.name.replace(/ /g, '_')})`,
 					size: '18',
 					color: combineRgb(255, 255, 255),
 					bgcolor: combineRgb(0, 0, 0),
@@ -70,18 +67,12 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 					},
 				],
 			}
-		})
-		instance.KairosObj.INPUTS.forEach((INPUT) => {
-			if (LAYER.preset_enabled != 1) return
 			presets[`${LAYER.name}.${INPUT.name}.PVW`] = {
 				type: 'button',
-				category: `${LAYER.name.slice(7, LAYER.name.search('.Layers.'))} | ${LAYER.name.slice(
-					LAYER.name.search('.Layers.') + 8
-				)} | PVW`,
+				category: `Scene:\n${LAYER.name.substring(1).replace(/\//g, '_')} | sourceB`,
 				name: INPUT.name,
 				style: {
-					text: `$(kairos:${INPUT.name.replace(/ /g, '_')})`,
-					//text: INPUT.name,
+					text: `$(kairos:INPUT.${INPUT.name.replace(/ /g, '_')})`,
 					size: '18',
 					color: combineRgb(255, 255, 255),
 					bgcolor: combineRgb(0, 0, 0),
@@ -396,7 +387,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			category: 'TRANSITIONS',
 			name: 'Master Cut',
 			style: {
-				text: `${SCENE.name.slice(7)}\\nCUT`,
+				text: `${SCENE.name}\\nCUT`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(255, 0, 0),
@@ -409,7 +400,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			category: 'TRANSITIONS',
 			name: 'Master Auto',
 			style: {
-				text: `${SCENE.name.slice(7)}\\nAUTO`,
+				text: `${SCENE.name}\\nAUTO`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(255, 0, 0),
@@ -550,7 +541,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				category: element.name,
 				name: element.name,
 				style: {
-					text: `$(kairos:AUX_ID_${element.name.replace(/ /g, '_')})\\n$(kairos:${INPUT.name.replace(/ /g, '_')})`,
+					text: `$(kairos:AUX.${element.name.replace(/ /g, '_')})\\n$(kairos:INPUT.${INPUT.name.replace(/ /g, '_')})`,
 					//text: `${element.name}\\n${INPUT.name}`,
 					size: 'auto',
 					color: combineRgb(255, 255, 255),
@@ -558,9 +549,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				},
 				steps: [
 					{
-						down: [
-							{ actionId: ActionId.setAUX, options: { functionID: '', aux: element.name, source: INPUT.name } },
-						],
+						down: [{ actionId: ActionId.setAUX, options: { functionID: '', aux: element.name, source: INPUT.name } }],
 						up: [],
 					},
 				],
