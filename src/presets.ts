@@ -29,82 +29,97 @@ interface CompanionPresetDefinitionsExt {
 export function getPresets(instance: KairosInstance): CompanionPresetDefinitions {
 	const presets: CompanionPresetDefinitionsExt = {}
 	// Switch INPUT per Layer
-	for (const LAYER of instance.combinedLayerArray) {
-		instance.KairosObj.INPUTS.forEach((INPUT) => {
-			presets[`${LAYER.name}.${INPUT.name}.PGM`] = {
-				type: 'button',
-				category: `Scene:\n${LAYER.name.substring(1).replace(/\//g, '_')} | sourceA`,
-				name: INPUT.name,
-				style: {
-					text: `$(kairos:INPUT.${INPUT.name.replace(/ /g, '_')})`,
-					size: '18',
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 0, 0),
-				},
-				steps: [
-					{
-						down: [
-							{
-								actionId: ActionId.setSource,
-								options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceA', source: INPUT.name },
+	for (const scene of instance.KairosObj.SCENES) {
+		// Loop through all Scenes
+		scene.layers.forEach((layer) => {
+			if(!layer.sources) return
+			layer.sources.forEach((source) => {
+				presets[
+					`${scene.name.replace(/[\/ ()]/g, '_')}.${layer.name.replace(/[\/ ()]/g, '_')}.${source.replace(
+						/[\/ ()]/g,
+						'_'
+					)}.PGM`
+				] = {
+					type: 'button',
+					category: `Scene:\n${scene.name.replace(/[\/ ()]/g, '_')} | sourceA`,
+					name: source,
+					style: {
+						text: `$(kairos:INPUT.${source.replace(/ /g, '_')})`,
+						size: 'auto',
+						color: combineRgb(255, 255, 255),
+						bgcolor: combineRgb(0, 0, 0),
+					},
+					steps: [
+						{
+							down: [
+								{
+									actionId: ActionId.setSource,
+									options: { functionID: '', layer: `/${scene.name.replace(/[\/ ()]/g, '_')}/${layer.name.replace(/[\/ ()]/g, '_')}`, sourceAB: 'sourceA', source: source },
+								},
+							],
+							up: [],
+						},
+					],
+					feedbacks: [
+						{
+							feedbackId: FeedbackId.inputSource,
+							options: {
+								source: source,
+								sourceAB: 'sourceA',
+								layer: `/${scene.name.replace(/[\/ ()]/g, '_')}/${layer.name.replace(/[\/ ()]/g, '_')}`,
 							},
-						],
-						up: [],
-					},
-				],
-				feedbacks: [
-					{
-						feedbackId: FeedbackId.inputSource,
-						options: {
-							source: INPUT.name,
-							sourceAB: 'sourceA',
-							layer: LAYER.name,
-						},
-						style: {
-							color: combineRgb(255, 255, 255),
-							bgcolor: combineRgb(255, 0, 0),
-						},
-					},
-				],
-			}
-			presets[`${LAYER.name}.${INPUT.name}.PVW`] = {
-				type: 'button',
-				category: `Scene:\n${LAYER.name.substring(1).replace(/\//g, '_')} | sourceB`,
-				name: INPUT.name,
-				style: {
-					text: `$(kairos:INPUT.${INPUT.name.replace(/ /g, '_')})`,
-					size: '18',
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 0, 0),
-				},
-				steps: [
-					{
-						down: [
-							{
-								actionId: ActionId.setSource,
-								options: { functionID: '', layer: LAYER.name, sourceAB: 'sourceB', source: INPUT.name },
+							style: {
+								color: combineRgb(255, 255, 255),
+								bgcolor: combineRgb(255, 0, 0),
 							},
-						],
-						up: [],
-					},
-				],
-				feedbacks: [
-					{
-						feedbackId: FeedbackId.inputSource,
-						options: {
-							source: INPUT.name,
-							sourceAB: 'sourceB',
-							layer: LAYER.name,
 						},
-						style: {
-							color: combineRgb(255, 255, 255),
-							bgcolor: combineRgb(0, 255, 0),
-						},
+					],
+				}
+				presets[
+					`${scene.name.replace(/[\/ ()]/g, '_')}.${layer.name.replace(/[\/ ()]/g, '_')}.${source.replace(
+						/[\/ ()]/g,
+						'_'
+					)}.PVW`
+				] = {
+					type: 'button',
+					category: `Scene:\n${scene.name.replace(/[\/ ()]/g, '_')} | sourceB`,
+					name: source,
+					style: {
+						text: `$(kairos:INPUT.${source.replace(/ /g, '_')})`,
+						size: 'auto',
+						color: combineRgb(255, 255, 255),
+						bgcolor: combineRgb(0, 0, 0),
 					},
-				],
-			}
+					steps: [
+						{
+							down: [
+								{
+									actionId: ActionId.setSource,
+									options: { functionID: '', layer: `/${scene.name.replace(/[\/ ()]/g, '_')}/${layer.name.replace(/[\/ ()]/g, '_')}`, sourceAB: 'sourceB', source: source },
+								},
+							],
+							up: [],
+						},
+					],
+					feedbacks: [
+						{
+							feedbackId: FeedbackId.inputSource,
+							options: {
+								source: source,
+								sourceAB: 'sourceB',
+								layer: `/${scene.name.replace(/[\/ ()]/g, '_')}/${layer.name.replace(/[\/ ()]/g, '_')}`,
+							},
+							style: {
+								color: combineRgb(255, 255, 255),
+								bgcolor: combineRgb(255, 0, 0),
+							},
+						},
+					],
+				}
+			})
 		})
 	}
+	
 	// Media Stills
 	instance.KairosObj.MEDIA_STILLS.forEach((STILL) => {
 		presets[`${STILL}.select`] = {
