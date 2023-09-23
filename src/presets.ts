@@ -576,7 +576,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 							source: source,
 						},
 						style: {
-							color: combineRgb(255, 255, 255),
+							color: combineRgb(0, 0, 0),
 							bgcolor: combineRgb(0, 255, 0),
 						},
 					},

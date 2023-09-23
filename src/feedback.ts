@@ -154,7 +154,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				},
 			],
 			defaultStyle: {
-				color: combineRgb(255, 255, 255),
+				color: combineRgb(0, 0, 0),
 				bgcolor: combineRgb(0, 255, 0),
 			},
 			callback: (feedback): boolean => {
