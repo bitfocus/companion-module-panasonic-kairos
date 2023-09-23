@@ -1,21 +1,7 @@
 import KairosInstance from '.'
 import { InstanceStatus } from '@companion-module/base'
 import { FeedbackId } from './feedback'
-import { createUUID } from './utils'
-
-interface input {
-	index: number
-	name: string
-	tally: number
-	uuid: string
-	shortcut: string
-}
-
-enum updateFlags {
-	None = 0,
-	onlyVariables = 1,
-	All = 2,
-}
+import { createInputWithName, updateFlags } from './utils'
 
 export class REST {
 	private readonly instance: KairosInstance
@@ -98,10 +84,11 @@ export class REST {
 		}
 		// Load inputs into Kairos
 		try {
-			// this.instance.KairosObj.INPUTS = []
 			let inputResult = await this.sendCommand('/inputs')
 			let converted = JSON.parse(inputResult)
-			this.instance.KairosObj.INPUTS = converted
+			for (const input of converted) {
+				this.instance.KairosObj.INPUTS.unshift(input)
+			}
 		} catch (error) {
 			this.instance.log('error', 'Error parsing inputs: ' + error)
 		}
@@ -127,27 +114,13 @@ export class REST {
 			})
 		})
 
-		// Helpers
-		const createInputWithName = (name: string): input => {
-			return {
-				index: 999,
-				name: name,
-				tally: 0,
-				uuid: createUUID(),
-				shortcut: name
-			}
-		}
-
-		const addInternalSources = async () => {
-			this.instance.log('info', 'Adding internal sources')
+		const addInternalSources = () => {
 			this.instance.KairosObj.INPUTS.push(createInputWithName('Black'))
 			this.instance.KairosObj.INPUTS.push(createInputWithName('White'))
 			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorBar'))
 			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorCircle'))
 		}
 		addInternalSources()
-
-		
 
 		/**
 		 * Pulls the current state of the switcher, for now a double function
@@ -195,7 +168,7 @@ export class REST {
 		const headers = new Headers({
 			Authorization: `Basic ${base64Credentials}`,
 		})
-		if(command !== '/scenes') this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
+		if (command !== '/scenes') this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
 		try {
 			const response = await fetch(formattedRestRequest, { headers })
 			const result = await response.text()
