@@ -54,7 +54,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 							down: [
 								{
 									actionId: ActionId.setSource,
-									options: { functionID: '', layer: `/${scene.name.replace(/[\/ ()]/g, '_')}/${layer.name.replace(/[\/ ()]/g, '_')}`, sourceAB: 'sourceA', source: source },
+									options: { functionID: '', layer: `/${scene.uuid}/${layer.uuid}`, sourceAB: 'sourceA', source: source },
 								},
 							],
 							up: [],

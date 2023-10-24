@@ -75,10 +75,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			options: [
 				{
 					type: 'dropdown',
-					label: 'Layer',
+					label: 'Scene/Layer',
 					id: 'layer',
 					default: '',
-					choices: instance.combinedLayerArray.map((item) => ({ id: item.name, label: item.name })),
+					choices: instance.combinedLayerArray.map((item) => ({ id: item.uuid, label: item.name })),
 					minChoicesForSearch: 8,
 				},
 				{
@@ -106,7 +106,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					body: { [`${action.options.sourceAB}`]: action.options.source },
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
+				let index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
 				if (index != -1) {
 					action.options.sourceAB == 'sourceA'
 						? (instance.combinedLayerArray[index].sourceA = action.options.source as string)
@@ -123,10 +123,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			options: [
 				{
 					type: 'dropdown',
-					label: 'Layer',
+					label: 'Scene/Layer',
 					id: 'layer',
 					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '1',
-					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+					choices: instance.combinedLayerArray.map((id) => ({ id: id.uuid, label: id.name })),
 					minChoicesForSearch: 8,
 				},
 				{
@@ -155,7 +155,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					},
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
+				let index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
 				if (index != -1) {
 					action.options.sourceAB == 'sourceA'
 						? (instance.combinedLayerArray[index].sourceA = action.options.source as string)

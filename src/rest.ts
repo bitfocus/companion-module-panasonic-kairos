@@ -81,7 +81,10 @@ export class REST {
 				let sceneResult = await this.sendCommand('/scenes')
 				let convertedScenes = JSON.parse(sceneResult)
 				this.instance.KairosObj.SCENES = convertedScenes
-
+				// convertedScenes.forEach((scene: { name: string }, index: any) => {
+				// 	console.log("sceness"+scene.name+" "+index)
+				// });
+				// console.log(`scene: ${JSON.stringify(convertedScenes[18])}`)
 				// Load inputs from scenes into Kairos
 				this.instance.KairosObj.SCENES.forEach((scene: any) => {
 					scene.layers.forEach((layer: any) => {
@@ -114,7 +117,7 @@ export class REST {
 							name: `/${scene.name}/${layer.name}`,
 							sourceA: layer.sourceA,
 							sourceB: layer.sourceB,
-							uuid: layer.uuid,
+							uuid: `/${scene.uuid}/${layer.uuid}`,
 						})
 					})
 				})
@@ -158,7 +161,8 @@ export class REST {
 		const headers = new Headers({
 			Authorization: `Basic ${base64Credentials}`,
 		})
-		if (command !== '/scenes' && command !== '/aux') this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
+		if (command !== '/scenes' && command !== '/aux')
+			this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
 		try {
 			const response = await fetch(formattedRestRequest, { headers })
 			const result = await response.text()
