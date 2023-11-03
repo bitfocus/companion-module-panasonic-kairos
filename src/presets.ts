@@ -41,7 +41,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 					)}.PGM`
 				] = {
 					type: 'button',
-					category: `Scene:\n${scene.name.replace(/[\/ ()]/g, '_')} | sourceA`,
+					category: `Scene:\n${scene.name.replace(/[\/ ()]/g, '_')} | ${layer.name} | sourceA`,
 					name: source,
 					style: {
 						text: `$(kairos:INPUT.${source.replace(/ /g, '_')})`,
@@ -88,7 +88,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 						)}.PVW`
 					] = {
 						type: 'button',
-						category: `Scene:\n${scene.name.replace(/[\/ ()]/g, '_')} | sourceB`,
+						category: `Scene:\n${scene.name.replace(/[\/ ()]/g, '_')} | ${layer.name} | sourceB`,
 						name: source,
 						style: {
 							text: `$(kairos:INPUT.${source.replace(/ /g, '_')})`,
@@ -598,19 +598,19 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 	})
 	// MACRO
 	instance.KairosObj.MACROS.forEach((MACRO) => {
-		presets[`${MACRO}.play`] = {
+		presets[`${MACRO.uuid}.play`] = {
 			type: 'button',
 			category: 'MACROS',
 			name: 'Macros',
 			style: {
-				text: `${MACRO.slice(7)}\\nplay`,
+				text: `${MACRO.name}\\nplay`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
 			},
 			steps: [
 				{
-					down: [{ actionId: ActionId.macroControl, options: { functionID: '', macro: MACRO, action: 'play' } }],
+					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO.uuid, action: 'play' } }],
 					up: [],
 				},
 			],
@@ -630,19 +630,19 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		//	steps: [ { down: [{ actionId: 'macroControl', options: { functionID: '', macro: MACRO, action: 'pause' } }],up:[]}],
 		//	feedbacks: [],
 		//}
-		presets[`${MACRO}.stop`] = {
+		presets[`${MACRO.uuid}.stop`] = {
 			type: 'button',
 			category: 'MACROS',
 			name: 'Macros',
 			style: {
-				text: `${MACRO.slice(7)}\\nstop`,
+				text: `${MACRO.name}\\nstop`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
 			},
 			steps: [
 				{
-					down: [{ actionId: ActionId.macroControl, options: { functionID: '', macro: MACRO, action: 'stop' } }],
+					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO.uuid, action: 'stop' } }],
 					up: [],
 				},
 			],

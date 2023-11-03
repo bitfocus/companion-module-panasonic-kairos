@@ -17,6 +17,7 @@ export enum updateFlags {
 	None = 0,
 	onlyVariables = 1,
 	All = 2,
+	presets = 3,
 }
 
 type TimeFormat = 'hh:mm:ss' | 'hh:mm:ss.ms' | 'mm:ss' | 'mm:ss.ms'
@@ -36,7 +37,7 @@ type EnforceDefault<T, U> = Omit<T, 'default'> & { default: U }
 export interface Options {
 	input: EnforceDefault<CompanionInputFieldTextInput, string>
 	playerControl: EnforceDefault<CompanionInputFieldDropdown, string>
-	macroControl: EnforceDefault<CompanionInputFieldDropdown, string>
+	macroStateControl: EnforceDefault<CompanionInputFieldDropdown, string>
 	mvRecall: EnforceDefault<CompanionInputFieldDropdown, string>
 	mute: EnforceDefault<CompanionInputFieldDropdown, number>
 	channel: EnforceDefault<CompanionInputFieldDropdown, string>
@@ -98,7 +99,7 @@ export const options: Options = {
 		],
 	},
 
-	macroControl: {
+	macroStateControl: {
 		type: 'dropdown',
 		label: 'Macro',
 		id: 'action',

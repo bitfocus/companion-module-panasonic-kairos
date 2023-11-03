@@ -15,7 +15,7 @@ export enum ActionId {
 	playerControl = 'playerControl',
 	macroControl = 'macroControl',
 	mvRecall = 'mvRecall',
-	smacroControl = 'smacroControl',
+	// smacroControl = 'smacroControl',
 	triggerSnapshot = 'triggerSnapshot',
 	muteMaster = 'muteMaster',
 	muteChannel = 'muteChannel',
@@ -340,20 +340,19 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Macro',
 					id: 'macro',
-					default: instance.KairosObj.MACROS[0] ? instance.KairosObj.MACROS[0] : '1',
-					choices: instance.KairosObj.MACROS.map((id) => ({ id, label: id.slice(7) })),
+					default: instance.KairosObj.MACROS[0] ? instance.KairosObj.MACROS[0].uuid : 'none exist',
+					choices: instance.KairosObj.MACROS.map((item) => ({ id: item.uuid, label: item.name })),
 					minChoicesForSearch: 8,
 				},
-				options.macroControl,
+				options.macroStateControl,
 			],
 			callback: (action) => {
 				const macroControl: any = {
-					id: 'macroControl',
-					options: {
-						functionID: `${action.options.macro}.${action.options.action}`,
-					},
+					patchCommand: '/macros',
+					options: '/' + action.options.macro,
+					body: { state: action.options.action },
 				}
-				sendSimpleProtocolCommand(macroControl)
+				sendPatchCommand(macroControl)
 			},
 		},
 		// Recall MV presets
@@ -379,30 +378,30 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				sendSimpleProtocolCommand(mvRecall)
 			},
 		},
-		// Scene Macros
-		[ActionId.smacroControl]: {
-			name: 'Scene Macro action',
-			options: [
-				{
-					type: 'dropdown',
-					label: 'Scene Macro',
-					id: 'smacro',
-					default: instance.combinedSmacrosArray[0] ? instance.combinedSmacrosArray[0] : '1',
-					choices: instance.combinedSmacrosArray.map((id) => ({ id, label: id })),
-					minChoicesForSearch: 8,
-				},
-				options.macroControl,
-			],
-			callback: (action) => {
-				const smacroControl: any = {
-					id: 'smacroControl',
-					options: {
-						functionID: `${action.options.smacro}.${action.options.action}`,
-					},
-				}
-				sendSimpleProtocolCommand(smacroControl)
-			},
-		},
+		// // Scene Macros
+		// [ActionId.smacroControl]: {
+		// 	name: 'Scene Macro action',
+		// 	options: [
+		// 		{
+		// 			type: 'dropdown',
+		// 			label: 'Scene Macro',
+		// 			id: 'smacro',
+		// 			default: instance.combinedSmacrosArray[0] ? instance.combinedSmacrosArray[0] : '1',
+		// 			choices: instance.combinedSmacrosArray.map((id) => ({ id, label: id })),
+		// 			minChoicesForSearch: 8,
+		// 		},
+		// 		options.macroControl,
+		// 	],
+		// 	callback: (action) => {
+		// 		const smacroControl: any = {
+		// 			id: 'smacroControl',
+		// 			options: {
+		// 				functionID: `${action.options.smacro}.${action.options.action}`,
+		// 			},
+		// 		}
+		// 		sendSimpleProtocolCommand(smacroControl)
+		// 	},
+		// },
 		// Snapshots
 		[ActionId.triggerSnapshot]: {
 			name: 'Trigger Snapshots',

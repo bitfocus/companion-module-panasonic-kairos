@@ -7,12 +7,8 @@ import { updateBasicVariables } from './variables'
 import { TCP } from './tcp'
 import { REST } from './rest'
 import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from '@companion-module/base'
+import { updateFlags } from './utils'
 
-enum updateFlags {
-	NONE = 0,
-	onlyVariables = 1,
-	All = 2,
-}
 /**
  * Companion instance class for Panasonic Kairos
  */
@@ -33,9 +29,10 @@ class KairosInstance extends InstanceBase<config> {
 			name: string
 			tally: string
 			uuid: string
+			macros: { color: string; name: string; state: string; uuid: string }[]
 		}[]
 		AUX: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
-		MACROS: Array<string>
+		MACROS: { color: string; name: string; state: string; uuid: string }[]
 		PLAYERS: { player: string; repeat: number }[]
 		MV_PRESETS: Array<string>
 		AUDIO_CHANNELS: { channel: string; mute: number }[]
@@ -134,6 +131,9 @@ class KairosInstance extends InstanceBase<config> {
 			updateBasicVariables(this)
 		} else if (updateFlag === updateFlags.onlyVariables) {
 			updateBasicVariables(this)
+		} else if (updateFlag === updateFlags.presets) {
+			const presets = getPresets(this)
+			this.setPresetDefinitions(presets)
 		}
 		// const end = Date.now()
 		// this.log('debug',`updateInstance:${updateFlag === updateFlags.onlyVariables ? 'variables' : 'all'} ${end - begin}, 'ms'`)

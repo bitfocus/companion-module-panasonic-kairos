@@ -78,6 +78,21 @@ export class REST {
 		 */
 		let pullScenes = async () => {
 			try {
+				/**
+				 * Pulls the macro's
+				 */
+				let pullMacros = async () => {
+					try {
+						let macroResult = await this.sendCommand('/macros')
+						let convertedMacros = JSON.parse(macroResult)
+						this.instance.KairosObj.MACROS = convertedMacros
+						this.instance.updateInstance(updateFlags.presets as number)
+					} catch (error: any) {
+						this.instance.log('error', 'Error pulling macros : ' + error.message)
+					}
+				}
+				pullMacros()
+
 				let sceneResult = await this.sendCommand('/scenes')
 				let convertedScenes = JSON.parse(sceneResult)
 				this.instance.KairosObj.SCENES = convertedScenes
@@ -108,10 +123,15 @@ export class REST {
 							this.instance.KairosObj.INPUTS.push(createInputWithName(source))
 					})
 				})
-
-				// Connect the layers to the scenes
+				// Put scene name into macro
 				this.instance.combinedLayerArray = []
 				this.instance.KairosObj.SCENES.forEach((scene: any) => {
+					// change naming for macro's
+					if (scene.macros) {
+						scene.macros.array.forEach((macro: { color: string; name: string; state: string; uuid: string }) => {
+							this.instance.KairosObj.MACROS.push(macro)
+						})
+					}
 					scene.layers.forEach((layer: any) => {
 						this.instance.combinedLayerArray.push({
 							name: `/${scene.name}/${layer.name}`,
@@ -126,7 +146,7 @@ export class REST {
 				this.instance.checkFeedbacks(FeedbackId.inputSource)
 				this.instance.updateInstance(updateFlags.All as number)
 			} catch (error: any) {
-				this.instance.log('error', 'Error pulling and auxes scenes : ' + error.message)
+				this.instance.log('error', 'Error pulling auxes and scenes : ' + error.message)
 			}
 		}
 
@@ -161,7 +181,7 @@ export class REST {
 		const headers = new Headers({
 			Authorization: `Basic ${base64Credentials}`,
 		})
-		if (command !== '/scenes' && command !== '/aux')
+		if (command !== '/scenes' && command !== '/aux' && command !== '/macros')
 			this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
 		try {
 			const response = await fetch(formattedRestRequest, { headers })
