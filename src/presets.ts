@@ -566,10 +566,10 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		aux.sources.forEach((source) => {
 			presets[`${aux.name}.${source}.setAux`] = {
 				type: 'button',
-				category: aux.name,
+				category: `AUX: ${aux.name}`,
 				name: aux.name,
 				style: {
-					text: `$(kairos:AUX.${aux.name.replace(/ /g, '_')})\\n$(kairos:INPUT.${source.replace(/ /g, '_')})`,
+					text: `$(kairos:AUX.${aux.name.replace(/ /g, '_')}):\\n$(kairos:INPUT.${source.replace(/ /g, '_')})`,
 					size: 'auto',
 					color: combineRgb(255, 255, 255),
 					bgcolor: combineRgb(0, 0, 0),
