@@ -128,10 +128,11 @@ export class REST {
 				this.instance.KairosObj.SCENES.forEach((scene: any) => {
 					// change naming for macro's
 					if (scene.macros) {
-						scene.macros.array.forEach((macro: { color: string; name: string; state: string; uuid: string }) => {
+						scene.macros.forEach((macro: { color: string; name: string; state: string; uuid: string }) => {
 							this.instance.KairosObj.MACROS.push(macro)
 						})
 					}
+					if(!scene.layers) return
 					scene.layers.forEach((layer: any) => {
 						this.instance.combinedLayerArray.push({
 							name: `/${scene.name}/${layer.name}`,
