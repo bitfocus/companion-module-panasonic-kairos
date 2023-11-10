@@ -14,6 +14,7 @@ export enum ActionId {
 	setAUX = 'setAUX',
 	playerControl = 'playerControl',
 	macroControl = 'macroControl',
+	macroSceneControl = 'macroSceneControl',
 	mvRecall = 'mvRecall',
 	// smacroControl = 'smacroControl',
 	triggerSnapshot = 'triggerSnapshot',
@@ -342,6 +343,28 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					id: 'macro',
 					default: instance.KairosObj.MACROS[0] ? instance.KairosObj.MACROS[0].uuid : 'none exist',
 					choices: instance.KairosObj.MACROS.map((item) => ({ id: item.uuid, label: item.name })),
+					minChoicesForSearch: 8,
+				},
+				options.macroStateControl,
+			],
+			callback: (action) => {
+				const macroControl: any = {
+					patchCommand: '/macros',
+					options: '/' + action.options.macro,
+					body: { state: action.options.action },
+				}
+				sendPatchCommand(macroControl)
+			},
+		},
+		[ActionId.macroSceneControl]: {
+			name: 'Macro scene action',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Scene macro',
+					id: 'macro',
+					default: instance.KairosObj.SCENES_MACROS[0] ? instance.KairosObj.SCENES_MACROS[0].uuid : 'none exist',
+					choices: instance.KairosObj.SCENES_MACROS.map((item) => ({ id: item.uuid, label: item.name })),
 					minChoicesForSearch: 8,
 				},
 				options.macroStateControl,

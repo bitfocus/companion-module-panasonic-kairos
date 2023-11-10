@@ -616,20 +616,6 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			],
 			feedbacks: [],
 		}
-		//presets[`${MACRO}.pause`] = {
-		//	type: 'button',
-		//	category: 'MACROS',
-		//	name: 'Macros',
-		//	style: {
-		//
-		//		text: `${MACRO.slice(7)}\\npause`,
-		//		size: 'auto',
-		//		color: combineRgb(255, 255, 255),
-		//		bgcolor: combineRgb(0, 0, 0),
-		//	},
-		//	steps: [ { down: [{ actionId: 'macroControl', options: { functionID: '', macro: MACRO, action: 'pause' } }],up:[]}],
-		//	feedbacks: [],
-		//}
 		presets[`${MACRO.uuid}.stop`] = {
 			type: 'button',
 			category: 'MACROS',
@@ -648,36 +634,45 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			],
 			feedbacks: [],
 		}
-		//presets[`${MACRO}.record`] = {
-		//	type: 'button',
-		//	category: 'MACROS',
-		//	name: 'Macros',
-		//	style: {
-		//
-		//		text: `${MACRO.slice(7)}\\nrecord`,
-		//		size: 'auto',
-		//		color: combineRgb(255, 255, 255),
-		//		bgcolor: combineRgb(0, 0, 0),
-		//	},
-		//	steps: [ { down: [{ actionId: 'macroControl', options: { functionID: '', macro: MACRO, action: 'record' } }],up:[]}],
-		//	feedbacks: [],
-		//}
-		//presets[`${MACRO}.stop_rec`] = {
-		//	type: 'button',
-		//	category: 'MACROS',
-		//	name: 'Macros',
-		//	style: {
-		//
-		//		text: `${MACRO.slice(7)}\\nstop_rec`,
-		//		size: 'auto',
-		//		},
-		// style: {
-		// 	color: combineRgb(255, 255, 255),
-		//		bgcolor: combineRgb(0, 0, 0),
-		//	},
-		//	steps: [ { down: [{ actionId: 'macroControl', options: { functionID: '', macro: MACRO, action: 'stop_record' } }],up:[]}],
-		//	feedbacks: [],
-		//}
+	})
+	// MACRO FOR SCENES
+	instance.KairosObj.SCENES_MACROS.forEach((MACRO) => {
+		presets[`${MACRO.uuid}.play`] = {
+			type: 'button',
+			category: 'MACROS',
+			name: 'Macros',
+			style: {
+				text: `${MACRO.name}\\nplay`,
+				size: 'auto',
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
+			},
+			steps: [
+				{
+					down: [{ actionId: ActionId.macroSceneControl, options: { macro: MACRO.uuid, action: 'play' } }],
+					up: [],
+				},
+			],
+			feedbacks: [],
+		}
+		presets[`${MACRO.uuid}.stop`] = {
+			type: 'button',
+			category: 'MACROS',
+			name: 'Macros',
+			style: {
+				text: `${MACRO.name}\\nstop`,
+				size: 'auto',
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
+			},
+			steps: [
+				{
+					down: [{ actionId: ActionId.macroSceneControl, options: { macro: MACRO.uuid, action: 'stop' } }],
+					up: [],
+				},
+			],
+			feedbacks: [],
+		}
 	})
 	// MULTIVIEWER
 	instance.KairosObj.MV_PRESETS.forEach((PRESET) => {

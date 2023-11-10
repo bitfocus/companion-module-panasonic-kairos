@@ -86,7 +86,7 @@ export class REST {
 						let macroResult = await this.sendCommand('/macros')
 						let convertedMacros = JSON.parse(macroResult)
 						this.instance.KairosObj.MACROS = convertedMacros
-						this.instance.updateInstance(updateFlags.presets as number)
+						// this.instance.updateInstance(updateFlags.presets as number)
 					} catch (error: any) {
 						this.instance.log('error', 'Error pulling macros : ' + error.message)
 					}
@@ -126,13 +126,17 @@ export class REST {
 				// Put scene name into macro
 				this.instance.combinedLayerArray = []
 				this.instance.KairosObj.SCENES.forEach((scene: any) => {
-					// change naming for macro's
+					// Attention, these are scene macro's only update on a new macro
 					if (scene.macros) {
-						scene.macros.forEach((macro: { color: string; name: string; state: string; uuid: string }) => {
-							this.instance.KairosObj.MACROS.push(macro)
-						})
+						if (scene.macros.lenght != this.instance.KairosObj.SCENES_MACROS.length) {
+							this.instance.KairosObj.SCENES_MACROS = []
+							scene.macros.forEach((macro: { color: string; name: string; state: string; uuid: string }) => {
+								macro.name = scene.name + ' - ' + macro.name
+								this.instance.KairosObj.SCENES_MACROS.push(macro)
+							})
+						}
 					}
-					if(!scene.layers) return
+					if (!scene.layers) return
 					scene.layers.forEach((layer: any) => {
 						this.instance.combinedLayerArray.push({
 							name: `/${scene.name}/${layer.name}`,
