@@ -21,7 +21,7 @@ This module is for the Panasonic Kairos switcher.
 * trigger snapshot of SCENE
 
 ### AUX source assignment
-* set source for selected AUX
+* set source for selected AUX, only possible when sources assigned to an AUX
 
 ### RAM players/Clip players
 * go to begin
@@ -62,7 +62,7 @@ This module is for the Panasonic Kairos switcher.
 **Available variables in this module**
 
 * SourceA for each layer (PGM)
-* SourceB for each layer (PVW)
+* Presets enabled or not (PVW bus on a layer)
 * Next transition
 * Input names
 * AUX with sources
@@ -70,4 +70,3 @@ This module is for the Panasonic Kairos switcher.
 * MUTE channel 1 t/m 16
 * PLAYER repeat modus
 * AUX enabled
-* Presets enabled or not (PVW bus on a layer)
