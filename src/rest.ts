@@ -125,11 +125,10 @@ export class REST {
 				})
 				// Put scene name into macro
 				this.instance.combinedLayerArray = []
+				this.instance.KairosObj.SCENES_MACROS = []
 				this.instance.KairosObj.SCENES.forEach((scene: any) => {
-					// Attention, these are scene macro's only update on a new macro
 					if (scene.macros) {
 						if (scene.macros.lenght != this.instance.KairosObj.SCENES_MACROS.length) {
-							this.instance.KairosObj.SCENES_MACROS = []
 							scene.macros.forEach((macro: { color: string; name: string; state: string; uuid: string }) => {
 								macro.name = scene.name + ' - ' + macro.name
 								this.instance.KairosObj.SCENES_MACROS.push(macro)
