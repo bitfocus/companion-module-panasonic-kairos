@@ -129,8 +129,9 @@ export class REST {
 				this.instance.KairosObj.SCENES.forEach((scene: any) => {
 					if (scene.macros) {
 						if (scene.macros.lenght != this.instance.KairosObj.SCENES_MACROS.length) {
-							scene.macros.forEach((macro: { color: string; name: string; state: string; uuid: string }) => {
+							scene.macros.forEach((macro: { color: string; name: string; state: string; uuid: string; scene: string}) => {
 								macro.name = scene.name + ' - ' + macro.name
+								macro.scene = scene.name
 								this.instance.KairosObj.SCENES_MACROS.push(macro)
 							})
 						}

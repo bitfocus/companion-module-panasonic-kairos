@@ -33,7 +33,9 @@ class KairosInstance extends InstanceBase<config> {
 		}[]
 		AUX: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
 		MACROS: { color: string; name: string; state: string; uuid: string }[]
-		SCENES_MACROS: { color: string; name: string; state: string; uuid: string }[]
+		SCENES_MACROS: {
+			scene: string; color: string; name: string; state: string; uuid: string 
+}[]
 		PLAYERS: { player: string; repeat: number }[]
 		MV_PRESETS: Array<string>
 		AUDIO_CHANNELS: { channel: string; mute: number }[]
