@@ -96,14 +96,31 @@ export class REST {
 				let sceneResult = await this.sendCommand('/scenes')
 				let convertedScenes = JSON.parse(sceneResult)
 				this.instance.KairosObj.SCENES = convertedScenes
-				// convertedScenes.forEach((scene: { name: string }, index: any) => {
-				// 	console.log("sceness"+scene.name+" "+index)
-				// });
-				// console.log(`scene: ${JSON.stringify(convertedScenes[18])}`)
-				// Load inputs from scenes into Kairos
+				
+				// Load inputs, macros and snapshots from scenes into Kairos
+				this.instance.combinedLayerArray = []
+				this.instance.KairosObj.SCENES_MACROS = []
 				this.instance.KairosObj.SCENES.forEach((scene: any) => {
+					if (scene.macros) {
+						if (scene.macros.lenght != this.instance.KairosObj.SCENES_MACROS.length) {
+							scene.macros.forEach(
+								(macro: { color: string; name: string; state: string; uuid: string; scene: string }) => {
+									macro.name = scene.name + ' - ' + macro.name
+									macro.scene = scene.name
+									this.instance.KairosObj.SCENES_MACROS.push(macro)
+								}
+							)
+						}
+					}
+					if (!scene.layers) return
 					scene.layers.forEach((layer: any) => {
-						if (!layer.sources) return
+						this.instance.combinedLayerArray.push({
+							name: `/${scene.name}/${layer.name}`,
+							sourceA: layer.sourceA,
+							sourceB: layer.sourceB,
+							uuid: `/${scene.uuid}/${layer.uuid}`,
+						})
+						if(!layer.sources) return
 						layer.sources.forEach((source: any) => {
 							if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
 								this.instance.KairosObj.INPUTS.push(createInputWithName(source))
@@ -123,29 +140,7 @@ export class REST {
 							this.instance.KairosObj.INPUTS.push(createInputWithName(source))
 					})
 				})
-				// Put scene name into macro
-				this.instance.combinedLayerArray = []
-				this.instance.KairosObj.SCENES_MACROS = []
-				this.instance.KairosObj.SCENES.forEach((scene: any) => {
-					if (scene.macros) {
-						if (scene.macros.lenght != this.instance.KairosObj.SCENES_MACROS.length) {
-							scene.macros.forEach((macro: { color: string; name: string; state: string; uuid: string; scene: string}) => {
-								macro.name = scene.name + ' - ' + macro.name
-								macro.scene = scene.name
-								this.instance.KairosObj.SCENES_MACROS.push(macro)
-							})
-						}
-					}
-					if (!scene.layers) return
-					scene.layers.forEach((layer: any) => {
-						this.instance.combinedLayerArray.push({
-							name: `/${scene.name}/${layer.name}`,
-							sourceA: layer.sourceA,
-							sourceB: layer.sourceB,
-							uuid: `/${scene.uuid}/${layer.uuid}`,
-						})
-					})
-				})
+				
 
 				this.instance.checkFeedbacks(FeedbackId.aux)
 				this.instance.checkFeedbacks(FeedbackId.inputSource)
