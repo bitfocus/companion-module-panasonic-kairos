@@ -603,7 +603,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			category: 'MACROS',
 			name: 'Macros',
 			style: {
-				text: `${MACRO.name}\\nplay`,
+				text: `GLOBAL:\n${MACRO.name}\\nplay`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -621,7 +621,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			category: 'MACROS',
 			name: 'Macros',
 			style: {
-				text: `${MACRO.name}\\nstop`,
+				text: `GLOBAL:\n${MACRO.name}\\nstop`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -642,14 +642,14 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			category: 'MACROS',
 			name: 'Macros',
 			style: {
-				text: `${MACRO.name}\\nplay`,
+				text: `SCENE:\n${MACRO.name}\\nplay`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
 			},
 			steps: [
 				{
-					down: [{ actionId: ActionId.macroSceneControl, options: { macro: MACRO.uuid, action: 'play' } }],
+					down: [{ actionId: ActionId.macroSceneControl, options: { macro: `${MACRO.scene}/macros/${MACRO.uuid}`, action: 'play' } }],
 					up: [],
 				},
 			],
@@ -660,14 +660,14 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			category: 'MACROS',
 			name: 'Macros',
 			style: {
-				text: `${MACRO.name}\\nstop`,
+				text: `SCENE:\n${MACRO.name}\\nstop`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
 			},
 			steps: [
 				{
-					down: [{ actionId: ActionId.macroSceneControl, options: { macro: MACRO.uuid, action: 'stop' } }],
+					down: [{ actionId: ActionId.macroSceneControl, options: { macro: `${MACRO.scene}/macros/${MACRO.uuid}`, action: 'stop' } }],
 					up: [],
 				},
 			],
