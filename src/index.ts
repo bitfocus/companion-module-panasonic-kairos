@@ -30,12 +30,18 @@ class KairosInstance extends InstanceBase<config> {
 			tally: string
 			uuid: string
 			macros: { color: string; name: string; state: string; uuid: string }[]
+			SNAPSHOTS: { name: string; state: string; uuid: string }[]
 		}[]
 		AUX: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
 		MACROS: string[]
 		SCENES_MACROS: {
-			scene: string; color: string; name: string; state: string; uuid: string 
-}[]
+			scene: string
+			color: string
+			name: string
+			state: string
+			uuid: string
+		}[]
+		SNAPSHOTS: { name: string; state: string; uuid: string; scene: string }[]
 		PLAYERS: { player: string; repeat: number }[]
 		MV_PRESETS: Array<string>
 		AUDIO_CHANNELS: { channel: string; mute: number }[]
@@ -49,10 +55,17 @@ class KairosInstance extends InstanceBase<config> {
 		PLAYERS: [],
 		MV_PRESETS: [],
 		AUDIO_CHANNELS: [],
-		SCENES_MACROS: []
+		SCENES_MACROS: [],
+		SNAPSHOTS: [],
 	}
 
-	public combinedLayerArray: { name: string; sourceA: string; sourceB: string; preset_enabled?: number; uuid: string}[] = []
+	public combinedLayerArray: {
+		name: string
+		sourceA: string
+		sourceB: string
+		preset_enabled?: number
+		uuid: string
+	}[] = []
 	public combinedTransitionsArray: Array<string> = []
 	public combinedSmacrosArray: Array<string> = []
 	public combinedSnapshotsArray: Array<string> = []

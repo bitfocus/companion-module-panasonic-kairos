@@ -543,22 +543,23 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		// 	//	feedbacks: [],
 		// 	//}
 		// })
-		// SCENE.snapshots.forEach((SNAPSHOT) => {
-		// 	presets[`${SNAPSHOT}.trigger`] = {
-		// 		type: 'button',
-		// 		category: 'SNAPSHOTS',
-		// 		name: SNAPSHOT,
-		// 		style: {
-		// 			//text: SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11),
-		// 			text: `${SCENE.name.slice(7)}\\n${SNAPSHOT.slice(SNAPSHOT.search('.Snapshots.') + 11)}`,
-		// 			size: 'auto',
-		// 			color: combineRgb(255, 255, 255),
-		// 			bgcolor: combineRgb(0, 0, 0),
-		// 		},
-		// 		steps: [{ down: [{ actionId: ActionId.triggerSnapshot, options: { snapshot: SNAPSHOT } }], up: [] }],
-		// 		feedbacks: [],
-		// 	}
-		// })
+
+	})
+	// SNAPSHOT
+	instance.KairosObj.SNAPSHOTS.forEach((snapshot) => {
+		presets[`${snapshot.uuid}.recall`] = {
+			type: 'button',
+			category: 'SNAPSHOTS',
+			name: `${snapshot.scene}/${snapshot.name}`,
+			style: {
+				text: `${snapshot.scene}/${snapshot.name}`,
+				size: 'auto',
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(0, 0, 0),
+			},
+			steps: [{ down: [{ actionId: ActionId.triggerSnapshot, options: { snapshot: snapshot.uuid } }], up: [] }],
+			feedbacks: [],
+		}
 	})
 	// AUX
 	instance.KairosObj.AUX.forEach((aux) => {

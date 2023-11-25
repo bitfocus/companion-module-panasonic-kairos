@@ -97,9 +97,12 @@ export class REST {
 				let convertedScenes = JSON.parse(sceneResult)
 				this.instance.KairosObj.SCENES = convertedScenes
 				
-				// Load inputs, macros and snapshots from scenes into Kairos
+				// clear arrays
 				this.instance.combinedLayerArray = []
 				this.instance.KairosObj.SCENES_MACROS = []
+				this.instance.KairosObj.SNAPSHOTS = []
+				
+				// Load inputs, macros and snapshots from scenes into Kairos
 				this.instance.KairosObj.SCENES.forEach((scene: any) => {
 					if (scene.macros) {
 						if (scene.macros.lenght != this.instance.KairosObj.SCENES_MACROS.length) {
@@ -111,6 +114,12 @@ export class REST {
 								}
 							)
 						}
+					}
+					if (scene.snapshots) {
+						scene.snapshots.forEach((snapshot: any) => {
+							snapshot.scene = scene.name
+							this.instance.KairosObj.SNAPSHOTS.push(snapshot)
+						})
 					}
 					if (!scene.layers) return
 					scene.layers.forEach((layer: any) => {

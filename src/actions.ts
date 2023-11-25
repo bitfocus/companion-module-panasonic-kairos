@@ -401,30 +401,6 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				sendSimpleProtocolCommand(mvRecall)
 			},
 		},
-		// // Scene Macros
-		// [ActionId.smacroControl]: {
-		// 	name: 'Scene Macro action',
-		// 	options: [
-		// 		{
-		// 			type: 'dropdown',
-		// 			label: 'Scene Macro',
-		// 			id: 'smacro',
-		// 			default: instance.combinedSmacrosArray[0] ? instance.combinedSmacrosArray[0] : '1',
-		// 			choices: instance.combinedSmacrosArray.map((id) => ({ id, label: id })),
-		// 			minChoicesForSearch: 8,
-		// 		},
-		// 		options.macroControl,
-		// 	],
-		// 	callback: (action) => {
-		// 		const smacroControl: any = {
-		// 			id: 'smacroControl',
-		// 			options: {
-		// 				functionID: `${action.options.smacro}.${action.options.action}`,
-		// 			},
-		// 		}
-		// 		sendSimpleProtocolCommand(smacroControl)
-		// 	},
-		// },
 		// Snapshots
 		[ActionId.triggerSnapshot]: {
 			name: 'Trigger Snapshots',
@@ -433,20 +409,19 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Snapshot',
 					id: 'snapshot',
-					default: instance.combinedSnapshotsArray[0] ? instance.combinedSnapshotsArray[0] : '1',
-					choices: instance.combinedSnapshotsArray.map((id) => ({ id, label: id })),
+					default: instance.KairosObj.SNAPSHOTS[0] ? instance.KairosObj.SNAPSHOTS[0].uuid : '',
+					choices: instance.KairosObj.SNAPSHOTS.map((item) => ({ id: item.uuid, label: `${item.scene}/${item.name}` })),
 					minChoicesForSearch: 8,
 				},
 			],
 			callback: (action) => {
 				const triggerSnapshot: any = {
-					id: 'triggerSnapshot',
-					options: {
-						functionID: `${action.options.snapshot}.recall`,
-					},
+					patchCommand: '/snapshots/',
+					options: action.options.snapshot,
+					body: { state: 'recall' },
 				}
 
-				sendSimpleProtocolCommand(triggerSnapshot)
+				sendPatchCommand(triggerSnapshot)
 			},
 		},
 		//Audio
