@@ -65,7 +65,6 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		if ('functionID' in action.options) {
 			functionName = action.options.functionID
 		}
-
 		if (instance.tcp) instance.tcp.sendCommand(functionName)
 	}
 
@@ -341,19 +340,20 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Macro',
 					id: 'macro',
-					default: instance.KairosObj.MACROS[0] ? instance.KairosObj.MACROS[0].uuid : 'none exist',
-					choices: instance.KairosObj.MACROS.map((item) => ({ id: item.uuid, label: item.name })),
+					default: instance.KairosObj.MACROS[0] ? instance.KairosObj.MACROS[0] : 'none exist',
+					choices: instance.KairosObj.MACROS.map((item) => ({ id: item, label: item })),
 					minChoicesForSearch: 8,
 				},
 				options.macroStateControl,
 			],
 			callback: (action) => {
 				const macroControl: any = {
-					patchCommand: '/macros',
-					options: '/' + action.options.macro,
-					body: { state: action.options.action },
+					id: 'macros',
+					options: {
+						functionID: `${action.options.macro}.${action.options.action}`,
+					},
 				}
-				sendPatchCommand(macroControl)
+				sendSimpleProtocolCommand(macroControl)
 			},
 		},
 		[ActionId.macroSceneControl]: {

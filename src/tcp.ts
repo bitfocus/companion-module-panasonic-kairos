@@ -92,23 +92,9 @@ export class TCP {
 		// 	}
 		// }
 
-		// const fetchMacros = () => {
-		// 	return new Promise((resolve) => {
-		// 		this.sendCommand('list:MACROS')
-		// 		this.processCallback = (data: Array<string>, cmd: string) => {
-		// 			if (data.length === 0 && cmd !== 'MACROS') {
-		// 				this.instance.KairosObj.MACROS.push(cmd)
-		// 			}
-		// 			data.forEach((element) => {
-		// 				this.sendCommand(`list:${element}`)
-		// 			})
-		// 		}
-		// 		listFinish().then(() => {
-		// 			this.processCallback = null
-		// 			resolve('fetch ready')
-		// 		})
-		// 	})
-		// }
+		const fetchMacros = () => {
+			this.sendCommand('list:MACROS')
+		}
 		// const fetchFixedItems = () => {
 		// this.sendCommand('list:RAMRECORDERS')
 		// this.sendCommand('list:PLAYERS')
@@ -142,28 +128,28 @@ export class TCP {
 				//this.sendCommand(`subscribe:Mixer.AudioMixers.AudioMixer.${element.channel}.mute`)
 				this.sendCommand(`subscribe:AUDIOMIXER.${element.channel}.mute`)
 			})
-			this.instance.KairosObj.AUX.forEach((element) => {
-				this.sendCommand(`subscribe:${element.name}.source`)
-				this.sendCommand(`subscribe:${element.name}.name`)
-			})
-			this.instance.KairosObj.INPUTS.forEach((element) => {
-				this.sendCommand(`subscribe:${element.shortcut}.name`)
-			})
+			// this.instance.KairosObj.AUX.forEach((element) => {
+			// 	this.sendCommand(`subscribe:${element.name}.source`)
+			// 	this.sendCommand(`subscribe:${element.name}.name`)
+			// })
+			// this.instance.KairosObj.INPUTS.forEach((element) => {
+			// 	this.sendCommand(`subscribe:${element.shortcut}.name`)
+			// })
 
-			for (const LAYER of this.instance.combinedLayerArray) {
-				this.sendCommand(`subscribe:${LAYER.name}.sourceA`)
-			}
+			// for (const LAYER of this.instance.combinedLayerArray) {
+			// 	this.sendCommand(`subscribe:${LAYER.name}.sourceA`)
+			// }
 
-			for (const LAYER of this.instance.combinedLayerArray) {
-				this.sendCommand(`subscribe:${LAYER.name}.sourceB`)
-			}
+			// for (const LAYER of this.instance.combinedLayerArray) {
+			// 	this.sendCommand(`subscribe:${LAYER.name}.sourceB`)
+			// }
 		}
 		this.sockets.main.on('connect', async () => {
 			this.instance.log('debug', 'Connected to mixer')
 			this.instance.updateStatus(InstanceStatus.Ok, 'Connected')
 			this.keepAliveInterval = setInterval(keepAlive, 4500) //session expires at 5 seconds
+			fetchMacros()
 			await subscribeToData()
-			// fetchFxinputs()
 			this.instance.updateInstance(updateFlags.All as number)
 		})
 
@@ -241,11 +227,11 @@ export class TCP {
 								this.instance.checkFeedbacks('aux')
 							}
 							break
-						//case /^MACROS\./i.test(returningData): // This is an MACRO
-						//	{
-						//		this.instance.KairosObj.MACROS.push(returningData)
-						//	}
-						//	break
+						case /^MACROS\./i.test(returningData): // This is an MACRO
+							{
+								this.instance.KairosObj.MACROS.push(returningData)
+							}
+							break
 						//case /\.available=/i.test(returningData): // This is an AUX available check
 						//	{
 						//		let index = this.instance.KairosObj.AUX.findIndex(

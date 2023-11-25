@@ -598,37 +598,37 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 	})
 	// MACRO
 	instance.KairosObj.MACROS.forEach((MACRO) => {
-		presets[`${MACRO.uuid}.play`] = {
+		presets[`${MACRO}.play`] = {
 			type: 'button',
 			category: 'MACROS',
 			name: 'Macros',
 			style: {
-				text: `GLOBAL:\n${MACRO.name}\\nplay`,
+				text: `GLOBAL:\n${MACRO}\\nplay`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
 			},
 			steps: [
 				{
-					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO.uuid, action: 'play' } }],
+					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO, action: 'play' } }],
 					up: [],
 				},
 			],
 			feedbacks: [],
 		}
-		presets[`${MACRO.uuid}.stop`] = {
+		presets[`${MACRO}.stop`] = {
 			type: 'button',
 			category: 'MACROS',
 			name: 'Macros',
 			style: {
-				text: `GLOBAL:\n${MACRO.name}\\nstop`,
+				text: `GLOBAL:\n${MACRO}\\nstop`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
 			},
 			steps: [
 				{
-					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO.uuid, action: 'stop' } }],
+					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO, action: 'stop' } }],
 					up: [],
 				},
 			],

@@ -32,7 +32,7 @@ class KairosInstance extends InstanceBase<config> {
 			macros: { color: string; name: string; state: string; uuid: string }[]
 		}[]
 		AUX: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
-		MACROS: { color: string; name: string; state: string; uuid: string }[]
+		MACROS: string[]
 		SCENES_MACROS: {
 			scene: string; color: string; name: string; state: string; uuid: string 
 }[]

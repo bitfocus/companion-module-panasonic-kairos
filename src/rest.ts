@@ -81,17 +81,17 @@ export class REST {
 				/**
 				 * Pulls the macro's
 				 */
-				let pullMacros = async () => {
-					try {
-						let macroResult = await this.sendCommand('/macros')
-						let convertedMacros = JSON.parse(macroResult)
-						this.instance.KairosObj.MACROS = convertedMacros
-						// this.instance.updateInstance(updateFlags.presets as number)
-					} catch (error: any) {
-						this.instance.log('error', 'Error pulling macros : ' + error.message)
-					}
-				}
-				pullMacros()
+				// let pullMacros = async () => {
+				// 	try {
+				// 		let macroResult = await this.sendCommand('/macros')
+				// 		let convertedMacros = JSON.parse(macroResult)
+				// 		this.instance.KairosObj.MACROS = convertedMacros
+				// 		// this.instance.updateInstance(updateFlags.presets as number)
+				// 	} catch (error: any) {
+				// 		this.instance.log('error', 'Error pulling macros : ' + error.message)
+				// 	}
+				// }
+				// pullMacros()
 
 				let sceneResult = await this.sendCommand('/scenes')
 				let convertedScenes = JSON.parse(sceneResult)
