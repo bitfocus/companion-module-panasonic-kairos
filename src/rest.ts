@@ -92,16 +92,29 @@ export class REST {
 				// 	}
 				// }
 				// pullMacros()
+				/**
+				 * Pulls the macro's
+				 */
+				let pullMultiviewers = async () => {
+					try {
+						let multiviewerResult = await this.sendCommand('/multiviewers')
+						let convertedMultiviewers = JSON.parse(multiviewerResult)
+						this.instance.KairosObj.MULTIVIEWERS = convertedMultiviewers
+					} catch (error: any) {
+						this.instance.log('error', 'Error pulling multiviewers : ' + error.message)
+					}
+				}
+				pullMultiviewers()
 
 				let sceneResult = await this.sendCommand('/scenes')
 				let convertedScenes = JSON.parse(sceneResult)
 				this.instance.KairosObj.SCENES = convertedScenes
-				
+
 				// clear arrays
 				this.instance.combinedLayerArray = []
 				this.instance.KairosObj.SCENES_MACROS = []
 				this.instance.KairosObj.SNAPSHOTS = []
-				
+
 				// Load inputs, macros and snapshots from scenes into Kairos
 				this.instance.KairosObj.SCENES.forEach((scene: any) => {
 					if (scene.macros) {
@@ -129,7 +142,7 @@ export class REST {
 							sourceB: layer.sourceB,
 							uuid: `/${scene.uuid}/${layer.uuid}`,
 						})
-						if(!layer.sources) return
+						if (!layer.sources) return
 						layer.sources.forEach((source: any) => {
 							if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
 								this.instance.KairosObj.INPUTS.push(createInputWithName(source))
@@ -149,7 +162,6 @@ export class REST {
 							this.instance.KairosObj.INPUTS.push(createInputWithName(source))
 					})
 				})
-				
 
 				this.instance.checkFeedbacks(FeedbackId.aux)
 				this.instance.checkFeedbacks(FeedbackId.inputSource)
@@ -190,7 +202,7 @@ export class REST {
 		const headers = new Headers({
 			Authorization: `Basic ${base64Credentials}`,
 		})
-		if (command !== '/scenes' && command !== '/aux' && command !== '/macros')
+		if (command !== '/scenes' && command !== '/aux' && command !== '/macros' && command !== '/multiviewers')
 			this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
 		try {
 			const response = await fetch(formattedRestRequest, { headers })

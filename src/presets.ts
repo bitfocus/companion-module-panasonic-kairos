@@ -543,7 +543,6 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		// 	//	feedbacks: [],
 		// 	//}
 		// })
-
 	})
 	// SNAPSHOT
 	instance.KairosObj.SNAPSHOTS.forEach((snapshot) => {
@@ -650,7 +649,12 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			},
 			steps: [
 				{
-					down: [{ actionId: ActionId.macroSceneControl, options: { macro: `${MACRO.scene}/macros/${MACRO.uuid}`, action: 'play' } }],
+					down: [
+						{
+							actionId: ActionId.macroSceneControl,
+							options: { macro: `${MACRO.scene}/macros/${MACRO.uuid}`, action: 'play' },
+						},
+					],
 					up: [],
 				},
 			],
@@ -668,7 +672,12 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			},
 			steps: [
 				{
-					down: [{ actionId: ActionId.macroSceneControl, options: { macro: `${MACRO.scene}/macros/${MACRO.uuid}`, action: 'stop' } }],
+					down: [
+						{
+							actionId: ActionId.macroSceneControl,
+							options: { macro: `${MACRO.scene}/macros/${MACRO.uuid}`, action: 'stop' },
+						},
+					],
 					up: [],
 				},
 			],
@@ -676,43 +685,28 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		}
 	})
 	// MULTIVIEWER
-	instance.KairosObj.MV_PRESETS.forEach((PRESET) => {
-		presets[`MV_PRESETS.${PRESET}.recallmv1`] = {
-			type: 'button',
-			category: 'Multiviewer1 Presets',
-			name: 'Multiviewer1 presets',
-			style: {
-				text: `MV1 Preset\\n${PRESET.slice(10)}`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [{ actionId: ActionId.mvRecall, options: { functionID: '', preset: PRESET, mv: 'recall_mv1' } }],
-					up: [],
+	instance.KairosObj.MULTIVIEWERS.forEach((multiviewer) => {
+		multiviewer.presets.forEach((preset) => {
+			if (!preset) return
+			presets[`${multiviewer.uuid}${preset.id}`] = {
+				type: 'button',
+				category: `${multiviewer.name} Presets`,
+				name: `${multiviewer.name}Presets`,
+				style: {
+					text: `${multiviewer.name} Preset ${preset.name}`,
+					size: 'auto',
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 0, 0),
 				},
-			],
-			feedbacks: [],
-		}
-		presets[`MV_PRESETS.${PRESET}.recallmv2`] = {
-			type: 'button',
-			category: 'Multiviewer2 Presets',
-			name: 'Multiviewer2 presets',
-			style: {
-				text: `MV2 Preset\\n${PRESET.slice(10)}`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [{ actionId: ActionId.mvRecall, options: { functionID: '', preset: PRESET, mv: 'recall_mv2' } }],
-					up: [],
-				},
-			],
-			feedbacks: [],
-		}
+				steps: [
+					{
+						down: [{ actionId: ActionId.mvRecall, options: { mv: multiviewer.uuid, preset: preset.id } }],
+						up: [],
+					},
+				],
+				feedbacks: [],
+			}
+		})
 	})
 	// AUDIO
 	presets[`Audio_mute`] = {

@@ -68,6 +68,15 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		if (instance.tcp) instance.tcp.sendCommand(functionName)
 	}
 
+	let multiviewerPresetChoices: { id: string; label: string }[] = []
+	instance.KairosObj.MULTIVIEWERS.forEach((multiviewer) => {
+		if (!multiviewer.presets) return
+		multiviewer.presets.forEach((preset) => {
+			if (!preset) return
+			multiviewerPresetChoices.push({ id: preset.id, label: `${multiviewer.name} - ${preset.name}` })
+		})
+	})
+
 	const actions: { [id in ActionId]: CompanionActionDefinition | undefined } = {
 		// Layer Source Assignment
 		[ActionId.setSource]: {
@@ -364,7 +373,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Scene macro',
 					id: 'macro',
 					default: instance.KairosObj.SCENES_MACROS[0] ? instance.KairosObj.SCENES_MACROS[0].uuid : 'none exist',
-					choices: instance.KairosObj.SCENES_MACROS.map((item) => ({ id: `${item.scene}/macros/${item.uuid}`, label: item.name })),
+					choices: instance.KairosObj.SCENES_MACROS.map((item) => ({
+						id: `${item.scene}/macros/${item.uuid}`,
+						label: item.name,
+					})),
 					minChoicesForSearch: 8,
 				},
 				options.macroStateControl,
@@ -386,19 +398,25 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Preset',
 					id: 'preset',
-					default: instance.KairosObj.MV_PRESETS[0] ? instance.KairosObj.MV_PRESETS[0] : '1',
-					choices: instance.KairosObj.MV_PRESETS.map((id) => ({ id, label: id.slice(10) })),
+					default: multiviewerPresetChoices[0] ? multiviewerPresetChoices[0].id : '',
+					choices: multiviewerPresetChoices,
 				},
-				options.mvRecall,
+				{
+					type: 'dropdown',
+					label: 'Multiviewer',
+					id: 'mv',
+					default: '',
+					choices: instance.KairosObj.MULTIVIEWERS.map((item) => ({ id: item.uuid, label: item.name })),
+				},
 			],
 			callback: (action) => {
 				const mvRecall: any = {
-					id: 'mvRecall',
-					options: {
-						functionID: `${action.options.preset}.${action.options.mv}`,
-					},
+					patchCommand: '/multiviewers/',
+					options: action.options.mv,
+					body: { preset: action.options.preset },
 				}
-				sendSimpleProtocolCommand(mvRecall)
+
+				sendPatchCommand(mvRecall)
 			},
 		},
 		// Snapshots

@@ -42,6 +42,14 @@ class KairosInstance extends InstanceBase<config> {
 			uuid: string
 		}[]
 		SNAPSHOTS: { name: string; state: string; uuid: string; scene: string }[]
+		MULTIVIEWERS: {
+			index: number
+			name: string
+			preset: string
+			presets: { id: string; name: string; usr: string }[]
+			uuid: string
+			sdp: string
+		}[]
 		PLAYERS: { player: string; repeat: number }[]
 		MV_PRESETS: Array<string>
 		AUDIO_CHANNELS: { channel: string; mute: number }[]
@@ -57,6 +65,7 @@ class KairosInstance extends InstanceBase<config> {
 		AUDIO_CHANNELS: [],
 		SCENES_MACROS: [],
 		SNAPSHOTS: [],
+		MULTIVIEWERS: [],
 	}
 
 	public combinedLayerArray: {
