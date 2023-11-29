@@ -428,13 +428,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Snapshot',
 					id: 'snapshot',
 					default: instance.KairosObj.SNAPSHOTS[0] ? instance.KairosObj.SNAPSHOTS[0].uuid : '',
-					choices: instance.KairosObj.SNAPSHOTS.map((item) => ({ id: item.uuid, label: `${item.scene}/${item.name}` })),
+					choices: instance.KairosObj.SNAPSHOTS.map((item) => ({ id: `${item.scene}/snapshots/${item.uuid}`, label: `${item.scene}/${item.name}` })),
 					minChoicesForSearch: 8,
 				},
 			],
 			callback: (action) => {
 				const triggerSnapshot: any = {
-					patchCommand: '/snapshots/',
+					patchCommand: '/scenes/',
 					options: action.options.snapshot,
 					body: { state: 'recall' },
 				}
