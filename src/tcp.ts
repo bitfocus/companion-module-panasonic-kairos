@@ -229,7 +229,16 @@ export class TCP {
 							break
 						case /^MACROS\./i.test(returningData): // This is an MACRO
 							{
+								console.log(returningData)
 								this.instance.KairosObj.MACROS.push(returningData)
+								// const macro = (element: string) => element === returningData;
+								// let index = this.instance.KairosObj.MACROS.findIndex(macro)
+								// if (index != -1) {
+								// 	this.instance.KairosObj.MACROS.push(returningData)
+								// } else {
+								// 	console.log('Macro already exists getting new list')
+								// 	this.sendCommand(`list:${returningData}`)
+								// }
 							}
 							break
 						//case /\.available=/i.test(returningData): // This is an AUX available check
@@ -399,7 +408,6 @@ export class TCP {
 				this.nCommand++
 			}
 			const message = `${command}\r\n`
-			//			if (message != '\r\n') console.log('send:' + message.trim())
 
 			this.sockets.main.send(message).catch((err) => {
 				if (err) this.instance.log('debug', err.message)
