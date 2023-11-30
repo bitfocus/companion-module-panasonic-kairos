@@ -556,7 +556,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
 			},
-			steps: [{ down: [{ actionId: ActionId.triggerSnapshot, options: { snapshot: snapshot.uuid } }], up: [] }],
+			steps: [{ down: [{ actionId: ActionId.triggerSnapshot, options: { snapshot: `${snapshot.scene}/snapshots/${snapshot.uuid}`} }], up: [] }],
 			feedbacks: [],
 		}
 	})
