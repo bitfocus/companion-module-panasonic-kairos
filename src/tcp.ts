@@ -229,7 +229,7 @@ export class TCP {
 							break
 						case /^MACROS\./i.test(returningData): // This is an MACRO
 							{
-								console.log(returningData)
+								// console.log(returningData)
 								this.instance.KairosObj.MACROS.push(returningData)
 								// const macro = (element: string) => element === returningData;
 								// let index = this.instance.KairosObj.MACROS.findIndex(macro)
