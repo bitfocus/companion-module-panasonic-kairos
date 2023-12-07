@@ -191,7 +191,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				const programCut: any = {
 					id: 'programCut',
 					options: {
-						functionID: `${action.options.scene}.cut`,
+						functionID: `SCENES.${action.options.scene}.cut`,
 					},
 				}
 
@@ -213,7 +213,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				const programAuto: any = {
 					id: 'programAuto',
 					options: {
-						functionID: `${action.options.scene}.auto`,
+						functionID: `SCENES.${action.options.scene}.auto`,
 						scene: action.options.scene,
 					},
 				}
