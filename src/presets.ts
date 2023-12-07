@@ -103,7 +103,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 										actionId: ActionId.setSource,
 										options: {
 											functionID: '',
-											layer: `/${scene.name.replace(/[\/ ()]/g, '_')}/${layer.name.replace(/[\/ ()]/g, '_')}`,
+											layer: `/${scene.uuid}/${layer.uuid}`,
 											sourceAB: 'sourceB',
 											source: source,
 										},
@@ -121,8 +121,8 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 									layer: `/${scene.name.replace(/[\/ ()]/g, '_')}/${layer.name.replace(/[\/ ()]/g, '_')}`,
 								},
 								style: {
-									color: combineRgb(255, 255, 255),
-									bgcolor: combineRgb(255, 0, 0),
+									color: combineRgb(0, 0, 0),
+									bgcolor: combineRgb(0, 255, 0),
 								},
 							},
 						],
