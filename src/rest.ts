@@ -202,7 +202,7 @@ export class REST {
 		const headers = new Headers({
 			Authorization: `Basic ${base64Credentials}`,
 		})
-		// if (command !== '/scenes' && command !== '/aux' && command !== '/macros' && command !== '/multiviewers')
+		if (command !== '/scenes' && command !== '/aux' && command !== '/macros' && command !== '/multiviewers')
 			this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
 		try {
 			const response = await fetch(formattedRestRequest, { headers })
