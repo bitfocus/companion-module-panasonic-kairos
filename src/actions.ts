@@ -245,42 +245,42 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		//	},
 		//},
 		[ActionId.autoTransition]: {
-			name: 'AUTO Transition',
+			name: 'Layer AUTO Transition',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Transition',
 					id: 'layer',
-					default: instance.combinedTransitionsArray[0] ? instance.combinedTransitionsArray[0] : '1',
-					choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
+					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) }))[0].id : '',
+					choices: instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) })),
 				},
 			],
 			callback: (action) => {
 				const autoTransition: any = {
 					id: 'autoTransition',
 					options: {
-						functionID: `${action.options.layer}.transition_auto`,
+						functionID: `SCENES.${action.options.layer}.transition_auto`,
 					},
 				}
 				sendSimpleProtocolCommand(autoTransition)
 			},
 		},
 		[ActionId.cutTransition]: {
-			name: 'CUT Transition',
+			name: 'Layer CUT Transition',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Transition',
 					id: 'layer',
-					default: instance.combinedTransitionsArray[0] ? instance.combinedTransitionsArray[0] : '1',
-					choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
+					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) }))[0].id : '',
+					choices: instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) })),
 				},
 			],
 			callback: (action) => {
 				const cutTransition: any = {
 					id: 'cutTransition',
 					options: {
-						functionID: `${action.options.layer}.transition_cut`,
+						functionID: `SCENES.${action.options.layer}.transition_cut`,
 					},
 				}
 				sendSimpleProtocolCommand(cutTransition)

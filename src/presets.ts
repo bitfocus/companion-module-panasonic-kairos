@@ -131,7 +131,36 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			})
 		})
 	}
-
+	// Transition of layers
+	instance.combinedLayerArray.forEach((layer) => {
+		let layerName = layer.name.replace(/\//g, '.').substring(1)
+		presets[`${layerName}.cut`] = {
+			type: 'button',
+			category: 'LAYER TRANSITION CUT',
+			name: 'transition Cut',
+			style: {
+				text: `${layerName}\\nCUT`,
+				size: 'auto',
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			steps: [{ down: [{ actionId: ActionId.cutTransition, options: { layer: layerName } }], up: [] }],
+			feedbacks: [],
+		}
+		presets[`${layerName}.auto`] = {
+			type: 'button',
+			category: 'LAYER TRANSITION AUTO',
+			name: 'transition Auto',
+			style: {
+				text: `${layerName}\\nAUTO`,
+				size: 'auto',
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			steps: [{ down: [{ actionId: ActionId.autoTransition, options: { layer: layerName } }], up: [] }],
+			feedbacks: [],
+		}
+	})
 	// Media Stills
 	instance.KairosObj.MEDIA_STILLS.forEach((STILL) => {
 		presets[`${STILL}.select`] = {
@@ -411,8 +440,8 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 	instance.KairosObj.SCENES.forEach((SCENE) => {
 		presets[`${SCENE.name}.cut`] = {
 			type: 'button',
-			category: 'TRANSITIONS',
-			name: 'Master Cut',
+			category: 'SCENE TRANSITION CUT',
+			name: `${SCENE.name}CUT`,
 			style: {
 				text: `${SCENE.name}\\nCUT`,
 				size: 'auto',
@@ -424,8 +453,8 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		}
 		presets[`${SCENE.name}.auto`] = {
 			type: 'button',
-			category: 'TRANSITIONS',
-			name: 'Master Auto',
+			category: 'SCENE TRANSITION AUTO',
+			name: `${SCENE.name}AUTO`,
 			style: {
 				text: `${SCENE.name}\\nAUTO`,
 				size: 'auto',
@@ -435,34 +464,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			steps: [{ down: [{ actionId: ActionId.programAuto, options: { scene: SCENE.name } }], up: [] }],
 			feedbacks: [],
 		}
-		// SCENE.transitions.forEach((TRANSITION) => {
-		// 	presets[`${TRANSITION}.cut`] = {
-		// 		type: 'button',
-		// 		category: 'TRANSITIONS',
-		// 		name: 'transition Cut',
-		// 		style: {
-		// 			text: `${SCENE.name.slice(7)}\\n${TRANSITION.slice(TRANSITION.search('.Transitions.') + 13)}\\nCUT`,
-		// 			size: 'auto',
-		// 			color: combineRgb(255, 255, 255),
-		// 			bgcolor: combineRgb(0, 0, 0),
-		// 		},
-		// 		steps: [{ down: [{ actionId: ActionId.cutTransition, options: { layer: TRANSITION } }], up: [] }],
-		// 		feedbacks: [],
-		// 	}
-		// 	presets[`${TRANSITION}.auto`] = {
-		// 		type: 'button',
-		// 		category: 'TRANSITIONS',
-		// 		name: 'transition Auto',
-		// 		style: {
-		// 			text: `${SCENE.name.slice(7)}\\n${TRANSITION.slice(TRANSITION.search('.Transitions.') + 13)}\\nAUTO`,
-		// 			size: 'auto',
-		// 			color: combineRgb(255, 255, 255),
-		// 			bgcolor: combineRgb(0, 0, 0),
-		// 		},
-		// 		steps: [{ down: [{ actionId: ActionId.autoTransition, options: { layer: TRANSITION } }], up: [] }],
-		// 		feedbacks: [],
-		// 	}
-		// })
+
 		// SCENE.smacros.forEach((SMACRO) => {
 		// 	presets[`${SMACRO}.play`] = {
 		// 		type: 'button',
@@ -556,7 +558,17 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
 			},
-			steps: [{ down: [{ actionId: ActionId.triggerSnapshot, options: { snapshot: `${snapshot.scene}/snapshots/${snapshot.uuid}`} }], up: [] }],
+			steps: [
+				{
+					down: [
+						{
+							actionId: ActionId.triggerSnapshot,
+							options: { snapshot: `${snapshot.scene}/snapshots/${snapshot.uuid}` },
+						},
+					],
+					up: [],
+				},
+			],
 			feedbacks: [],
 		}
 	})
