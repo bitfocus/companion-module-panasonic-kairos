@@ -22,8 +22,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : 'layer1',
-					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+					default: '',
+					choices: instance.combinedLayerArray.map((item) => ({ id: item.name, label: item.name })),
 				},
 				{
 					type: 'dropdown',
@@ -39,8 +39,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
+					default: '',
+					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
 				},
 			],
 			defaultStyle: {
@@ -142,24 +142,25 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'AUX',
 					id: 'aux',
-					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].aux : '1',
-					choices: instance.KairosObj.AUX.map((id) => ({ id: id.aux, label: id.name })),
+					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].name : '1',
+					choices: instance.KairosObj.AUX.map((id) => ({ id: id.name, label: id.name })),
 				},
 				{
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
+					default: '',
+					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.name, label: id.name })),
 				},
 			],
 			defaultStyle: {
-				color: combineRgb(255, 255, 255),
+				color: combineRgb(0, 0, 0),
 				bgcolor: combineRgb(0, 255, 0),
 			},
 			callback: (feedback): boolean => {
-				let index = instance.KairosObj.AUX.findIndex((x) => x.aux === feedback.options.aux)
-				if (instance.KairosObj.AUX[index].liveSource === feedback.options.source) return true
+				let index = instance.KairosObj.AUX.findIndex((x) => x.name === feedback.options.aux)
+				if (index == -1) return false
+				if (instance.KairosObj.AUX[index].source === feedback.options.source) return true
 				else return false
 			},
 		},

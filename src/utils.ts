@@ -1,5 +1,24 @@
-import { CompanionInputFieldColor, CompanionInputFieldDropdown, CompanionInputFieldNumber, CompanionInputFieldTextInput } from "@companion-module/base"
+import {
+	CompanionInputFieldColor,
+	CompanionInputFieldDropdown,
+	CompanionInputFieldNumber,
+	CompanionInputFieldTextInput,
+} from '@companion-module/base'
 
+interface input {
+	index: number
+	name: string
+	tally: number
+	uuid: string
+	shortcut: string
+}
+
+export enum updateFlags {
+	None = 0,
+	onlyVariables = 1,
+	All = 2,
+	presets = 3,
+}
 
 type TimeFormat = 'hh:mm:ss' | 'hh:mm:ss.ms' | 'mm:ss' | 'mm:ss.ms'
 
@@ -18,7 +37,7 @@ type EnforceDefault<T, U> = Omit<T, 'default'> & { default: U }
 export interface Options {
 	input: EnforceDefault<CompanionInputFieldTextInput, string>
 	playerControl: EnforceDefault<CompanionInputFieldDropdown, string>
-	macroControl: EnforceDefault<CompanionInputFieldDropdown, string>
+	macroStateControl: EnforceDefault<CompanionInputFieldDropdown, string>
 	mvRecall: EnforceDefault<CompanionInputFieldDropdown, string>
 	mute: EnforceDefault<CompanionInputFieldDropdown, number>
 	channel: EnforceDefault<CompanionInputFieldDropdown, string>
@@ -80,7 +99,7 @@ export const options: Options = {
 		],
 	},
 
-	macroControl: {
+	macroStateControl: {
 		type: 'dropdown',
 		label: 'Macro',
 		id: 'action',
@@ -237,4 +256,25 @@ export const formatTime = (time: number, interval: 'ms' | 's', format: TimeForma
 
 	const result = `${format.includes('hh') ? `${hh}:` : ''}${mm}:${ss}${format.includes('ms') ? `.${ms}` : ''}`
 	return result
+}
+
+export const createUUID = (): string => {
+	let dt: number = new Date().getTime()
+	let uuid: string = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+		const r: number = (dt + Math.random() * 16) % 16 | 0
+		dt = Math.floor(dt / 16)
+		return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+	})
+	return uuid
+}
+
+// Helpers
+export const createInputWithName = (name: string): input => {
+	return {
+		index: 999,
+		name: name,
+		tally: 0,
+		uuid: createUUID(),
+		shortcut: name,
+	}
 }

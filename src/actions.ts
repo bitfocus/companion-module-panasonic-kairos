@@ -1,7 +1,7 @@
 import { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
 import { options } from './utils'
 import KairosInstance from './index'
-import { updateBasicVariables } from './variables';
+import { updateBasicVariables } from './variables'
 
 export enum ActionId {
 	setSource = 'setSource',
@@ -14,8 +14,9 @@ export enum ActionId {
 	setAUX = 'setAUX',
 	playerControl = 'playerControl',
 	macroControl = 'macroControl',
+	macroSceneControl = 'macroSceneControl',
 	mvRecall = 'mvRecall',
-	smacroControl = 'smacroControl',
+	// smacroControl = 'smacroControl',
 	triggerSnapshot = 'triggerSnapshot',
 	muteMaster = 'muteMaster',
 	muteChannel = 'muteChannel',
@@ -24,20 +25,57 @@ export enum ActionId {
 
 export function getActions(instance: KairosInstance): CompanionActionDefinitions {
 	/**
-	 * @param action Action callback object
-	 * @param _info Unused
-	 * @description Sends functions/params from actions that don't require complex logic
+	 * Send PATCH Request
+	 * @param action
+	 * @param _info
 	 */
+	const sendPatchCommand = (
+		action: { patchCommand: string; options: string; body: {} },
+		_info?: CompanionActionDefinition | null
+	): void => {
+		const base64Credentials = Buffer.from(`${instance.config?.username}:${instance.config?.password}`).toString(
+			'base64'
+		)
+		try {
+			instance.log(
+				'debug',
+				`Sending PATCH command: http://${instance.config?.host}:${instance.config?.restPort}${action.patchCommand}${
+					action.options
+				} + ${JSON.stringify(action.body)}`
+			)
+			fetch(`http://${instance.config?.host}:${instance.config?.restPort}${action.patchCommand}${action.options}`, {
+				method: 'PATCH',
+				headers: {
+					Authorization: `Basic ${base64Credentials}`,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(action.body),
+			})
+		} catch (error) {
+			instance.log('error', `Error sending PATCH command: ${error}`)
+		}
+	}
 
-	const sendBasicCommand = (action: { id: string, options: { functionID: any;} }, _info?: CompanionActionDefinition | null): void => {
+	const sendSimpleProtocolCommand = (
+		action: { id: string; options: { functionID: any } },
+		_info?: CompanionActionDefinition | null
+	): void => {
 		let functionName: string = action.id
 
 		if ('functionID' in action.options) {
 			functionName = action.options.functionID
 		}
-
 		if (instance.tcp) instance.tcp.sendCommand(functionName)
 	}
+
+	let multiviewerPresetChoices: { id: string; label: string }[] = []
+	instance.KairosObj.MULTIVIEWERS.forEach((multiviewer) => {
+		if (!multiviewer.presets) return
+		multiviewer.presets.forEach((preset) => {
+			if (!preset) return
+			multiviewerPresetChoices.push({ id: preset.id, label: `${multiviewer.name} - ${preset.name}` })
+		})
+	})
 
 	const actions: { [id in ActionId]: CompanionActionDefinition | undefined } = {
 		// Layer Source Assignment
@@ -46,10 +84,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			options: [
 				{
 					type: 'dropdown',
-					label: 'Layer',
+					label: 'Scene/Layer',
 					id: 'layer',
-					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '1',
-					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+					default: '',
+					choices: instance.combinedLayerArray.map((item) => ({ id: item.uuid, label: item.name })),
 					minChoicesForSearch: 8,
 				},
 				{
@@ -66,20 +104,18 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
+					default: '',
+					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
 				},
 			],
 			callback: (action) => {
 				const setSource: any = {
-					id: 'setSource',
-					options: {
-						// functionID: `${action.options.scene}.Layers.${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
-						functionID: `${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
-					},
+					patchCommand: '/scenes',
+					options: action.options.layer,
+					body: { [`${action.options.sourceAB}`]: action.options.source },
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
+				let index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
 				if (index != -1) {
 					action.options.sourceAB == 'sourceA'
 						? (instance.combinedLayerArray[index].sourceA = action.options.source as string)
@@ -87,7 +123,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				}
 				instance.checkFeedbacks('inputSource')
 
-				sendBasicCommand(setSource)
+				sendPatchCommand(setSource)
 			},
 		},
 		// Layer Source Assignment
@@ -96,10 +132,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			options: [
 				{
 					type: 'dropdown',
-					label: 'Layer',
+					label: 'Scene/Layer',
 					id: 'layer',
 					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '1',
-					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+					choices: instance.combinedLayerArray.map((id) => ({ id: id.uuid, label: id.name })),
 					minChoicesForSearch: 8,
 				},
 				{
@@ -128,7 +164,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					},
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.combinedLayerArray.findIndex((x) => x.name === action.options.layer)
+				let index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
 				if (index != -1) {
 					action.options.sourceAB == 'sourceA'
 						? (instance.combinedLayerArray[index].sourceA = action.options.source as string)
@@ -136,7 +172,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				}
 				instance.checkFeedbacks('inputSource')
 
-				sendBasicCommand(setMediaStill)
+				sendSimpleProtocolCommand(setMediaStill)
 			},
 		},
 		// Transition
@@ -147,19 +183,19 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene',
 					id: 'scene',
-					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].scene : '1',
-					choices: instance.KairosObj.SCENES.map((id) => ({ id: id.scene, label: id.scene.slice(7) })),
+					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].name : '1',
+					choices: instance.KairosObj.SCENES.map((item) => ({ id: item.name, label: item.name })),
 				},
 			],
 			callback: (action) => {
 				const programCut: any = {
 					id: 'programCut',
 					options: {
-						functionID: `${action.options.scene}.cut`,
+						functionID: `SCENES.${action.options.scene}.cut`,
 					},
 				}
 
-				sendBasicCommand(programCut)
+				sendSimpleProtocolCommand(programCut)
 			},
 		},
 		[ActionId.programAuto]: {
@@ -169,20 +205,20 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene',
 					id: 'scene',
-					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].scene : '1',
-					choices: instance.KairosObj.SCENES.map((id) => ({ id: id.scene, label: id.scene.slice(7) })),
+					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].name : '1',
+					choices: instance.KairosObj.SCENES.map((item) => ({ id: item.name, label: item.name })),
 				},
 			],
 			callback: (action) => {
 				const programAuto: any = {
 					id: 'programAuto',
 					options: {
-						functionID: `${action.options.scene}.auto`,
+						functionID: `SCENES.${action.options.scene}.auto`,
 						scene: action.options.scene,
 					},
 				}
 
-				sendBasicCommand(programAuto)
+				sendSimpleProtocolCommand(programAuto)
 			},
 		},
 		//[ActionId.nextTransition]: {
@@ -205,49 +241,49 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		//				)}`,
 		//			},
 		//		}
-		//		sendBasicCommand(nextTransition)
+		//		sendSimpleProtocolCommand(nextTransition)
 		//	},
 		//},
 		[ActionId.autoTransition]: {
-			name: 'AUTO Transition',
+			name: 'Layer AUTO Transition',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Transition',
 					id: 'layer',
-					default: instance.combinedTransitionsArray[0] ? instance.combinedTransitionsArray[0] : '1',
-					choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
+					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) }))[0].id : '',
+					choices: instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) })),
 				},
 			],
 			callback: (action) => {
 				const autoTransition: any = {
 					id: 'autoTransition',
 					options: {
-						functionID: `${action.options.layer}.transition_auto`,
+						functionID: `SCENES.${action.options.layer}.transition_auto`,
 					},
 				}
-				sendBasicCommand(autoTransition)
+				sendSimpleProtocolCommand(autoTransition)
 			},
 		},
 		[ActionId.cutTransition]: {
-			name: 'CUT Transition',
+			name: 'Layer CUT Transition',
 			options: [
 				{
 					type: 'dropdown',
 					label: 'Transition',
 					id: 'layer',
-					default: instance.combinedTransitionsArray[0] ? instance.combinedTransitionsArray[0] : '1',
-					choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
+					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) }))[0].id : '',
+					choices: instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) })),
 				},
 			],
 			callback: (action) => {
 				const cutTransition: any = {
 					id: 'cutTransition',
 					options: {
-						functionID: `${action.options.layer}.transition_cut`,
+						functionID: `SCENES.${action.options.layer}.transition_cut`,
 					},
 				}
-				sendBasicCommand(cutTransition)
+				sendSimpleProtocolCommand(cutTransition)
 			},
 		},
 		//AUX
@@ -258,30 +294,29 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'AUX',
 					id: 'aux',
-					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].aux : '1',
-					choices: instance.KairosObj.AUX.map((id) => ({ id: id.aux, label: id.name })),
+					default: '',
+					choices: instance.KairosObj.AUX.map((item) => ({ id: item.name, label: item.name })),
 				},
 				{
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.INPUTS[0] ? instance.KairosObj.INPUTS[0].shortcut : '1',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.shortcut, label: id.name })),
+					default: '',
+					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
 				},
 			],
 			callback: (action) => {
 				const setAUX: any = {
-					id: 'setAUX',
-					options: {
-						functionID: `${action.options.aux}.source=${action.options.source}`,
-					},
+					patchCommand: '/aux/',
+					options: action.options.aux,
+					body: { source: action.options.source },
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.KairosObj.AUX.findIndex((x) => x.aux === action.options.aux)
-				instance.KairosObj.AUX[index].liveSource = action.options.source as string
+				let index = instance.KairosObj.AUX.findIndex((x) => x.name === action.options.aux)
+				instance.KairosObj.AUX[index].source = action.options.source as string
 				instance.checkFeedbacks('aux')
 				updateBasicVariables(instance)
-				sendBasicCommand(setAUX)
+				sendPatchCommand(setAUX)
 			},
 		},
 		//Control
@@ -304,7 +339,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						functionID: `${action.options.player}.${action.options.action}`,
 					},
 				}
-				sendBasicCommand(playerControl)
+				sendSimpleProtocolCommand(playerControl)
 			},
 		},
 		[ActionId.macroControl]: {
@@ -314,20 +349,45 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Macro',
 					id: 'macro',
-					default: instance.KairosObj.MACROS[0] ? instance.KairosObj.MACROS[0] : '1',
-					choices: instance.KairosObj.MACROS.map((id) => ({ id, label: id.slice(7) })),
+					default: instance.KairosObj.MACROS[0] ? instance.KairosObj.MACROS[0] : 'none exist',
+					choices: instance.KairosObj.MACROS.map((item) => ({ id: item, label: item })),
 					minChoicesForSearch: 8,
 				},
-				options.macroControl,
+				options.macroStateControl,
 			],
 			callback: (action) => {
 				const macroControl: any = {
-					id: 'macroControl',
+					id: 'macros',
 					options: {
 						functionID: `${action.options.macro}.${action.options.action}`,
 					},
 				}
-				sendBasicCommand(macroControl)
+				sendSimpleProtocolCommand(macroControl)
+			},
+		},
+		[ActionId.macroSceneControl]: {
+			name: 'Macro scene action',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Scene macro',
+					id: 'macro',
+					default: instance.KairosObj.SCENES_MACROS[0] ? instance.KairosObj.SCENES_MACROS[0].uuid : 'none exist',
+					choices: instance.KairosObj.SCENES_MACROS.map((item) => ({
+						id: `${item.scene}/macros/${item.uuid}`,
+						label: item.name,
+					})),
+					minChoicesForSearch: 8,
+				},
+				options.macroStateControl,
+			],
+			callback: (action) => {
+				const macroControl: any = {
+					patchCommand: '/scenes/',
+					options: action.options.macro,
+					body: { state: action.options.action },
+				}
+				sendPatchCommand(macroControl)
 			},
 		},
 		// Recall MV presets
@@ -338,43 +398,25 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Preset',
 					id: 'preset',
-					default: instance.KairosObj.MV_PRESETS[0] ? instance.KairosObj.MV_PRESETS[0] : '1',
-					choices: instance.KairosObj.MV_PRESETS.map((id) => ({ id, label: id.slice(10) })),
+					default: multiviewerPresetChoices[0] ? multiviewerPresetChoices[0].id : '',
+					choices: multiviewerPresetChoices,
 				},
-				options.mvRecall,
+				{
+					type: 'dropdown',
+					label: 'Multiviewer',
+					id: 'mv',
+					default: '',
+					choices: instance.KairosObj.MULTIVIEWERS.map((item) => ({ id: item.uuid, label: item.name })),
+				},
 			],
 			callback: (action) => {
 				const mvRecall: any = {
-					id: 'mvRecall',
-					options: {
-						functionID: `${action.options.preset}.${action.options.mv}`,
-					},
+					patchCommand: '/multiviewers/',
+					options: action.options.mv,
+					body: { preset: action.options.preset },
 				}
-				sendBasicCommand(mvRecall)
-			},
-		},
-		// Scene Macros
-		[ActionId.smacroControl]: {
-			name: 'Scene Macro action',
-			options: [
-				{
-					type: 'dropdown',
-					label: 'Scene Macro',
-					id: 'smacro',
-					default: instance.combinedSmacrosArray[0] ? instance.combinedSmacrosArray[0] : '1',
-					choices: instance.combinedSmacrosArray.map((id) => ({ id, label: id })),
-					minChoicesForSearch: 8,
-				},
-				options.macroControl,
-			],
-			callback: (action) => {
-				const smacroControl: any = {
-					id: 'smacroControl',
-					options: {
-						functionID: `${action.options.smacro}.${action.options.action}`,
-					},
-				}
-				sendBasicCommand(smacroControl)
+
+				sendPatchCommand(mvRecall)
 			},
 		},
 		// Snapshots
@@ -385,20 +427,19 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Snapshot',
 					id: 'snapshot',
-					default: instance.combinedSnapshotsArray[0] ? instance.combinedSnapshotsArray[0] : '1',
-					choices: instance.combinedSnapshotsArray.map((id) => ({ id, label: id })),
+					default: instance.KairosObj.SNAPSHOTS[0] ? instance.KairosObj.SNAPSHOTS[0].uuid : '',
+					choices: instance.KairosObj.SNAPSHOTS.map((item) => ({ id: `${item.scene}/snapshots/${item.uuid}`, label: `${item.scene}/${item.name}` })),
 					minChoicesForSearch: 8,
 				},
 			],
 			callback: (action) => {
 				const triggerSnapshot: any = {
-					id: 'triggerSnapshot',
-					options: {
-						functionID: `${action.options.snapshot}.recall`,
-					},
+					patchCommand: '/scenes/',
+					options: action.options.snapshot,
+					body: { state: 'recall' },
 				}
 
-				sendBasicCommand(triggerSnapshot)
+				sendPatchCommand(triggerSnapshot)
 			},
 		},
 		//Audio
@@ -416,7 +457,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				instance.KairosObj.audio_master_mute = action.options.mute as number
 				instance.checkFeedbacks('audioMuteMaster')
 				updateBasicVariables(instance)
-				sendBasicCommand(muteMaster)
+				sendSimpleProtocolCommand(muteMaster)
 			},
 		},
 		[ActionId.muteChannel]: {
@@ -436,7 +477,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute = action.options.mute as number
 					instance.checkFeedbacks('audioMuteChannel')
 					updateBasicVariables(instance)
-					sendBasicCommand(muteChannel)
+					sendSimpleProtocolCommand(muteChannel)
 				}
 			},
 		},
@@ -456,7 +497,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					id: 'custom',
 					options: {},
 				}
-				sendBasicCommand(custom)
+				sendSimpleProtocolCommand(custom)
 			},
 		},
 	}
