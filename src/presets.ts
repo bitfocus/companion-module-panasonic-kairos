@@ -610,37 +610,37 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 	})
 	// MACRO
 	instance.KairosObj.MACROS.forEach((MACRO) => {
-		presets[`${MACRO}.play`] = {
+		presets[`${MACRO.uuid}.play`] = {
 			type: 'button',
 			category: 'MACROS',
 			name: 'Macros',
 			style: {
-				text: `GLOBAL:\n${MACRO}\\nplay`,
+				text: `GLOBAL:\n${MACRO.path}${MACRO.name}\\nplay`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
 			},
 			steps: [
 				{
-					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO, action: 'play' } }],
+					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO.uuid, action: 'play' } }],
 					up: [],
 				},
 			],
 			feedbacks: [],
 		}
-		presets[`${MACRO}.stop`] = {
+		presets[`${MACRO.uuid}.stop`] = {
 			type: 'button',
 			category: 'MACROS',
 			name: 'Macros',
 			style: {
-				text: `GLOBAL:\n${MACRO}\\nstop`,
+				text: `GLOBAL:\n${MACRO.path}${MACRO.name}\\nstop`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
 			},
 			steps: [
 				{
-					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO, action: 'stop' } }],
+					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO.uuid, action: 'stop' } }],
 					up: [],
 				},
 			],

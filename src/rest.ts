@@ -81,20 +81,17 @@ export class REST {
 				/**
 				 * Pulls the macro's
 				 */
-				// let pullMacros = async () => {
-				// 	try {
-				// 		let macroResult = await this.sendCommand('/macros')
-				// 		let convertedMacros = JSON.parse(macroResult)
-				// 		this.instance.KairosObj.MACROS = convertedMacros
-				// 		// this.instance.updateInstance(updateFlags.presets as number)
-				// 	} catch (error: any) {
-				// 		this.instance.log('error', 'Error pulling macros : ' + error.message)
-				// 	}
-				// }
-				// pullMacros()
-				/**
-				 * Pulls the macro's
-				 */
+				let pullMacros = async () => {
+					try {
+						let macroResult = await this.sendCommand('/macros')
+						let convertedMacros = JSON.parse(macroResult)
+						this.instance.KairosObj.MACROS = convertedMacros
+					} catch (error: any) {
+						this.instance.log('error', 'Error pulling macros : ' + error.message)
+					}
+				}
+				pullMacros()
+
 				let pullMultiviewers = async () => {
 					try {
 						let multiviewerResult = await this.sendCommand('/multiviewers')
@@ -120,9 +117,9 @@ export class REST {
 					if (scene.macros) {
 						if (scene.macros.lenght != this.instance.KairosObj.SCENES_MACROS.length) {
 							scene.macros.forEach(
-								(macro: { color: string; name: string; state: string; uuid: string; scene: string }) => {
+								(macro: { color: string; name: string; state: string; uuid: string; scene: string; path: string }) => {
 									macro.name = scene.name + ' - ' + macro.name
-									macro.scene = scene.name
+									macro.scene = scene.path ? scene.path + scene.name : scene.name
 									this.instance.KairosObj.SCENES_MACROS.push(macro)
 								}
 							)
