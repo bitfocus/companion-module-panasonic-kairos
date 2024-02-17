@@ -134,7 +134,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene/Layer',
 					id: 'layer',
-					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '1',
+					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].uuid : '',
 					choices: instance.combinedLayerArray.map((id) => ({ id: id.uuid, label: id.name })),
 					minChoicesForSearch: 8,
 				},
@@ -153,7 +153,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Source',
 					id: 'source',
 					default: instance.KairosObj.MEDIA_STILLS[0] ? instance.KairosObj.MEDIA_STILLS[0] : '1',
-					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: id })),
+					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: id.search('&#46;rr')+".rr" ? id.slice(0,-7) : id })),
 				},
 			],
 			callback: (action) => {

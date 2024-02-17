@@ -61,22 +61,10 @@ export class TCP {
 			this.instance.updateStatus(InstanceStatus.UnknownError, err.message)
 		})
 
-		// const fetchStills = () => {
-		// 		this.instance.KairosObj.MEDIA_STILLS.length = 0
-
-		// 		this.sendCommand('list:MEDIA.stills')
-		// 		this.processCallback = (data: Array<string>) => {
-		// 			data.forEach((element) => {
-		// 				if (element.endsWith('&#46;rr')) {
-		// 					// receive top hierarchy
-		// 					this.instance.KairosObj.MEDIA_STILLS.push(element)
-		// 				} else {
-		// 					this.sendCommand(`list:${element}`)
-		// 				}
-		// 			})
-		// 		}
-
-		// 	}
+		const fetchStills = () => {
+			this.instance.KairosObj.MEDIA_STILLS.length = 0
+			this.sendCommand('list:MEDIA.stills')
+		}
 
 		// const fetchFxinputs = () => {
 		// 	this.sendCommand('list:FXINPUTS')
@@ -92,9 +80,6 @@ export class TCP {
 		// 	}
 		// }
 
-		const fetchMacros = () => {
-			this.sendCommand('list:MACROS')
-		}
 		// const fetchFixedItems = () => {
 		// this.sendCommand('list:RAMRECORDERS')
 		// this.sendCommand('list:PLAYERS')
@@ -148,7 +133,7 @@ export class TCP {
 			this.instance.log('debug', 'Connected to mixer')
 			this.instance.updateStatus(InstanceStatus.Ok, 'Connected')
 			this.keepAliveInterval = setInterval(keepAlive, 4500) //session expires at 5 seconds
-			fetchMacros()
+			fetchStills()
 			await subscribeToData()
 			this.instance.updateInstance(updateFlags.All as number)
 		})
@@ -227,20 +212,20 @@ export class TCP {
 								this.instance.checkFeedbacks('aux')
 							}
 							break
-						case /^MACROS\./i.test(returningData): // This is an MACRO
-							{
-								// console.log(returningData)
-								this.instance.KairosObj.MACROS.push(returningData)
-								// const macro = (element: string) => element === returningData;
-								// let index = this.instance.KairosObj.MACROS.findIndex(macro)
-								// if (index != -1) {
-								// 	this.instance.KairosObj.MACROS.push(returningData)
-								// } else {
-								// 	console.log('Macro already exists getting new list')
-								// 	this.sendCommand(`list:${returningData}`)
-								// }
-							}
-							break
+						// case /^MACROS\./i.test(returningData): // This is an MACRO
+						// 	{
+						// 		// console.log(returningData)
+						// 		this.instance.KairosObj.MACROS.push(returningData)
+						// 		// const macro = (element: string) => element === returningData;
+						// 		// let index = this.instance.KairosObj.MACROS.findIndex(macro)
+						// 		// if (index != -1) {
+						// 		// 	this.instance.KairosObj.MACROS.push(returningData)
+						// 		// } else {
+						// 		// 	console.log('Macro already exists getting new list')
+						// 		// 	this.sendCommand(`list:${returningData}`)
+						// 		// }
+						// 	}
+						// 	break
 						//case /\.available=/i.test(returningData): // This is an AUX available check
 						//	{
 						//		let index = this.instance.KairosObj.AUX.findIndex(
@@ -325,9 +310,16 @@ export class TCP {
 							// 	name: returningData,
 							// })
 							break
-						//case /^MEDIA\.stills\./i.test(returningData):
-						//	this.instance.KairosObj.MEDIA_STILLS.push(returningData)
-						//	break
+						case /^MEDIA\.stills\./i.test(returningData):
+							// A folder could be returned here
+							if (returningData.search('&#46;rr') !== -1) {
+								console.log('still found:', returningData)
+								this.instance.KairosObj.MEDIA_STILLS.push(returningData)
+							} else {
+								console.log('Folder found', returningData)
+								this.sendCommand(`list:${returningData}`)
+							}
+							break
 
 						default:
 							this.instance.log('error', 'No Case provided for: ' + returningData)

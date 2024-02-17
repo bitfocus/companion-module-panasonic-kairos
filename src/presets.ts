@@ -180,7 +180,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 							actionId: ActionId.setMediaStill,
 							options: {
 								functionID: '',
-								layer: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '',
+								layer: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].uuid : '',
 								sourceAB: 'sourceA',
 								source: STILL,
 							},
