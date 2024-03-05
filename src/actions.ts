@@ -4,6 +4,7 @@ import KairosInstance from './index'
 import { updateBasicVariables } from './variables'
 
 export enum ActionId {
+	runAction = 'runAction',
 	setSource = 'setSource',
 	setMediaStill = 'setMediaStill',
 	programCut = 'programCut',
@@ -76,6 +77,12 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			multiviewerPresetChoices.push({ id: preset.id, label: `${multiviewer.name} - ${preset.name}` })
 		})
 	})
+	let actionChoices: { id: string; label: string }[] = []
+	instance.KairosObj.SCENES.forEach((scene) => {
+		scene.actions.forEach((action) => {
+			actionChoices.push({ id: `/${scene.name}/actions/${action.uuid}`, label: `${scene.name}/${action.name}` })
+		})
+	})
 
 	const actions: { [id in ActionId]: CompanionActionDefinition | undefined } = {
 		// Layer Source Assignment
@@ -126,6 +133,27 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				sendPatchCommand(setSource)
 			},
 		},
+		[ActionId.runAction]: {
+			name: 'Run Action',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'action',
+					id: 'action',
+					default: '',
+					choices: actionChoices,
+					minChoicesForSearch: 8,
+				},
+			],
+			callback: (action) => {
+				const runAction: any = {
+					patchCommand: '/scenes',
+					options: action.options.action,
+					body: { 'state': 'play' },
+				}
+				sendPatchCommand(runAction)
+			},
+		},
 		// Layer Source Assignment
 		[ActionId.setMediaStill]: {
 			name: 'Set Media Still',
@@ -153,7 +181,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Source',
 					id: 'source',
 					default: instance.KairosObj.MEDIA_STILLS[0] ? instance.KairosObj.MEDIA_STILLS[0] : '1',
-					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: id.search('&#46;rr')+".rr" ? id.slice(0,-7) : id })),
+					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({
+						id,
+						label: id.search('&#46;rr') + '.rr' ? id.slice(0, -7) : id,
+					})),
 				},
 			],
 			callback: (action) => {
@@ -251,8 +282,16 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Transition',
 					id: 'layer',
-					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) }))[0].id : '',
-					choices: instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) })),
+					default: instance.combinedLayerArray[0]
+						? instance.combinedLayerArray.map((item) => ({
+								id: item.name.replace(/\//g, '.').substring(1),
+								label: item.name.replace(/\//g, '.').substring(1),
+						  }))[0].id
+						: '',
+					choices: instance.combinedLayerArray.map((item) => ({
+						id: item.name.replace(/\//g, '.').substring(1),
+						label: item.name.replace(/\//g, '.').substring(1),
+					})),
 				},
 			],
 			callback: (action) => {
@@ -272,8 +311,16 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Transition',
 					id: 'layer',
-					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) }))[0].id : '',
-					choices: instance.combinedLayerArray.map((item) => ({ id: item.name.replace(/\//g,'.').substring(1), label: item.name.replace(/\//g,'.').substring(1) })),
+					default: instance.combinedLayerArray[0]
+						? instance.combinedLayerArray.map((item) => ({
+								id: item.name.replace(/\//g, '.').substring(1),
+								label: item.name.replace(/\//g, '.').substring(1),
+						  }))[0].id
+						: '',
+					choices: instance.combinedLayerArray.map((item) => ({
+						id: item.name.replace(/\//g, '.').substring(1),
+						label: item.name.replace(/\//g, '.').substring(1),
+					})),
 				},
 			],
 			callback: (action) => {
@@ -427,7 +474,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Snapshot',
 					id: 'snapshot',
 					default: instance.KairosObj.SNAPSHOTS[0] ? instance.KairosObj.SNAPSHOTS[0].uuid : '',
-					choices: instance.KairosObj.SNAPSHOTS.map((item) => ({ id: `${item.scene}/snapshots/${item.uuid}`, label: `${item.scene}/${item.name}` })),
+					choices: instance.KairosObj.SNAPSHOTS.map((item) => ({
+						id: `${item.scene}/snapshots/${item.uuid}`,
+						label: `${item.scene}/${item.name}`,
+					})),
 					minChoicesForSearch: 8,
 				},
 			],

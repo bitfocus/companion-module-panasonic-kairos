@@ -313,10 +313,8 @@ export class TCP {
 						case /^MEDIA\.stills\./i.test(returningData):
 							// A folder could be returned here
 							if (returningData.search('&#46;rr') !== -1) {
-								console.log('still found:', returningData)
 								this.instance.KairosObj.MEDIA_STILLS.push(returningData)
 							} else {
-								console.log('Folder found', returningData)
 								this.sendCommand(`list:${returningData}`)
 							}
 							break

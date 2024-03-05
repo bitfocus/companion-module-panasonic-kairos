@@ -136,7 +136,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		let layerName = layer.name.replace(/\//g, '.').substring(1)
 		presets[`${layerName}.cut`] = {
 			type: 'button',
-			category: 'LAYER TRANSITION CUT',
+			category: 'LAYER TRANSITION',
 			name: 'transition Cut',
 			style: {
 				text: `${layerName}\\nCUT`,
@@ -149,7 +149,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		}
 		presets[`${layerName}.auto`] = {
 			type: 'button',
-			category: 'LAYER TRANSITION AUTO',
+			category: 'LAYER TRANSITION',
 			name: 'transition Auto',
 			style: {
 				text: `${layerName}\\nAUTO`,
@@ -160,6 +160,29 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 			steps: [{ down: [{ actionId: ActionId.autoTransition, options: { layer: layerName } }], up: [] }],
 			feedbacks: [],
 		}
+	})
+	// Actions
+	instance.KairosObj.SCENES.forEach((SCENE) => {
+		SCENE.actions.forEach((ACTION) => {
+			presets[`${ACTION.uuid}`] = {
+				type: 'button',
+				category: 'ACTIONS',
+				name: ACTION.uuid,
+				style: {
+					text: `${SCENE.name}\\n${ACTION.name}`,
+					size: 'auto',
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 0, 0),
+				},
+				steps: [
+					{
+						down: [{ actionId: ActionId.runAction, options: { action: `/${SCENE.name}/actions/${ACTION.uuid}` } }],
+						up: [],
+					},
+				],
+				feedbacks: [],
+			}
+		})
 	})
 	// Media Stills
 	instance.KairosObj.MEDIA_STILLS.forEach((STILL) => {
@@ -440,7 +463,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 	instance.KairosObj.SCENES.forEach((SCENE) => {
 		presets[`${SCENE.name}.cut`] = {
 			type: 'button',
-			category: 'SCENE TRANSITION CUT',
+			category: 'SCENE TRANSITION',
 			name: `${SCENE.name}CUT`,
 			style: {
 				text: `${SCENE.name}\\nCUT`,
@@ -453,7 +476,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 		}
 		presets[`${SCENE.name}.auto`] = {
 			type: 'button',
-			category: 'SCENE TRANSITION AUTO',
+			category: 'SCENE TRANSITION',
 			name: `${SCENE.name}AUTO`,
 			style: {
 				text: `${SCENE.name}\\nAUTO`,
