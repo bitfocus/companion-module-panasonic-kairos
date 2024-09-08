@@ -77,7 +77,9 @@ class KairosInstance extends InstanceBase<config> {
 	}
 
 	public combinedLayerArray: {
-		name: string
+		path: string
+		sceneName: string
+		layerName: string
 		sourceA: string
 		sourceB: string
 		preset_enabled?: number

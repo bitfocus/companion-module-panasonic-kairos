@@ -37,7 +37,7 @@ export function updateBasicVariables(instance: KairosInstance) {
 
 	let inputSources: { name: string; variableId: string }[] = []
 	instance.KairosObj.INPUTS.forEach((INPUT) => {
-		inputSources.push({ name: `Source index ${INPUT.name} name`, variableId: `INPUT.${INPUT.name.replace(/ /g, '_')}` })
+		inputSources.push({ name: `Source ${INPUT.name} name`, variableId: `INPUT.${INPUT.name.replace(/ /g, '_')}` })
 	})
 
 	let auxSources: { name: string; variableId: string }[] = []
@@ -50,12 +50,12 @@ export function updateBasicVariables(instance: KairosInstance) {
 	let layerSources: { name: string; variableId: string }[] = []
 	instance.combinedLayerArray.forEach((LAYER) => {
 		layerSources.push({
-			name: `SourceA in ${LAYER.name.replace(/[\/ ()]/g, '')}`,
-			variableId: `Scene.${LAYER.name.replace(/[\/ ()]/g, '')}.sourceA`,
+			name: `SourceA in ${LAYER.sceneName}.${LAYER.layerName}`,
+			variableId: `Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceA`,
 		})
 		layerSources.push({
-			name: `SourceB in ${LAYER.name.replace(/[\/ ()]/g, '')}`,
-			variableId: `Scene.${LAYER.name.replace(/[\/ ()]/g, '')}.sourceB`,
+			name: `SourceB in ${LAYER.sceneName}.${LAYER.layerName}`,
+			variableId: `Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceB`,
 		})
 	})
 	// let auxAvailable = []
@@ -88,8 +88,8 @@ export function updateBasicVariables(instance: KairosInstance) {
 
 	// LIVE LAYERS
 	instance.combinedLayerArray.forEach((LAYER) => {
-		newVariables[`Scene.${LAYER.name.replace(/[\/ ()]/g, '')}.sourceA`] = LAYER.sourceA
-		newVariables[`Scene.${LAYER.name.replace(/[\/ ()]/g, '')}.sourceB`] = LAYER.sourceB
+		newVariables[`Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceA`] = LAYER.sourceA
+		newVariables[`Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceB`] = LAYER.sourceB
 		//newVariables[`${LAYER.name}.preset_enabled`] = LAYER.preset_enabled === 1 ? 'enabled' : 'disabled'
 	})
 	// AUX

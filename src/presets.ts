@@ -133,7 +133,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 	}
 	// Transition of layers
 	instance.combinedLayerArray.forEach((layer) => {
-		let layerName = layer.name.replace(/\//g, '.').substring(1)
+		let layerName = `${layer.sceneName}.${layer.layerName}`
 		presets[`${layerName}.cut`] = {
 			type: 'button',
 			category: 'LAYER TRANSITION',
@@ -218,7 +218,7 @@ export function getPresets(instance: KairosInstance): CompanionPresetDefinitions
 					options: {
 						source: STILL,
 						sourceAB: 'sourceA',
-						layer: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : '',
+						layer: instance.combinedLayerArray[0] ? `/${instance.combinedLayerArray[0].sceneName}/${instance.combinedLayerArray[0].layerName}` : '',
 					},
 					style: {
 						bgcolor: combineRgb(0, 255, 0),

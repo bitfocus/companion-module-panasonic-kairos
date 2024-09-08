@@ -6,6 +6,7 @@ import { updateBasicVariables } from './variables'
 export enum ActionId {
 	runAction = 'runAction',
 	setSource = 'setSource',
+	forceSource = 'forceSource',
 	setMediaStill = 'setMediaStill',
 	programCut = 'programCut',
 	programAuto = 'programAuto',
@@ -94,7 +95,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Scene/Layer',
 					id: 'layer',
 					default: '',
-					choices: instance.combinedLayerArray.map((item) => ({ id: item.uuid, label: item.name })),
+					choices: instance.combinedLayerArray.map((item) => ({ id: item.uuid, label: `${item.sceneName}/${item.layerName}` })),
 					minChoicesForSearch: 8,
 				},
 				{
@@ -133,6 +134,54 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				sendPatchCommand(setSource)
 			},
 		},
+		[ActionId.forceSource]: {
+			name: 'Force Source',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Scene/Layer',
+					id: 'layer',
+					default: '',
+					choices: instance.combinedLayerArray.map((item) => ({ id: `${item.sceneName}.Layers.${item.layerName}`, label: `${item.sceneName}/${item.layerName}` })),
+					minChoicesForSearch: 8,
+				},
+				{
+					type: 'dropdown',
+					label: 'SourceA/B',
+					id: 'sourceAB',
+					default: 'sourceA',
+					choices: [
+						{ id: 'sourceA', label: 'sourceA' },
+						{ id: 'sourceB', label: 'sourceB' },
+					],
+				},
+				{
+					type: 'dropdown',
+					label: 'Source',
+					id: 'source',
+					default: '',
+					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
+				},
+			],
+			callback: (action) => {
+				const forceSource: any = {
+					id: 'forceSource',
+					options: {
+						functionID: `SCENES.${action.options.layer}.${action.options.sourceAB}=${action.options.source}`,
+					},
+				}
+				// Don't wait for the value to return from the mixer, set it directly
+				let index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
+				if (index != -1) {
+					action.options.sourceAB == 'sourceA'
+						? (instance.combinedLayerArray[index].sourceA = action.options.source as string)
+						: (instance.combinedLayerArray[index].sourceB = action.options.source as string)
+				}
+				instance.checkFeedbacks('inputSource')
+				
+				sendSimpleProtocolCommand(forceSource)
+			},
+		},
 		[ActionId.runAction]: {
 			name: 'Run Action',
 			options: [
@@ -163,7 +212,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Scene/Layer',
 					id: 'layer',
 					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].uuid : '',
-					choices: instance.combinedLayerArray.map((id) => ({ id: id.uuid, label: id.name })),
+					choices: instance.combinedLayerArray.map((id) => ({ id: id.uuid, label: `${id.sceneName}/${id.layerName}` })),
 					minChoicesForSearch: 8,
 				},
 				{
@@ -284,13 +333,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					id: 'layer',
 					default: instance.combinedLayerArray[0]
 						? instance.combinedLayerArray.map((item) => ({
-								id: item.name.replace(/\//g, '.').substring(1),
-								label: item.name.replace(/\//g, '.').substring(1),
+								id: `${item.sceneName}.${item.layerName}`,
+								label: `${item.sceneName}.${item.layerName}`,
 						  }))[0].id
 						: '',
 					choices: instance.combinedLayerArray.map((item) => ({
-						id: item.name.replace(/\//g, '.').substring(1),
-						label: item.name.replace(/\//g, '.').substring(1),
+						id: `${item.sceneName}.${item.layerName}`,
+						label: `${item.sceneName}.${item.layerName}`,
 					})),
 				},
 			],
@@ -313,13 +362,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					id: 'layer',
 					default: instance.combinedLayerArray[0]
 						? instance.combinedLayerArray.map((item) => ({
-								id: item.name.replace(/\//g, '.').substring(1),
-								label: item.name.replace(/\//g, '.').substring(1),
+								id: `${item.sceneName}.${item.layerName}`,
+								label: `${item.sceneName}.${item.layerName}`,
 						  }))[0].id
 						: '',
 					choices: instance.combinedLayerArray.map((item) => ({
-						id: item.name.replace(/\//g, '.').substring(1),
-						label: item.name.replace(/\//g, '.').substring(1),
+						id: `${item.sceneName}.${item.layerName}`,
+						label: `${item.sceneName}.${item.layerName}`,
 					})),
 				},
 			],

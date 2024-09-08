@@ -50,7 +50,7 @@ export const getConfigFields = (): SomeCompanionConfigField[] => {
 			id: 'restPort',
 			label: 'REST API Port',
 			width: 6,
-			default: 3004,
+			default: 1234,
 			min: 1,
 			max: 65535,
 			step: 1,

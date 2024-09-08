@@ -23,7 +23,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					label: 'Layer',
 					id: 'layer',
 					default: '',
-					choices: instance.combinedLayerArray.map((item) => ({ id: item.name, label: item.name })),
+					choices: instance.combinedLayerArray.map((item) => ({ id: `/${item.sceneName}/${item.layerName}`, label: `/${item.sceneName}/${item.layerName}` })),
 				},
 				{
 					type: 'dropdown',
@@ -52,8 +52,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				let source = feedback.options.source
 				let sourceAB = feedback.options.sourceAB
 				for (const LAYER of instance.combinedLayerArray) {
-					if (LAYER.name == layer && LAYER.sourceA === source && sourceAB == 'sourceA') return true
-					if (LAYER.name == layer && LAYER.sourceB === source && sourceAB == 'sourceB') return true
+					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceA === source && sourceAB == 'sourceA') return true
+					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceB === source && sourceAB == 'sourceB') return true
 				}
 				return false
 			},
@@ -67,8 +67,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].name : 'layer1',
-					choices: instance.combinedLayerArray.map((id) => ({ id: id.name, label: id.name })),
+					default: instance.combinedLayerArray[0] ? `/${instance.combinedLayerArray[0].sceneName}/${instance.combinedLayerArray[0].layerName}` : 'layer1',
+					choices: instance.combinedLayerArray.map((item) => ({ id: `/${item.sceneName}/${item.layerName}`, label: `/${item.sceneName}/${item.layerName}` })),
 				},
 				{
 					type: 'dropdown',
@@ -97,8 +97,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				let source = feedback.options.source
 				let sourceAB = feedback.options.sourceAB
 				for (const LAYER of instance.combinedLayerArray) {
-					if (LAYER.name == layer && LAYER.sourceA === source && sourceAB == 'sourceA') return true
-					if (LAYER.name == layer && LAYER.sourceB === source && sourceAB == 'sourceB') return true
+					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceA === source && sourceAB == 'sourceA') return true
+					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceB === source && sourceAB == 'sourceB') return true
 				}
 				return false
 			},

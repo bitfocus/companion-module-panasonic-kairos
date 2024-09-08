@@ -2,6 +2,7 @@ import KairosInstance from '.'
 import { InstanceStatus } from '@companion-module/base'
 import { FeedbackId } from './feedback'
 import { createInputWithName, updateFlags } from './utils'
+const isReachable = require('is-reachable')
 
 export class REST {
 	private readonly instance: KairosInstance
@@ -135,7 +136,9 @@ export class REST {
 					if (!scene.layers) return
 					scene.layers.forEach((layer: any) => {
 						this.instance.combinedLayerArray.push({
-							name: `/${scene.name}/${layer.name}`,
+							path: scene.path,
+							sceneName: scene.name,
+							layerName: layer.name,
 							sourceA: layer.sourceA,
 							sourceB: layer.sourceB,
 							uuid: `/${scene.uuid}/${layer.uuid}`,
@@ -175,12 +178,18 @@ export class REST {
 			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorBar'))
 			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorCircle'))
 		}
-
-		pullScenes()
+		//check server
+		await isReachable(this.host).then((reachable: boolean) => {
+			if (!reachable) {
+				this.instance.updateStatus(InstanceStatus.ConnectionFailure, 'Server not reachable')
+			} else {
+				this.instance.updateStatus(InstanceStatus.Ok, 'Server reachable')
+				pullScenes()
+				this.pullerInterval = setInterval(pullScenes, 5000) //Change pulling Time?
+			}
+		})
 		addInternalSources()
 		this.instance.updateInstance(updateFlags.All as number)
-
-		this.pullerInterval = setInterval(pullScenes, 5000) //Change pulling Time?
 	}
 
 	/**

@@ -173,7 +173,7 @@ export class TCP {
 						case /\.sourceA/i.test(returningData):
 							{
 								let index = this.instance.combinedLayerArray.findIndex(
-									(x) => x.name === returningData.split('=')[0].slice(0, -8)
+									(x) => x.layerName === returningData.split('=')[0].slice(0, -8)
 								)
 								if (index != -1) this.instance.combinedLayerArray[index].sourceA = returningData.split('=')[1]
 								this.instance.checkFeedbacks('inputSource')
@@ -182,7 +182,7 @@ export class TCP {
 						case /\.sourceB/i.test(returningData):
 							{
 								let index = this.instance.combinedLayerArray.findIndex(
-									(x) => x.name === returningData.split('=')[0].slice(0, -8)
+									(x) => x.layerName === returningData.split('=')[0].slice(0, -8)
 								)
 								if (index != -1) this.instance.combinedLayerArray[index].sourceB = returningData.split('=')[1]
 								this.instance.checkFeedbacks('inputSource')
@@ -268,7 +268,7 @@ export class TCP {
 						case /\.preset_enabled/i.test(returningData): //This is an response to SCENES.Main.Layers.Background.preset_enabled=1
 							{
 								let layer = returningData.split('=')[0].slice(0, returningData.split('=')[0].search('.preset_enabled'))
-								let index = this.instance.combinedLayerArray.findIndex((s) => s.name === layer)
+								let index = this.instance.combinedLayerArray.findIndex((s) => s.layerName === layer)
 								if (index != -1)
 									this.instance.combinedLayerArray[index].preset_enabled = parseInt(returningData.split('=')[1])
 							}
