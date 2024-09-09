@@ -4,7 +4,7 @@ import { getConfigFields } from './config'
 import { getFeedbacks } from './feedback'
 import { getPresets } from './presets'
 import { updateBasicVariables } from './variables'
-import { TCP } from './tcp'
+// import { TCP } from './tcp'
 import { REST } from './rest'
 import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from '@companion-module/base'
 import { updateFlags } from './utils'
@@ -25,14 +25,11 @@ class KairosInstance extends InstanceBase<config> {
 		INPUTS: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
 		MEDIA_STILLS: Array<string>
 		SCENES: {
-			layers: { name: string; sourceA: string; sourceB?: string; sources: string[]; uuid: string }[]
 			name: string
-			tally: string
-			uuid: string
-			path: string
-			macros: { color: string; name: string; state: string; uuid: string }[]
-			SNAPSHOTS: { name: string; state: string; uuid: string }[]
-			actions: { name: string; state: string; uuid: string }[]
+			layers: string[]
+			macros: string[]
+			snapshots: string[]
+			transitions: string[]
 		}[]
 		AUX: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
 		MACROS: {
@@ -117,7 +114,7 @@ class KairosInstance extends InstanceBase<config> {
 	public configUpdated(config: config): Promise<void> {
 		this.config = config
 		this.tcp?.destroy()
-		this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
+		// this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
 		this.rest = new REST(this, this.config.host, this.config.restPort, this.config.username, this.config.password)
 		this.updateInstance(updateFlags.All)
 		return Promise.resolve()
