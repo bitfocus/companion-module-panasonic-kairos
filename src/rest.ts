@@ -6,7 +6,7 @@ const isReachable = require('is-reachable')
 
 export class REST {
 	private readonly instance: KairosInstance
-	private pullerInterval: NodeJS.Timer | undefined
+	private pullerInterval: ReturnType<typeof setInterval> | undefined
 	host: string
 	restPort: number
 	username: string
