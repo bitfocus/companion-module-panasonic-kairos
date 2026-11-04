@@ -14,7 +14,7 @@ export class TCP {
 	}
 	private tcpHost: string
 	private tcpPort: number
-	private keepAliveInterval: NodeJS.Timer | undefined
+	private keepAliveInterval: ReturnType<typeof setInterval> | undefined
 	private recvRemain = ''
 	private listQueue: string[] = [] // queue of outstanding command of list or info
 	private nCommand = 0 // number of outstanding command
