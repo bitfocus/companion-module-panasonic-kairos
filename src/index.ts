@@ -52,11 +52,12 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		}[]
 		AUX: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
 		MACROS: {
-			color: string,
-			name: string,
-			path: string,
-			state: string,
-			uuid: string}[]
+			color: string
+			name: string
+			path: string
+			state: string
+			uuid: string
+		}[]
 		SCENES_MACROS: {
 			scene: string
 			color: string

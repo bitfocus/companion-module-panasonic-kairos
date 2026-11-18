@@ -59,17 +59,17 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 	 */
 	const sendPatchCommand = (
 		action: { patchCommand: string; options: string; body: {} },
-		_info?: CompanionActionDefinition | null
+		_info?: CompanionActionDefinition | null,
 	): void => {
 		const base64Credentials = Buffer.from(`${instance.config?.username}:${instance.config?.password}`).toString(
-			'base64'
+			'base64',
 		)
 		try {
 			instance.log(
 				'debug',
 				`Sending PATCH command: http://${instance.config?.host}:${instance.config?.restPort}${action.patchCommand}${
 					action.options
-				} + ${JSON.stringify(action.body)}`
+				} + ${JSON.stringify(action.body)}`,
 			)
 			fetch(`http://${instance.config?.host}:${instance.config?.restPort}${action.patchCommand}${action.options}`, {
 				method: 'PATCH',
@@ -86,7 +86,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 
 	const sendSimpleProtocolCommand = (
 		action: { id: string; options: { functionID: any } },
-		_info?: CompanionActionDefinition | null
+		_info?: CompanionActionDefinition | null,
 	): void => {
 		let functionName: string = action.id
 
@@ -121,7 +121,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Scene/Layer',
 					id: 'layer',
 					default: '',
-					choices: instance.combinedLayerArray.map((item) => ({ id: item.uuid, label: `${item.sceneName}/${item.layerName}` })),
+					choices: instance.combinedLayerArray.map((item) => ({
+						id: item.uuid,
+						label: `${item.sceneName}/${item.layerName}`,
+					})),
 					allowInvalidValues: true,
 					minChoicesForSearch: 8,
 				},
@@ -170,7 +173,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Scene/Layer',
 					id: 'layer',
 					default: '',
-					choices: instance.combinedLayerArray.map((item) => ({ id: `${item.sceneName}.Layers.${item.layerName}`, label: `${item.sceneName}/${item.layerName}` })),
+					choices: instance.combinedLayerArray.map((item) => ({
+						id: `${item.sceneName}.Layers.${item.layerName}`,
+						label: `${item.sceneName}/${item.layerName}`,
+					})),
 					allowInvalidValues: true,
 					minChoicesForSearch: 8,
 				},
@@ -208,7 +214,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						: (instance.combinedLayerArray[index].sourceB = action.options.source as string)
 				}
 				instance.checkFeedbacks(FeedbackId.inputSource)
-				
+
 				sendSimpleProtocolCommand(forceSource)
 			},
 		},
@@ -229,7 +235,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				const runAction: any = {
 					patchCommand: '/scenes',
 					options: action.options.action,
-					body: { 'state': 'play' },
+					body: { state: 'play' },
 				}
 				sendPatchCommand(runAction)
 			},
@@ -370,7 +376,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						? instance.combinedLayerArray.map((item) => ({
 								id: `${item.sceneName}.${item.layerName}`,
 								label: `${item.sceneName}.${item.layerName}`,
-						  }))[0].id
+							}))[0].id
 						: '',
 					choices: instance.combinedLayerArray.map((item) => ({
 						id: `${item.sceneName}.${item.layerName}`,
@@ -400,7 +406,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						? instance.combinedLayerArray.map((item) => ({
 								id: `${item.sceneName}.${item.layerName}`,
 								label: `${item.sceneName}.${item.layerName}`,
-						  }))[0].id
+							}))[0].id
 						: '',
 					choices: instance.combinedLayerArray.map((item) => ({
 						id: `${item.sceneName}.${item.layerName}`,

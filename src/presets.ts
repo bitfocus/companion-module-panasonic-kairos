@@ -227,7 +227,9 @@ export function getPresets(instance: KairosInstance): {
 					options: {
 						source: STILL,
 						sourceAB: 'sourceA',
-						layer: instance.combinedLayerArray[0] ? `/${instance.combinedLayerArray[0].sceneName}/${instance.combinedLayerArray[0].layerName}` : '',
+						layer: instance.combinedLayerArray[0]
+							? `/${instance.combinedLayerArray[0].sceneName}/${instance.combinedLayerArray[0].layerName}`
+							: '',
 					},
 					style: {
 						bgcolor: combineRgb(0, 255, 0),
@@ -250,9 +252,7 @@ export function getPresets(instance: KairosInstance): {
 			},
 			steps: [
 				{
-					down: [
-						{ actionId: ActionId.playerControl, options: { player: element.player, action: 'play' } },
-					],
+					down: [{ actionId: ActionId.playerControl, options: { player: element.player, action: 'play' } }],
 					up: [],
 				},
 			],
@@ -282,9 +282,7 @@ export function getPresets(instance: KairosInstance): {
 			},
 			steps: [
 				{
-					down: [
-						{ actionId: ActionId.playerControl, options: { player: element.player, action: 'pause' } },
-					],
+					down: [{ actionId: ActionId.playerControl, options: { player: element.player, action: 'pause' } }],
 					up: [],
 				},
 			],
@@ -301,9 +299,7 @@ export function getPresets(instance: KairosInstance): {
 			},
 			steps: [
 				{
-					down: [
-						{ actionId: ActionId.playerControl, options: { player: element.player, action: 'begin' } },
-					],
+					down: [{ actionId: ActionId.playerControl, options: { player: element.player, action: 'begin' } }],
 					up: [],
 				},
 			],
@@ -407,9 +403,7 @@ export function getPresets(instance: KairosInstance): {
 			},
 			steps: [
 				{
-					down: [
-						{ actionId: ActionId.playerControl, options: { player: element.player, action: 'end' } },
-					],
+					down: [{ actionId: ActionId.playerControl, options: { player: element.player, action: 'end' } }],
 					up: [],
 				},
 			],

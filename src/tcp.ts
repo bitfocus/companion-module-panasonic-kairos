@@ -52,7 +52,7 @@ export class TCP {
 		if (this.tcpHost === undefined || this.tcpPort === undefined) {
 			this.instance.log(
 				'warn',
-				`Unable to connect to Kairos, please configure a host and port in the instance configuration`
+				`Unable to connect to Kairos, please configure a host and port in the instance configuration`,
 			)
 			return
 		}
@@ -184,7 +184,7 @@ export class TCP {
 						case /\.sourceA/i.test(returningData):
 							{
 								let index = this.instance.combinedLayerArray.findIndex(
-									(x) => x.layerName === returningData.split('=')[0].slice(0, -8)
+									(x) => x.layerName === returningData.split('=')[0].slice(0, -8),
 								)
 								if (index != -1) this.instance.combinedLayerArray[index].sourceA = returningData.split('=')[1]
 								this.instance.checkFeedbacks(FeedbackId.inputSource)
@@ -193,7 +193,7 @@ export class TCP {
 						case /\.sourceB/i.test(returningData):
 							{
 								let index = this.instance.combinedLayerArray.findIndex(
-									(x) => x.layerName === returningData.split('=')[0].slice(0, -8)
+									(x) => x.layerName === returningData.split('=')[0].slice(0, -8),
 								)
 								if (index != -1) this.instance.combinedLayerArray[index].sourceB = returningData.split('=')[1]
 								this.instance.checkFeedbacks(FeedbackId.inputSource)
@@ -217,7 +217,7 @@ export class TCP {
 						case /\.source=/i.test(returningData): // This is an AUX source
 							{
 								let index = this.instance.KairosObj.AUX.findIndex(
-									(x) => x.name === returningData.split('=')[0].slice(0, returningData.split('=')[0].search('.source'))
+									(x) => x.name === returningData.split('=')[0].slice(0, returningData.split('=')[0].search('.source')),
 								)
 								if (index != -1) this.instance.KairosObj.AUX[index].source = returningData.split('=')[1]
 								this.instance.checkFeedbacks(FeedbackId.aux)
@@ -249,7 +249,7 @@ export class TCP {
 						case /\.repeat=/i.test(returningData): // //This is an PLAYER repeat check
 							{
 								let index = this.instance.KairosObj.PLAYERS.findIndex(
-									(x) => x.player === returningData.split('=')[0].slice(0, -7)
+									(x) => x.player === returningData.split('=')[0].slice(0, -7),
 								)
 								if (index != -1) this.instance.KairosObj.PLAYERS[index].repeat = parseInt(returningData.split('=')[1])
 								updateBasicVariables(this.instance)
