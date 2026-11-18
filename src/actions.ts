@@ -43,6 +43,10 @@ const PLAYER_TRANSPORT = {
 	step_forward: 'StepForward',
 	fast_forward: 'FastForward',
 	end: 'End',
+	playlist_begin: 'PlaylistBegin',
+	playlist_back: 'PlaylistBack',
+	playlist_next: 'PlaylistNext',
+	playlist_end: 'PlaylistEnd',
 } as const
 type PlayerTransportMethod =
 	`${(typeof PLAYER_METHOD_PREFIX)[PlayerRef['realm']]}${(typeof PLAYER_TRANSPORT)[keyof typeof PLAYER_TRANSPORT]}`

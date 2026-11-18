@@ -51,7 +51,7 @@ Actions are named by what they control, so related ones are listed together. Mos
 
 **Players**
 
-- **Players - Control**: for RAM recorders RR1–8, clip players CP1–2 and audio players AP1–16: go to start, rewind, step back, reverse play, play, pause, step forward, fast forward, go to end, and repeat on, off or toggle.
+- **Players - Control** supports RAM recorders RR1–8, clip players CP1–2, and audio players AP1–16. It includes playback and repeat controls, plus options to go to the first, previous, next, or last playlist item.
 
 **Audio**
 

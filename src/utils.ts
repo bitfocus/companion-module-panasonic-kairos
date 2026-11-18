@@ -76,6 +76,10 @@ export const options: Options = {
 			{ id: 'repeat=0', label: 'Repeat Off' },
 			{ id: 'repeat=1', label: 'Repeat On' },
 			{ id: 'repeat=toggle', label: 'Repeat Toggle' },
+			{ id: 'playlist_begin', label: 'Playlist - Go to First Item' },
+			{ id: 'playlist_back', label: 'Playlist - Previous Item' },
+			{ id: 'playlist_next', label: 'Playlist - Next Item' },
+			{ id: 'playlist_end', label: 'Playlist - Go to Last Item' },
 		],
 	},
 
