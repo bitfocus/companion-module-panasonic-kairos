@@ -91,19 +91,22 @@ export function updateBasicVariables(instance: KairosInstance): void {
 	if (definitionsChanged) instance.setVariableDefinitions(variableDefinitions)
 
 	const newVariables: CompanionVariableValues = {}
+	const legacyLayerValues: CompanionVariableValues = {}
 
-	instance.state.layers.forEach((LAYER) => {
-		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceA`] = layerSource(
-			instance.state,
-			LAYER,
-			'sourceA',
-		)
-		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceB`] = layerSource(
-			instance.state,
-			LAYER,
-			'sourceB',
-		)
-	})
+	for (const layer of instance.state.layers) {
+		const id = layerVariableId(layer.sceneName, layer.layerName)
+		const sourceA = layerSource(instance.state, layer, 'sourceA')
+		const sourceB = layerSource(instance.state, layer, 'sourceB')
+		newVariables[`${id}.sourceA`] = sourceA
+		newVariables[`${id}.sourceB`] = sourceB
+
+		// v4.2.2 removed the slash between the scene and layer names.
+		const legacyName = `${layer.sceneName}${layer.layerName}`.replace(/[/ ()]/g, '')
+		if (sanitizeVariableIdPart(legacyName) === legacyName) {
+			legacyLayerValues[`Scene.${legacyName}.sourceA`] = sourceA
+			legacyLayerValues[`Scene.${legacyName}.sourceB`] = sourceB
+		}
+	}
 	instance.state.auxes.forEach((AUX) => {
 		newVariables[`${auxVariableId(AUX.name)}.source`] = auxSource(instance.state, AUX)
 		newVariables[auxVariableId(AUX.name)] = AUX.name
@@ -125,6 +128,6 @@ export function updateBasicVariables(instance: KairosInstance): void {
 			booleanValue(instance.state, audioMutePath(channel.name)),
 		)
 	}
-	// Companion drops the values of removed variables, so after a definition change send every value again
-	instance.setChangedVariableValues(newVariables, definitionsChanged)
+	// Current IDs take precedence if a legacy alias happens to match one.
+	instance.setChangedVariableValues({ ...legacyLayerValues, ...newVariables }, definitionsChanged)
 }

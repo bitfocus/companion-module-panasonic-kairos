@@ -28,7 +28,6 @@ Actions are named by what they control, so related ones are listed together. Mos
 **Layers**
 
 - **Layers - Set Source**: set source A or B of a layer.
-- **Layers - Set Source (TCP)**: the same, sent over TCP.
 - **Layers - Set Media Still**: put a still from the media pool on a layer.
 
 **AUX**

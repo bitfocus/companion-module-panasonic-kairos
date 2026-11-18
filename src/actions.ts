@@ -8,7 +8,6 @@ import { audioMutePath, masterMutePath, playerRepeatPath, sceneFullName, sceneRe
 export enum ActionId {
 	runAction = 'runAction',
 	setSource = 'setSource',
-	forceSource = 'forceSource',
 	setMediaStill = 'setMediaStill',
 	programCut = 'programCut',
 	programAuto = 'programAuto',
@@ -61,7 +60,6 @@ function playerCommand(ref: PlayerRef, action: string): ((kairos: KairosConnecti
 export type ActionsSchema = {
 	[ActionId.runAction]: { options: { action: string } }
 	[ActionId.setSource]: { options: LayerSourceOptions }
-	[ActionId.forceSource]: { options: LayerSourceOptions }
 	[ActionId.setMediaStill]: { options: LayerSourceOptions }
 	[ActionId.programCut]: { options: { scene: string } }
 	[ActionId.programAuto]: { options: { scene: string } }
@@ -167,48 +165,6 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 			],
 			callback: async ({ options: { layer, sourceAB, source } }) => sendPatch('/scenes', layer, { [sourceAB]: source }),
-		},
-		[ActionId.forceSource]: {
-			name: 'Layers - Set Source (TCP)',
-			description: 'Sets a layer source through the TCP protocol',
-			options: [
-				{
-					type: 'dropdown',
-					label: 'Scene/Layer',
-					id: 'layer',
-					default: '',
-					choices: instance.state.layers.map((item) => ({
-						id: `${item.sceneName}.Layers.${item.layerName}`,
-						label: `${item.sceneName}/${item.layerName}`,
-					})),
-					allowInvalidValues: true,
-					minChoicesForSearch: 8,
-				},
-				{
-					type: 'dropdown',
-					label: 'Bus',
-					id: 'sourceAB',
-					default: 'sourceA',
-					choices: [
-						{ id: 'sourceA', label: 'Source A' },
-						{ id: 'sourceB', label: 'Source B' },
-					],
-				},
-				{
-					type: 'dropdown',
-					label: 'Source',
-					id: 'source',
-					default: '',
-					choices: instance.state.inputs.map((item) => ({ id: item.name, label: item.name })),
-					allowInvalidValues: true,
-				},
-			],
-			callback: async (action) => {
-				const { layer: layerId, sourceAB, source } = action.options
-				const layer = instance.state.layers.find((x) => `${x.sceneName}.Layers.${x.layerName}` === layerId)
-				if (layer) return setLayerSource(layer, sourceAB, source)
-				return sendLegacyCommand(`SCENES.${layerId}.${sourceAB}=${source}`)
-			},
 		},
 		[ActionId.runAction]: {
 			name: 'Scenes - Run Action',

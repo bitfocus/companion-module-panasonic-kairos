@@ -33,6 +33,8 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	)
 	constructor(internal: unknown) {
 		super(internal)
+		// Keep old variable references working without listing the legacy IDs.
+		this.instanceOptions.disableVariableValidation = true
 	}
 
 	public state: MixerState = emptyMixerState()
@@ -135,12 +137,20 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	 * @param resend send them all, as after the variable definitions changed
 	 */
 	public setChangedVariableValues(values: CompanionVariableValues, resend: boolean): void {
-		if (resend) this.sentVariableValues = {}
 		const changed: CompanionVariableValues = {}
+		// Undefined values clear IDs that disappeared, including aliases without definitions.
+		for (const id of Object.keys(this.sentVariableValues)) {
+			if (!Object.hasOwn(values, id)) {
+				changed[id] = undefined
+				delete this.sentVariableValues[id]
+			}
+		}
 		for (const [id, value] of Object.entries(values)) {
-			if (id in this.sentVariableValues && this.sentVariableValues[id] === value) continue
-			changed[id] = value
-			this.sentVariableValues[id] = value
+			const publishedValue = value ?? ''
+			if (!resend && Object.hasOwn(this.sentVariableValues, id) && this.sentVariableValues[id] === publishedValue)
+				continue
+			changed[id] = publishedValue
+			this.sentVariableValues[id] = publishedValue
 		}
 		if (Object.keys(changed).length > 0) this.setVariableValues(changed)
 	}
