@@ -1,6 +1,6 @@
 import type KairosInstance from './index.js'
-import { mediaStillLabel, options, type SourceAB } from './utils.js'
-import { combineRgb, type CompanionFeedbackDefinitions } from '@companion-module/base'
+import { BLUE, RED, mediaStillLabel, options, type SourceAB } from './utils.js'
+import type { CompanionFeedbackDefinitions } from '@companion-module/base'
 
 export enum FeedbackId {
 	inputSource = 'inputSource',
@@ -59,10 +59,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					allowInvalidValues: true,
 				},
 			],
-			defaultStyle: {
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(255, 0, 0),
-			},
+			defaultStyle: { bgcolor: RED },
 			callback: (feedback): boolean => {
 				const layer = feedback.options.layer
 				const source = feedback.options.source
@@ -113,10 +110,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					allowInvalidValues: true,
 				},
 			],
-			defaultStyle: {
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(255, 0, 0),
-			},
+			defaultStyle: { bgcolor: RED },
 			callback: (feedback): boolean => {
 				const layer = feedback.options.layer
 				const source = feedback.options.source
@@ -135,10 +129,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			name: 'Audio - Master Muted',
 			description: 'Shows when the audio mixer master is muted',
 			options: [],
-			defaultStyle: {
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(255, 0, 0),
-			},
+			defaultStyle: { bgcolor: RED },
 			callback: (): boolean => {
 				if (instance.KairosObj.audio_master_mute === 1) return true
 				else return false
@@ -149,10 +140,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			name: 'Audio - Channel Muted',
 			description: 'Shows when an audio mixer channel is muted',
 			options: [options.channel],
-			defaultStyle: {
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(255, 0, 0),
-			},
+			defaultStyle: { bgcolor: RED },
 			callback: (feedback): boolean => {
 				const channel = instance.KairosObj.AUDIO_CHANNELS.find((x) => x.channel === feedback.options.channel)
 				return channel?.mute === 1
@@ -180,10 +168,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					allowInvalidValues: true,
 				},
 			],
-			defaultStyle: {
-				color: combineRgb(0, 0, 0),
-				bgcolor: combineRgb(0, 255, 0),
-			},
+			defaultStyle: { bgcolor: BLUE },
 			callback: (feedback): boolean => {
 				const index = instance.KairosObj.AUX.findIndex((x) => x.name === feedback.options.aux)
 				if (index == -1) return false

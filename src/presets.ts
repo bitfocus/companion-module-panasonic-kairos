@@ -3,23 +3,62 @@ import type { KairosTypes } from './index.js'
 import { ActionId } from './actions.js'
 import { FeedbackId } from './feedback.js'
 import { auxVariableId, inputVariableId } from './variables.js'
-import { mediaStillLabel } from './utils.js'
-import {
-	combineRgb,
-	type CompanionPresetDefinitions,
-	type CompanionPresetGroup,
-	type CompanionPresetSection,
-	type CompanionSimplePresetDefinition,
+import { BLACK, BLUE, GREEN, PURPLE, RED, WHITE, YELLOW, mediaStillLabel } from './utils.js'
+import type {
+	CompanionButtonStyleProps,
+	CompanionPresetDefinitions,
+	CompanionPresetGroup,
+	CompanionPresetSection,
+	CompanionSimplePresetDefinition,
 } from '@companion-module/base'
+
+/** The sections of the presets panel, most used first */
+const SECTIONS = [
+	{ name: 'Scenes', description: 'Cut or auto transition a scene, or one of its layer transitions' },
+	{ name: 'Sources', description: "Set a layer's source A or B, active while it is on that bus" },
+	{ name: 'AUX', description: 'Route a source to an AUX, active while it is routed' },
+	{ name: 'Snapshots', description: 'Recall a scene snapshot' },
+	{ name: 'Macros', description: 'Play or stop a global or scene macro' },
+	{ name: 'Multiviewers', description: 'Recall a multiviewer preset' },
+	{ name: 'Scene Actions', description: "Run one of a scene's actions" },
+	{ name: 'RAM Recorders', description: 'Control the RAM recorders' },
+	{ name: 'Clip Players', description: 'Control the clip players' },
+	{ name: 'Audio Players', description: 'Control the audio players' },
+	{ name: 'Media Stills', description: 'Put a media still on a layer: choose the layer after placing the button' },
+	{ name: 'Audio', description: 'Mute or unmute the master or a channel, active while muted' },
+] as const
+
+type SectionName = (typeof SECTIONS)[number]['name']
+type Preset = CompanionSimplePresetDefinition<KairosTypes>
+type Steps = Preset['steps']
+type Feedbacks = Preset['feedbacks']
+
+const PLAYER_SECTIONS: Record<string, SectionName> = { RR: 'RAM Recorders', CP: 'Clip Players', AP: 'Audio Players' }
+
+const PLAYER_CONTROLS = [
+	{ action: 'play', id: 'play', name: 'Play', text: 'PLAY', bgcolor: GREEN },
+	{ action: 'pause', id: 'pause', name: 'Pause', text: 'PAUSE', bgcolor: YELLOW },
+	{ action: 'begin', id: 'begin', name: 'Go to Start', text: 'START', bgcolor: BLACK },
+	{ action: 'step_back', id: 'step_back', name: 'Step Back', text: 'STEP BACK', bgcolor: BLACK },
+	{ action: 'step_forward', id: 'step_forward', name: 'Step Forward', text: 'STEP FWD', bgcolor: BLACK },
+	{ action: 'end', id: 'end', name: 'Go to End', text: 'END', bgcolor: BLACK },
+	{ action: 'repeat=0', id: 'repeat_off', name: 'Repeat Off', text: 'REPEAT OFF', bgcolor: BLACK },
+	{ action: 'repeat=1', id: 'repeat_on', name: 'Repeat On', text: 'REPEAT ON', bgcolor: BLACK },
+] as const
 
 /** Scene, layer and source names as used in preset ids */
 const presetIdPart = (name: string): string => name.replace(/[/ ()]/g, '_')
 
-/** Where a preset is listed in the presets panel */
-interface PresetLocation {
-	section: string
-	group?: string
-}
+// Text is always white, so buttons stay readable whatever their background
+const style = (text: string, size: CompanionButtonStyleProps['size'] = 'auto', bgcolor = BLACK): Preset['style'] => ({
+	text,
+	size,
+	color: WHITE,
+	bgcolor,
+})
+
+/** A single step that runs the actions when pressed */
+const onPress = (...down: Steps[number]['down']): Steps => [{ down, up: [] }]
 
 export function getPresets(instance: KairosInstance): {
 	structure: CompanionPresetSection<KairosTypes>[]
@@ -27,652 +66,256 @@ export function getPresets(instance: KairosInstance): {
 } {
 	const presets: CompanionPresetDefinitions<KairosTypes> = {}
 	// section -> group -> preset ids, in the order they were added
-	const layout = new Map<string, Map<string | undefined, string[]>>()
+	const layout = new Map<SectionName, Map<string | undefined, string[]>>(
+		SECTIONS.map((section) => [section.name, new Map()]),
+	)
 
 	const addPreset = (
-		location: PresetLocation,
+		section: SectionName,
+		group: string | undefined,
 		id: string,
-		preset: CompanionSimplePresetDefinition<KairosTypes>,
+		preset: Omit<Preset, 'type' | 'feedbacks'> & { feedbacks?: Feedbacks },
 	): void => {
-		presets[id] = preset
+		presets[id] = { type: 'simple', feedbacks: [], ...preset }
 
-		let groups = layout.get(location.section)
-		if (!groups) {
-			groups = new Map()
-			layout.set(location.section, groups)
-		}
-		let presetIds = groups.get(location.group)
+		const groups = layout.get(section)!
+		let presetIds = groups.get(group)
 		if (!presetIds) {
 			presetIds = []
-			groups.set(location.group, presetIds)
+			groups.set(group, presetIds)
 		}
 		if (!presetIds.includes(id)) presetIds.push(id)
 	}
 
-	// Switch INPUT per Layer
+	// Scenes
 	for (const scene of instance.KairosObj.SCENES) {
-		// Loop through all Scenes
-		scene.layers.forEach((layer) => {
-			if (!layer.sources) return
-			layer.sources.forEach((source) => {
-				addPreset(
-					{ section: `Sources - ${scene.name}`, group: `${layer.name} - Source A` },
-					`${presetIdPart(scene.name)}.${presetIdPart(layer.name)}.${presetIdPart(source)}.PGM`,
-					{
-						type: 'simple',
-						name: source,
-						style: {
-							text: `$(kairos:${inputVariableId(source)})`,
-							size: 'auto',
-							color: combineRgb(255, 255, 255),
-							bgcolor: combineRgb(0, 0, 0),
-						},
-						steps: [
-							{
-								down: [
-									{
-										actionId: ActionId.setSource,
-										options: {
-											layer: `/${scene.uuid}/${layer.uuid}`,
-											sourceAB: 'sourceA',
-											source: source,
-										},
-									},
-								],
-								up: [],
-							},
-						],
-						feedbacks: [
-							{
-								feedbackId: FeedbackId.inputSource,
-								options: {
-									source: source,
-									sourceAB: 'sourceA',
-									layer: `/${scene.name}/${layer.name}`,
-								},
-								style: {
-									color: combineRgb(255, 255, 255),
-									bgcolor: combineRgb(255, 0, 0),
-								},
-							},
-						],
-					},
-				)
-				if (layer.sourceB) {
+		addPreset('Scenes', 'Scenes', `${scene.name}.cut`, {
+			name: `${scene.name} Cut`,
+			style: style(`${scene.name}\\nCUT`),
+			steps: onPress({ actionId: ActionId.programCut, options: { scene: scene.name } }),
+		})
+		addPreset('Scenes', 'Scenes', `${scene.name}.auto`, {
+			name: `${scene.name} Auto`,
+			style: style(`${scene.name}\\nAUTO`),
+			steps: onPress({ actionId: ActionId.programAuto, options: { scene: scene.name } }),
+		})
+	}
+	for (const transition of instance.KairosObj.TRANSITIONS) {
+		const id = `${transition.sceneName}.${transition.name}`
+		const group = `${transition.sceneName} Transitions`
+		addPreset('Scenes', group, `${id}.cut`, {
+			name: `${transition.sceneName}/${transition.name} Cut`,
+			style: style(`${transition.name}\\nCUT`),
+			steps: onPress({ actionId: ActionId.cutTransition, options: { layer: id } }),
+		})
+		addPreset('Scenes', group, `${id}.auto`, {
+			name: `${transition.sceneName}/${transition.name} Auto`,
+			style: style(`${transition.name}\\nAUTO`),
+			steps: onPress({ actionId: ActionId.autoTransition, options: { layer: id } }),
+		})
+	}
+
+	// Sources, with source A as program (red) and source B as preview (green)
+	for (const scene of instance.KairosObj.SCENES) {
+		for (const layer of scene.layers) {
+			if (!layer.sources) continue
+			const buses = layer.sourceB
+				? ([
+						['sourceA', 'Source A', 'PGM', RED],
+						['sourceB', 'Source B', 'PVW', GREEN],
+					] as const)
+				: ([['sourceA', 'Source A', 'PGM', RED]] as const)
+			for (const [sourceAB, busName, idSuffix, tally] of buses) {
+				for (const source of layer.sources) {
 					addPreset(
-						{ section: `Sources - ${scene.name}`, group: `${layer.name} - Source B` },
-						`${presetIdPart(scene.name)}.${presetIdPart(layer.name)}.${presetIdPart(source)}.PVW`,
+						'Sources',
+						`${scene.name}/${layer.name} - ${busName}`,
+						`${presetIdPart(scene.name)}.${presetIdPart(layer.name)}.${presetIdPart(source)}.${idSuffix}`,
 						{
-							type: 'simple',
-							name: source,
-							style: {
-								text: `$(kairos:${inputVariableId(source)})`,
-								size: 'auto',
-								color: combineRgb(255, 255, 255),
-								bgcolor: combineRgb(0, 0, 0),
-							},
-							steps: [
-								{
-									down: [
-										{
-											actionId: ActionId.setSource,
-											options: {
-												layer: `/${scene.uuid}/${layer.uuid}`,
-												sourceAB: 'sourceB',
-												source: source,
-											},
-										},
-									],
-									up: [],
-								},
-							],
+							name: `${scene.name}/${layer.name} ${busName} - ${source}`,
+							style: style(`$(kairos:${inputVariableId(source)})`),
+							steps: onPress({
+								actionId: ActionId.setSource,
+								options: { layer: `/${scene.uuid}/${layer.uuid}`, sourceAB, source },
+							}),
 							feedbacks: [
 								{
 									feedbackId: FeedbackId.inputSource,
-									options: {
-										source: source,
-										sourceAB: 'sourceB',
-										layer: `/${scene.name}/${layer.name}`,
-									},
-									style: {
-										color: combineRgb(0, 0, 0),
-										bgcolor: combineRgb(0, 255, 0),
-									},
+									options: { layer: `/${scene.name}/${layer.name}`, sourceAB, source },
+									style: { bgcolor: tally },
 								},
 							],
 						},
 					)
 				}
-			})
-		})
+			}
+		}
 	}
-	// Transition of layers
-	instance.KairosObj.TRANSITIONS.forEach((transition) => {
-		const layerName = `${transition.sceneName}.${transition.name}`
-		addPreset({ section: 'Transitions' }, `${layerName}.cut`, {
-			type: 'simple',
-			name: `${transition.sceneName}/${transition.name} Cut`,
-			style: {
-				text: `${transition.sceneName}/${transition.name}\\nCUT`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(255, 0, 0),
-			},
-			steps: [{ down: [{ actionId: ActionId.cutTransition, options: { layer: layerName } }], up: [] }],
-			feedbacks: [],
-		})
-		addPreset({ section: 'Transitions' }, `${layerName}.auto`, {
-			type: 'simple',
-			name: `${transition.sceneName}/${transition.name} Auto`,
-			style: {
-				text: `${transition.sceneName}/${transition.name}\\nAUTO`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(255, 0, 0),
-			},
-			steps: [{ down: [{ actionId: ActionId.autoTransition, options: { layer: layerName } }], up: [] }],
-			feedbacks: [],
-		})
-	})
-	// Actions
-	instance.KairosObj.SCENES.forEach((SCENE) => {
-		SCENE.actions.forEach((ACTION) => {
-			addPreset({ section: 'Scene Actions' }, `${ACTION.uuid}`, {
-				type: 'simple',
-				name: `${SCENE.name}/${ACTION.name}`,
-				style: {
-					text: `${SCENE.name}\\n${ACTION.name}`,
-					size: 'auto',
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 0, 0),
-				},
-				steps: [
-					{
-						down: [{ actionId: ActionId.runAction, options: { action: `/${SCENE.name}/actions/${ACTION.uuid}` } }],
-						up: [],
-					},
-				],
-				feedbacks: [],
-			})
-		})
-	})
-	// Media Stills
-	instance.KairosObj.MEDIA_STILLS.forEach((STILL) => {
-		addPreset({ section: 'Media Stills' }, `${STILL}.select`, {
-			type: 'simple',
-			name: mediaStillLabel(STILL),
-			style: {
-				text: mediaStillLabel(STILL),
-				size: '7',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [
-						{
-							actionId: ActionId.setMediaStill,
-							options: {
-								layer: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].uuid : '',
-								sourceAB: 'sourceA',
-								source: STILL,
-							},
-						},
-					],
-					up: [],
-				},
-			],
-			feedbacks: [
-				{
-					feedbackId: FeedbackId.inputSource,
-					options: {
-						source: STILL,
-						sourceAB: 'sourceA',
-						layer: instance.combinedLayerArray[0]
-							? `/${instance.combinedLayerArray[0].sceneName}/${instance.combinedLayerArray[0].layerName}`
-							: '',
-					},
-					style: {
-						bgcolor: combineRgb(0, 255, 0),
-						color: combineRgb(0, 0, 0),
-					},
-				},
-			],
-		})
-	})
-	// Player
-	instance.KairosObj.PLAYERS.forEach((element) => {
-		addPreset({ section: 'Players', group: element.player }, `${element.player}.play`, {
-			type: 'simple',
-			name: `${element.player} Play`,
-			style: {
-				text: `${element.player}\\nPLAY`,
-				size: '14',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [{ actionId: ActionId.playerControl, options: { player: element.player, action: 'play' } }],
-					up: [],
-				},
-			],
-			feedbacks: [],
-		})
-		addPreset({ section: 'Players', group: element.player }, `${element.player}.pause`, {
-			type: 'simple',
-			name: `${element.player} Pause`,
-			style: {
-				text: `${element.player}\\nPAUSE`,
-				size: '14',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [{ actionId: ActionId.playerControl, options: { player: element.player, action: 'pause' } }],
-					up: [],
-				},
-			],
-			feedbacks: [],
-		})
-		addPreset({ section: 'Players', group: element.player }, `${element.player}.begin`, {
-			type: 'simple',
-			name: `${element.player} Go to Start`,
-			style: {
-				text: `${element.player}\\nSTART`,
-				size: '14',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [{ actionId: ActionId.playerControl, options: { player: element.player, action: 'begin' } }],
-					up: [],
-				},
-			],
-			feedbacks: [],
-		})
-		addPreset({ section: 'Players', group: element.player }, `${element.player}.step_back`, {
-			type: 'simple',
-			name: `${element.player} Step Back`,
-			style: {
-				text: `${element.player}\\nSTEP BACK`,
-				size: '14',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [
-						{
-							actionId: ActionId.playerControl,
-							options: { player: element.player, action: 'step_back' },
-						},
-					],
-					up: [],
-				},
-			],
-			feedbacks: [],
-		})
-		addPreset({ section: 'Players', group: element.player }, `${element.player}.step_forward`, {
-			type: 'simple',
-			name: `${element.player} Step Forward`,
-			style: {
-				text: `${element.player}\\nSTEP FWD`,
-				size: '14',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [
-						{
-							actionId: ActionId.playerControl,
-							options: { player: element.player, action: 'step_forward' },
-						},
-					],
-					up: [],
-				},
-			],
-			feedbacks: [],
-		})
-		addPreset({ section: 'Players', group: element.player }, `${element.player}.end`, {
-			type: 'simple',
-			name: `${element.player} Go to End`,
-			style: {
-				text: `${element.player}\\nEND`,
-				size: '14',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [{ actionId: ActionId.playerControl, options: { player: element.player, action: 'end' } }],
-					up: [],
-				},
-			],
-			feedbacks: [],
-		})
-		addPreset({ section: 'Players', group: element.player }, `${element.player}.repeat_off`, {
-			type: 'simple',
-			name: `${element.player} Repeat Off`,
-			style: {
-				text: `${element.player}\\nREPEAT OFF`,
-				size: '14',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [
-						{
-							actionId: ActionId.playerControl,
-							options: { player: element.player, action: 'repeat=0' },
-						},
-					],
-					up: [],
-				},
-			],
-			feedbacks: [],
-		})
-		addPreset({ section: 'Players', group: element.player }, `${element.player}.repeat_on`, {
-			type: 'simple',
-			name: `${element.player} Repeat On`,
-			style: {
-				text: `${element.player}\\nREPEAT ON`,
-				size: '14',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [
-						{
-							actionId: ActionId.playerControl,
-							options: { player: element.player, action: 'repeat=1' },
-						},
-					],
-					up: [],
-				},
-			],
-			feedbacks: [],
-		})
-	})
-	// Snapshots & scene transitions
-	instance.KairosObj.SCENES.forEach((SCENE) => {
-		addPreset({ section: 'Scenes' }, `${SCENE.name}.cut`, {
-			type: 'simple',
-			name: `${SCENE.name} Cut`,
-			style: {
-				text: `${SCENE.name}\\nCUT`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(255, 0, 0),
-			},
-			steps: [{ down: [{ actionId: ActionId.programCut, options: { scene: SCENE.name } }], up: [] }],
-			feedbacks: [],
-		})
-		addPreset({ section: 'Scenes' }, `${SCENE.name}.auto`, {
-			type: 'simple',
-			name: `${SCENE.name} Auto`,
-			style: {
-				text: `${SCENE.name}\\nAUTO`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(255, 0, 0),
-			},
-			steps: [{ down: [{ actionId: ActionId.programAuto, options: { scene: SCENE.name } }], up: [] }],
-			feedbacks: [],
-		})
-	})
-	// SNAPSHOT
-	instance.KairosObj.SNAPSHOTS.forEach((snapshot) => {
-		addPreset({ section: 'Snapshots' }, `${snapshot.uuid}.recall`, {
-			type: 'simple',
-			name: `${snapshot.scene}/${snapshot.name}`,
-			style: {
-				text: `${snapshot.scene}/${snapshot.name}`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [
-						{
-							actionId: ActionId.triggerSnapshot,
-							options: { snapshot: `${snapshot.scene}/snapshots/${snapshot.uuid}` },
-						},
-					],
-					up: [],
-				},
-			],
-			feedbacks: [],
-		})
-	})
+
 	// AUX
-	instance.KairosObj.AUX.forEach((aux) => {
-		if (!aux.sources) return
-		aux.sources.forEach((source) => {
-			addPreset({ section: 'AUX', group: aux.name }, `${aux.name}.${source}.setAux`, {
-				type: 'simple',
+	for (const aux of instance.KairosObj.AUX) {
+		if (!aux.sources) continue
+		for (const source of aux.sources) {
+			addPreset('AUX', aux.name, `${aux.name}.${source}.setAux`, {
 				name: `${aux.name} - ${source}`,
-				style: {
-					text: `$(kairos:${auxVariableId(aux.name)}):\\n$(kairos:${inputVariableId(source)})`,
-					size: 'auto',
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 0, 0),
-				},
-				steps: [
-					{
-						down: [{ actionId: ActionId.setAUX, options: { aux: aux.name, source: source } }],
-						up: [],
-					},
-				],
+				style: style(`$(kairos:${auxVariableId(aux.name)})\\n$(kairos:${inputVariableId(source)})`),
+				steps: onPress({ actionId: ActionId.setAUX, options: { aux: aux.name, source } }),
 				feedbacks: [
 					{
 						feedbackId: FeedbackId.aux,
-						options: {
-							aux: aux.name,
-							source: source,
-						},
-						style: {
-							color: combineRgb(0, 0, 0),
-							bgcolor: combineRgb(0, 255, 0),
-						},
+						options: { aux: aux.name, source },
+						style: { bgcolor: BLUE },
 					},
 				],
 			})
+		}
+	}
+
+	// Snapshots
+	for (const snapshot of instance.KairosObj.SNAPSHOTS) {
+		addPreset('Snapshots', snapshot.scene, `${snapshot.uuid}.recall`, {
+			name: `${snapshot.scene}/${snapshot.name}`,
+			style: style(snapshot.name),
+			steps: onPress({
+				actionId: ActionId.triggerSnapshot,
+				options: { snapshot: `${snapshot.scene}/snapshots/${snapshot.uuid}` },
+			}),
 		})
-	})
-	// MACRO
-	instance.KairosObj.MACROS.forEach((MACRO) => {
-		addPreset({ section: 'Macros', group: 'Global' }, `${MACRO.uuid}.play`, {
-			type: 'simple',
-			name: `${MACRO.path}${MACRO.name} Play`,
-			style: {
-				text: `${MACRO.path}${MACRO.name}\\nPLAY`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO.uuid, action: 'play' } }],
-					up: [],
-				},
-			],
-			feedbacks: [],
+	}
+
+	// Macros
+	for (const macro of instance.KairosObj.MACROS) {
+		const name = `${macro.path}${macro.name}`
+		addPreset('Macros', 'Global', `${macro.uuid}.play`, {
+			name: `${name} Play`,
+			style: style(`${name}\\nPLAY`, 'auto', GREEN),
+			steps: onPress({ actionId: ActionId.macroControl, options: { macro: macro.uuid, action: 'play' } }),
 		})
-		addPreset({ section: 'Macros', group: 'Global' }, `${MACRO.uuid}.stop`, {
-			type: 'simple',
-			name: `${MACRO.path}${MACRO.name} Stop`,
-			style: {
-				text: `${MACRO.path}${MACRO.name}\\nSTOP`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [{ actionId: ActionId.macroControl, options: { macro: MACRO.uuid, action: 'stop' } }],
-					up: [],
-				},
-			],
-			feedbacks: [],
+		addPreset('Macros', 'Global', `${macro.uuid}.stop`, {
+			name: `${name} Stop`,
+			style: style(`${name}\\nSTOP`, 'auto', RED),
+			steps: onPress({ actionId: ActionId.macroControl, options: { macro: macro.uuid, action: 'stop' } }),
 		})
-	})
-	// MACRO FOR SCENES
-	instance.KairosObj.SCENES_MACROS.forEach((MACRO) => {
-		addPreset({ section: 'Macros', group: 'Scene' }, `${MACRO.uuid}.play`, {
-			type: 'simple',
-			name: `${MACRO.name} Play`,
-			style: {
-				text: `${MACRO.name}\\nPLAY`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [
-						{
-							actionId: ActionId.macroSceneControl,
-							options: { macro: `${MACRO.scene}/macros/${MACRO.uuid}`, action: 'play' },
-						},
-					],
-					up: [],
-				},
-			],
-			feedbacks: [],
+	}
+	for (const macro of instance.KairosObj.SCENES_MACROS) {
+		const macroId = `${macro.scene}/macros/${macro.uuid}`
+		addPreset('Macros', 'Scene', `${macro.uuid}.play`, {
+			name: `${macro.name} Play`,
+			style: style(`${macro.name}\\nPLAY`, 'auto', GREEN),
+			steps: onPress({ actionId: ActionId.macroSceneControl, options: { macro: macroId, action: 'play' } }),
 		})
-		addPreset({ section: 'Macros', group: 'Scene' }, `${MACRO.uuid}.stop`, {
-			type: 'simple',
-			name: `${MACRO.name} Stop`,
-			style: {
-				text: `${MACRO.name}\\nSTOP`,
-				size: 'auto',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [
-						{
-							actionId: ActionId.macroSceneControl,
-							options: { macro: `${MACRO.scene}/macros/${MACRO.uuid}`, action: 'stop' },
-						},
-					],
-					up: [],
-				},
-			],
-			feedbacks: [],
+		addPreset('Macros', 'Scene', `${macro.uuid}.stop`, {
+			name: `${macro.name} Stop`,
+			style: style(`${macro.name}\\nSTOP`, 'auto', RED),
+			steps: onPress({ actionId: ActionId.macroSceneControl, options: { macro: macroId, action: 'stop' } }),
 		})
-	})
-	// MULTIVIEWER
-	instance.KairosObj.MULTIVIEWERS.forEach((multiviewer) => {
-		multiviewer.presets.forEach((preset) => {
-			if (!preset) return
-			addPreset({ section: 'Multiviewers', group: multiviewer.name }, `${multiviewer.uuid}${preset.id}`, {
-				type: 'simple',
-				name: `${multiviewer.name} - ${preset.name}`,
-				style: {
-					text: `${multiviewer.name}\\n${preset.name}`,
-					size: 'auto',
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 0, 0),
-				},
-				steps: [
-					{
-						down: [{ actionId: ActionId.mvRecall, options: { mv: multiviewer.uuid, preset: preset.id } }],
-						up: [],
-					},
-				],
-				feedbacks: [],
+	}
+
+	// Players
+	for (const { player } of instance.KairosObj.PLAYERS) {
+		const section = PLAYER_SECTIONS[player.replace(/\d+$/, '')]
+		if (!section) continue
+		for (const control of PLAYER_CONTROLS) {
+			addPreset(section, player, `${player}.${control.id}`, {
+				name: `${player} ${control.name}`,
+				style: style(`${player}\\n${control.text}`, '18', control.bgcolor),
+				steps: onPress({ actionId: ActionId.playerControl, options: { player, action: control.action } }),
 			})
-		})
-	})
-	// AUDIO
-	addPreset({ section: 'Audio' }, `Audio_mute`, {
-		type: 'simple',
-		name: 'Master Mute',
-		style: {
-			text: 'MASTER\\nMUTE',
-			size: '14',
-			color: combineRgb(255, 255, 255),
-			bgcolor: combineRgb(0, 0, 0),
-		},
-		steps: [
-			{
-				down: [{ actionId: ActionId.muteMaster, options: { mute: 1 } }],
-				up: [],
-			},
-			{
-				down: [{ actionId: ActionId.muteMaster, options: { mute: 0 } }],
-				up: [],
-			},
-		],
-		feedbacks: [
-			{
-				feedbackId: FeedbackId.audioMuteMaster,
-				options: {},
-				style: {
-					color: combineRgb(255, 255, 255),
-					bgcolor: combineRgb(0, 255, 255),
-				},
-			},
-		],
-	})
-	instance.KairosObj.AUDIO_CHANNELS.forEach((CHANNEL) => {
-		addPreset({ section: 'Audio' }, `${CHANNEL.channel}.Audio_mute`, {
-			type: 'simple',
-			name: `${CHANNEL.channel} Mute`,
-			style: {
-				text: `${CHANNEL.channel}\\nMUTE`,
-				size: '14',
-				color: combineRgb(255, 255, 255),
-				bgcolor: combineRgb(0, 0, 0),
-			},
-			steps: [
-				{
-					down: [{ actionId: ActionId.muteChannel, options: { channel: CHANNEL.channel, mute: 1 } }],
-					up: [],
-				},
-				{
-					down: [{ actionId: ActionId.muteChannel, options: { channel: CHANNEL.channel, mute: 0 } }],
-					up: [],
-				},
-			],
+		}
+	}
+
+	// Media stills, purple as the layer has to be chosen after placing the button
+	const firstLayer = instance.combinedLayerArray.at(0)
+	for (const still of instance.KairosObj.MEDIA_STILLS) {
+		addPreset('Media Stills', undefined, `${still}.select`, {
+			name: mediaStillLabel(still),
+			style: style(mediaStillLabel(still), 'auto', PURPLE),
+			steps: onPress({
+				actionId: ActionId.setMediaStill,
+				options: { layer: firstLayer?.uuid ?? '', sourceAB: 'sourceA', source: still },
+			}),
 			feedbacks: [
 				{
-					feedbackId: FeedbackId.audioMuteChannel,
+					feedbackId: FeedbackId.inputMediaStill,
 					options: {
-						channel: CHANNEL.channel,
+						layer: firstLayer ? `/${firstLayer.sceneName}/${firstLayer.layerName}` : '',
+						sourceAB: 'sourceA',
+						source: still,
 					},
-					style: {
-						color: combineRgb(255, 255, 255),
-						bgcolor: combineRgb(0, 255, 255),
-					},
+					style: { bgcolor: RED },
 				},
 			],
 		})
-	})
+	}
 
-	const structure = Array.from(layout, ([section, groups]): CompanionPresetSection<KairosTypes> => {
-		const ungrouped = groups.get(undefined)
-		if (ungrouped && groups.size === 1) return { id: section, name: section, definitions: ungrouped }
-
-		return {
-			id: section,
-			name: section,
-			definitions: Array.from(groups, ([group, presetIds]): CompanionPresetGroup<KairosTypes> => ({
-				id: `${section}/${group ?? ''}`,
-				type: 'simple',
-				name: group ?? '',
-				presets: presetIds,
-			})),
+	// Multiviewers
+	for (const multiviewer of instance.KairosObj.MULTIVIEWERS) {
+		for (const preset of multiviewer.presets ?? []) {
+			if (!preset) continue
+			addPreset('Multiviewers', multiviewer.name, `${multiviewer.uuid}${preset.id}`, {
+				name: `${multiviewer.name} - ${preset.name}`,
+				style: style(preset.name),
+				steps: onPress({ actionId: ActionId.mvRecall, options: { mv: multiviewer.uuid, preset: preset.id } }),
+			})
 		}
+	}
+
+	// Scene actions
+	for (const scene of instance.KairosObj.SCENES) {
+		for (const action of scene.actions) {
+			addPreset('Scene Actions', scene.name, action.uuid, {
+				name: `${scene.name}/${action.name}`,
+				style: style(action.name),
+				steps: onPress({
+					actionId: ActionId.runAction,
+					options: { action: `/${scene.name}/actions/${action.uuid}` },
+				}),
+			})
+		}
+	}
+
+	// Audio: each press toggles mute, and the button is active while muted
+	addPreset('Audio', undefined, 'Audio_mute', {
+		name: 'Master Mute',
+		style: style('MASTER\\nMUTE', '18'),
+		steps: [
+			{ down: [{ actionId: ActionId.muteMaster, options: { mute: 1 } }], up: [] },
+			{ down: [{ actionId: ActionId.muteMaster, options: { mute: 0 } }], up: [] },
+		],
+		feedbacks: [{ feedbackId: FeedbackId.audioMuteMaster, options: {}, style: { bgcolor: RED } }],
+	})
+	for (const { channel } of instance.KairosObj.AUDIO_CHANNELS) {
+		addPreset('Audio', undefined, `${channel}.Audio_mute`, {
+			name: `${channel} Mute`,
+			style: style(`${channel.replace('Channel ', 'CH ')}\\nMUTE`, '18'),
+			steps: [
+				{ down: [{ actionId: ActionId.muteChannel, options: { channel, mute: 1 } }], up: [] },
+				{ down: [{ actionId: ActionId.muteChannel, options: { channel, mute: 0 } }], up: [] },
+			],
+			feedbacks: [{ feedbackId: FeedbackId.audioMuteChannel, options: { channel }, style: { bgcolor: RED } }],
+		})
+	}
+
+	const structure = SECTIONS.flatMap(({ name, description }): CompanionPresetSection<KairosTypes>[] => {
+		const groups = layout.get(name)!
+		if (groups.size === 0) return []
+
+		const ungrouped = groups.get(undefined)
+		if (ungrouped && groups.size === 1) return [{ id: name, name, description, definitions: ungrouped }]
+
+		return [
+			{
+				id: name,
+				name,
+				description,
+				definitions: Array.from(groups, ([group, presetIds]): CompanionPresetGroup<KairosTypes> => ({
+					id: `${name}/${group ?? ''}`,
+					type: 'simple',
+					name: group ?? '',
+					presets: presetIds,
+				})),
+			},
+		]
 	})
 
 	return { structure, presets }

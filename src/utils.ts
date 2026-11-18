@@ -1,4 +1,4 @@
-import type { CompanionInputFieldDropdown } from '@companion-module/base'
+import { combineRgb, type CompanionInputFieldDropdown } from '@companion-module/base'
 
 interface input {
 	index: number
@@ -129,3 +129,11 @@ export const mediaStillLabel = (path: string): string =>
 		.split('.')
 		.map((part) => part.replace(/&#46;/g, '.'))
 		.join('/')
+
+export const WHITE = combineRgb(255, 255, 255)
+export const BLACK = combineRgb(0, 0, 0)
+export const RED = combineRgb(200, 0, 0)
+export const GREEN = combineRgb(0, 200, 0)
+export const YELLOW = combineRgb(200, 200, 0)
+export const BLUE = combineRgb(0, 0, 200)
+export const PURPLE = combineRgb(200, 0, 200)
