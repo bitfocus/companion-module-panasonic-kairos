@@ -76,6 +76,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 			sdp: string
 		}[]
 		PLAYERS: { player: string; repeat: number }[]
+		TRANSITIONS: { sceneName: string; path: string; name: string }[]
 		AUDIO_CHANNELS: { channel: string; mute: number }[]
 	} = {
 		audio_master_mute: 100,
@@ -85,6 +86,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		AUX: [],
 		MACROS: [],
 		PLAYERS: [],
+		TRANSITIONS: [],
 		AUDIO_CHANNELS: [],
 		SCENES_MACROS: [],
 		SNAPSHOTS: [],
@@ -152,6 +154,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 			this.setPresetDefinitions(structure, presets)
 
 			updateBasicVariables(this)
+			this.tcp?.sync()
 		} else if (updateFlag === updateFlags.onlyVariables) {
 			updateBasicVariables(this)
 		} else if (updateFlag === updateFlags.presets) {

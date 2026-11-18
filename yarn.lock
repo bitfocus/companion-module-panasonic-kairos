@@ -1229,6 +1229,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"kairos-connection@npm:1.0.0":
+  version: 1.0.0
+  resolution: "kairos-connection@npm:1.0.0"
+  dependencies:
+    kairos-lib: "npm:1.0.0"
+    tslib: "npm:^2.8.1"
+  checksum: 10c0/cd5433a32d2314fe5e3239ad1fd28ad62b54952b37facb39e28a565447f92c4c04f870f384f28df55e6dec14e7fc1d7ab127392d9de7d60081fafc6899d974e7
+  languageName: node
+  linkType: hard
+
+"kairos-lib@npm:1.0.0":
+  version: 1.0.0
+  resolution: "kairos-lib@npm:1.0.0"
+  dependencies:
+    tslib: "npm:^2.8.1"
+  checksum: 10c0/d1290f1611ad2d73482eeae3ad1d760ad88d92a1d91abd33344ef8eb5db034096c36cc52cbeb1152322993f9014ac5cb13b8110ed23dd7b36080dcd55b78caaf
+  languageName: node
+  linkType: hard
+
 "keyv@npm:^5.6.0":
   version: 5.6.0
   resolution: "keyv@npm:5.6.0"
@@ -1387,6 +1406,7 @@ __metadata:
     "@companion-module/tools": "npm:^3.2.1"
     "@types/node": "npm:^26.6.6"
     eslint: "npm:^10.15.0"
+    kairos-connection: "npm:1.0.0"
     prettier: "npm:^3.10.1"
     rimraf: "npm:^6.1.4"
     typescript: "npm:~6.0.3"
@@ -1580,6 +1600,13 @@ __metadata:
   peerDependencies:
     typescript: ">=4.8.4"
   checksum: 10c0/767849383c114e7f1971fa976b20e73ac28fd0c70d8d65c0004790bf4d8f89888c7e4cf6d5949f9c1beae9bc3c64835bef77bbe27fddf45a3c7b60cebcf85c8c
+  languageName: node
+  linkType: hard
+
+"tslib@npm:^2.8.1":
+  version: 2.9.1
+  resolution: "tslib@npm:2.9.1"
+  checksum: 10c0/8ff46e7a4d19fa62c23483c89cf5ccc3906e742ef6e6d60bd3826b686143b300b4f6f04161cc1cf31a6b11fe70e1058ae4d4e4a108b5c68326d469684736a83c
   languageName: node
   linkType: hard
 

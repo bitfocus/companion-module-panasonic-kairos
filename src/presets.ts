@@ -146,8 +146,8 @@ export function getPresets(instance: KairosInstance): {
 		})
 	}
 	// Transition of layers
-	instance.combinedLayerArray.forEach((layer) => {
-		const layerName = `${layer.sceneName}.${layer.layerName}`
+	instance.KairosObj.TRANSITIONS.forEach((transition) => {
+		const layerName = `${transition.sceneName}.${transition.name}`
 		addPreset({ section: 'LAYER TRANSITION' }, `${layerName}.cut`, {
 			type: 'simple',
 			name: 'transition Cut',
