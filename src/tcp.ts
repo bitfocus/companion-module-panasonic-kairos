@@ -152,14 +152,14 @@ export class TCP {
 			.listMediaStills(undefined, true)
 			.then((stills) => {
 				if (this.destroyed) return
-				this.instance.KairosObj.MEDIA_STILLS = stills.map((still) => refToPath(still))
+				this.instance.state.mediaStills = stills.map((still) => refToPath(still))
 				this.instance.updateInstance(updateFlags.All)
 			})
 			.catch((error: Error) => this.instance.log('debug', `Unable to list media stills: ${error.message}`))
 	}
 
 	private readonly syncTransitions = (): void => {
-		const scenes = this.instance.KairosObj.SCENES
+		const scenes = this.instance.state.scenes
 		const key = scenes.map((scene) => `${scene.path}${scene.name}`).join('\n')
 		if (key === this.transitionScenes) return
 		this.transitionScenes = key
@@ -172,7 +172,7 @@ export class TCP {
 		)
 			.then((transitions) => {
 				if (this.destroyed || key !== this.transitionScenes) return
-				this.instance.KairosObj.TRANSITIONS = transitions.flat()
+				this.instance.state.transitions = transitions.flat()
 				this.instance.updateInstance(updateFlags.All)
 			})
 			.catch((error: Error) => {
@@ -183,57 +183,57 @@ export class TCP {
 	}
 
 	private readonly syncSubscriptions = (): void => {
-		const KairosObj = this.instance.KairosObj
+		const state = this.instance.state
 		const wanted = new Map<string, (value: string) => void>()
 
 		wanted.set('AUDIOMIXER.mute', (value) => {
-			KairosObj.audio_master_mute = parseInt(value)
+			state.masterMuted = parseInt(value) === 1
 			this.instance.checkFeedbacks(FeedbackId.audioMuteMaster)
 		})
-		for (const { channel } of KairosObj.AUDIO_CHANNELS) {
+		for (const { name: channel } of state.audioChannels) {
 			wanted.set(`${refToPath(refAudioMixerChannel([channel]))}.mute`, (value) => {
-				const entry = KairosObj.AUDIO_CHANNELS.find((x) => x.channel === channel)
-				if (entry) entry.mute = parseInt(value)
+				const entry = state.audioChannels.find((x) => x.name === channel)
+				if (entry) entry.muted = parseInt(value) === 1
 				this.instance.checkFeedbacks(FeedbackId.audioMuteChannel)
 			})
 		}
-		for (const { player } of KairosObj.PLAYERS) {
+		for (const { name: player } of state.players) {
 			wanted.set(`${player}.repeat`, (value) => {
-				const entry = KairosObj.PLAYERS.find((x) => x.player === player)
-				if (entry) entry.repeat = parseInt(value)
+				const entry = state.players.find((x) => x.name === player)
+				if (entry) entry.repeat = parseInt(value) === 1
 				this.instance.checkFeedbacks(FeedbackId.playerRepeat)
 			})
 		}
-		for (const { name } of KairosObj.AUX) {
+		for (const { name } of state.auxes) {
 			wanted.set(`${refToPath(refAuxName(name))}.source`, (value) => {
-				const entry = KairosObj.AUX.find((x) => x.name === name)
+				const entry = state.auxes.find((x) => x.name === name)
 				if (entry) entry.source = sourceName(value, this.inputNames())
 				this.instance.checkFeedbacks(FeedbackId.aux)
 			})
 		}
 		// REST doesn't report whether a macro is running, so follow its status here
 		const macros = [
-			...KairosObj.MACROS.map((macro) => ({ path: macroPath(macro), feedback: FeedbackId.macroPlaying })),
-			...KairosObj.SCENES_MACROS.map((macro) => ({
+			...state.macros.map((macro) => ({ path: macroPath(macro), feedback: FeedbackId.macroPlaying })),
+			...state.sceneMacros.map((macro) => ({
 				path: sceneMacroPath(macro),
 				feedback: FeedbackId.sceneMacroPlaying,
 			})),
 		]
 		for (const { path, feedback } of macros) {
 			wanted.set(`${path}.status`, (value) => {
-				this.instance.macroStatus.set(path, value)
+				this.instance.state.macroStatus.set(path, value)
 				this.instance.checkFeedbacks(feedback)
 			})
 		}
 		// Only the A/B sources are needed: subscribeSceneLayer would subscribe to every attribute of every layer
-		for (const layer of this.instance.combinedLayerArray) {
+		for (const layer of this.instance.state.layers) {
 			const path = refToPath(layerRef(layer))
 			// REST has no sourceB for layers without a B bus, where TCP would still report one (BLACK)
 			const buses = layer.sourceB == null ? (['sourceA'] as const) : (['sourceA', 'sourceB'] as const)
 			for (const sourceAB of buses) {
 				wanted.set(`${path}.${sourceAB}`, (value) => {
 					// REST replaces the layer list on every poll, so look the layer up again
-					const entry = this.instance.combinedLayerArray.find((x) => refToPath(layerRef(x)) === path)
+					const entry = this.instance.state.layers.find((x) => refToPath(layerRef(x)) === path)
 					if (entry) entry[sourceAB] = sourceName(value, this.inputNames())
 					this.instance.checkFeedbacks(FeedbackId.inputSource, FeedbackId.inputMediaStill)
 				})
@@ -277,7 +277,7 @@ export class TCP {
 		})
 	}
 
-	private readonly inputNames = (): string[] => this.instance.KairosObj.INPUTS.map((input) => input.name)
+	private readonly inputNames = (): string[] => this.instance.state.inputs.map((input) => input.name)
 }
 
 interface InternalConnection {

@@ -13,11 +13,11 @@ import {
 	type SceneRef,
 	type SceneTransitionRef,
 } from 'kairos-connection'
-import type KairosInstance from './index.js'
+import type { MixerState } from './index.js'
 
-type Layer = KairosInstance['combinedLayerArray'][number]
-type Transition = KairosInstance['KairosObj']['TRANSITIONS'][number]
-type SceneMacro = KairosInstance['KairosObj']['SCENES_MACROS'][number]
+type Layer = MixerState['layers'][number]
+type Transition = MixerState['transitions'][number]
+type SceneMacro = MixerState['sceneMacros'][number]
 
 export const sceneRef = (path: string | undefined, sceneName: string): SceneRef =>
 	refScene([...(path ?? '').split('/').filter((part) => part !== ''), sceneName])
@@ -33,7 +33,7 @@ export const macroPath = (macro: { path: string; name: string }): string =>
 	refToPath(refMacro([...macro.path.split('/').filter((part) => part !== ''), macro.name]))
 
 export const sceneMacroPath = (macro: SceneMacro): string =>
-	`${refToPath(sceneRef(macro.path, macro.scene))}.Macros.${macro.macroName}`
+	`${refToPath(sceneRef(macro.path, macro.sceneName))}.Macros.${macro.macroName}`
 
 const protocolDecode = (value: string): string =>
 	value.replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))

@@ -88,7 +88,7 @@ export function getPresets(instance: KairosInstance): {
 	}
 
 	// Scenes
-	for (const scene of instance.KairosObj.SCENES) {
+	for (const scene of instance.state.scenes) {
 		addPreset('Scenes', 'Scenes', `${scene.name}.cut`, {
 			name: `${scene.name} Cut`,
 			style: style(`${scene.name}\\nCUT`),
@@ -100,7 +100,7 @@ export function getPresets(instance: KairosInstance): {
 			steps: onPress({ actionId: ActionId.programAuto, options: { scene: scene.name } }),
 		})
 	}
-	for (const transition of instance.KairosObj.TRANSITIONS) {
+	for (const transition of instance.state.transitions) {
 		const id = `${transition.sceneName}.${transition.name}`
 		const group = `${transition.sceneName} Transitions`
 		addPreset('Scenes', group, `${id}.cut`, {
@@ -116,7 +116,7 @@ export function getPresets(instance: KairosInstance): {
 	}
 
 	// Sources, with source A as program (red) and source B as preview (green)
-	for (const scene of instance.KairosObj.SCENES) {
+	for (const scene of instance.state.scenes) {
 		for (const layer of scene.layers) {
 			if (!layer.sources) continue
 			const buses = layer.sourceB
@@ -153,7 +153,7 @@ export function getPresets(instance: KairosInstance): {
 	}
 
 	// AUX
-	for (const aux of instance.KairosObj.AUX) {
+	for (const aux of instance.state.auxes) {
 		if (!aux.sources) continue
 		for (const source of aux.sources) {
 			addPreset('AUX', aux.name, `${aux.name}.${source}.setAux`, {
@@ -172,19 +172,19 @@ export function getPresets(instance: KairosInstance): {
 	}
 
 	// Snapshots
-	for (const snapshot of instance.KairosObj.SNAPSHOTS) {
-		addPreset('Snapshots', snapshot.scene, `${snapshot.uuid}.recall`, {
-			name: `${snapshot.scene}/${snapshot.name}`,
+	for (const snapshot of instance.state.snapshots) {
+		addPreset('Snapshots', snapshot.sceneName, `${snapshot.uuid}.recall`, {
+			name: `${snapshot.sceneName}/${snapshot.name}`,
 			style: style(snapshot.name),
 			steps: onPress({
 				actionId: ActionId.triggerSnapshot,
-				options: { snapshot: `${snapshot.scene}/snapshots/${snapshot.uuid}` },
+				options: { snapshot: `${snapshot.sceneName}/snapshots/${snapshot.uuid}` },
 			}),
 		})
 	}
 
 	// Macros
-	for (const macro of instance.KairosObj.MACROS) {
+	for (const macro of instance.state.macros) {
 		const name = `${macro.path}${macro.name}`
 		addPreset('Macros', 'Global', `${macro.uuid}.play`, {
 			name: `${name} Play`,
@@ -198,8 +198,8 @@ export function getPresets(instance: KairosInstance): {
 			steps: onPress({ actionId: ActionId.macroControl, options: { macro: macro.uuid, action: 'stop' } }),
 		})
 	}
-	for (const macro of instance.KairosObj.SCENES_MACROS) {
-		const macroId = `${macro.scene}/macros/${macro.uuid}`
+	for (const macro of instance.state.sceneMacros) {
+		const macroId = `${macro.sceneName}/macros/${macro.uuid}`
 		addPreset('Macros', 'Scene', `${macro.uuid}.play`, {
 			name: `${macro.name} Play`,
 			style: style(`${macro.name}\\nPLAY`),
@@ -214,7 +214,7 @@ export function getPresets(instance: KairosInstance): {
 	}
 
 	// Players
-	for (const { player } of instance.KairosObj.PLAYERS) {
+	for (const { name: player } of instance.state.players) {
 		const section = PLAYER_SECTIONS[player.replace(/\d+$/, '')]
 		if (!section) continue
 		for (const control of PLAYER_CONTROLS) {
@@ -233,8 +233,8 @@ export function getPresets(instance: KairosInstance): {
 	}
 
 	// Media stills, purple as the layer has to be chosen after placing the button
-	const firstLayer = instance.combinedLayerArray.at(0)
-	for (const still of instance.KairosObj.MEDIA_STILLS) {
+	const firstLayer = instance.state.layers.at(0)
+	for (const still of instance.state.mediaStills) {
 		addPreset('Media Stills', undefined, `${still}.select`, {
 			name: mediaStillLabel(still),
 			style: style(mediaStillLabel(still), 'auto', PURPLE),
@@ -257,7 +257,7 @@ export function getPresets(instance: KairosInstance): {
 	}
 
 	// Multiviewers
-	for (const multiviewer of instance.KairosObj.MULTIVIEWERS) {
+	for (const multiviewer of instance.state.multiviewers) {
 		for (const preset of multiviewer.presets ?? []) {
 			if (!preset) continue
 			addPreset('Multiviewers', multiviewer.name, `${multiviewer.uuid}${preset.id}`, {
@@ -269,7 +269,7 @@ export function getPresets(instance: KairosInstance): {
 	}
 
 	// Scene actions
-	for (const scene of instance.KairosObj.SCENES) {
+	for (const scene of instance.state.scenes) {
 		for (const action of scene.actions) {
 			addPreset('Scene Actions', scene.name, action.uuid, {
 				name: `${scene.name}/${action.name}`,
@@ -289,7 +289,7 @@ export function getPresets(instance: KairosInstance): {
 		steps: onPress({ actionId: ActionId.muteMaster, options: { mute: 'toggle' } }),
 		feedbacks: [{ feedbackId: FeedbackId.audioMuteMaster, options: {}, style: { bgcolor: RED } }],
 	})
-	for (const { channel } of instance.KairosObj.AUDIO_CHANNELS) {
+	for (const { name: channel } of instance.state.audioChannels) {
 		addPreset('Audio', undefined, `${channel}.Audio_mute`, {
 			name: `${channel} Mute`,
 			style: style(`${channel.replace('Channel ', 'CH ')}\\nMUTE`, '18'),

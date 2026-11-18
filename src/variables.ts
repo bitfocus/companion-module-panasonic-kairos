@@ -43,19 +43,19 @@ export function updateBasicVariables(instance: KairosInstance): void {
 	])
 
 	const inputSources: { name: string; variableId: string }[] = []
-	instance.KairosObj.INPUTS.forEach((INPUT) => {
+	instance.state.inputs.forEach((INPUT) => {
 		inputSources.push({ name: `Input ${INPUT.name} - Name`, variableId: inputVariableId(INPUT.name) })
 	})
 
 	const auxSources: { name: string; variableId: string }[] = []
 	const auxNames: { name: string; variableId: string }[] = []
-	instance.KairosObj.AUX.forEach((AUX) => {
+	instance.state.auxes.forEach((AUX) => {
 		auxSources.push({ name: `AUX ${AUX.name} - Source`, variableId: `${auxVariableId(AUX.name)}.source` })
 		auxNames.push({ name: `AUX ${AUX.name} - Name`, variableId: auxVariableId(AUX.name) })
 	})
 
 	const layerSources: { name: string; variableId: string }[] = []
-	instance.combinedLayerArray.forEach((LAYER) => {
+	instance.state.layers.forEach((LAYER) => {
 		layerSources.push({
 			name: `Layer ${LAYER.sceneName}/${LAYER.layerName} - Source A`,
 			variableId: `${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceA`,
@@ -66,8 +66,8 @@ export function updateBasicVariables(instance: KairosInstance): void {
 		})
 	})
 	const playerRepeat: { name: string; variableId: string }[] = []
-	instance.KairosObj.PLAYERS.forEach((PLAYER) => {
-		playerRepeat.push({ name: `Player ${PLAYER.player} - Repeat`, variableId: `Player.${PLAYER.player}.repeat` })
+	instance.state.players.forEach((PLAYER) => {
+		playerRepeat.push({ name: `Player ${PLAYER.name} - Repeat`, variableId: `Player.${PLAYER.name}.repeat` })
 	})
 
 	const filteredVariables = [
@@ -87,28 +87,27 @@ export function updateBasicVariables(instance: KairosInstance): void {
 
 	const newVariables: CompanionVariableValues = {}
 
-	instance.combinedLayerArray.forEach((LAYER) => {
+	instance.state.layers.forEach((LAYER) => {
 		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceA`] = LAYER.sourceA
 		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceB`] = LAYER.sourceB
 	})
-	instance.KairosObj.AUX.forEach((AUX) => {
+	instance.state.auxes.forEach((AUX) => {
 		newVariables[`${auxVariableId(AUX.name)}.source`] = AUX.source
 		newVariables[auxVariableId(AUX.name)] = AUX.name
 	})
 	// PLAYERS
-	instance.KairosObj.PLAYERS.forEach((PLAYER) => {
-		newVariables[`Player.${PLAYER.player}.repeat`] = PLAYER.repeat == 0 ? 'repeat off' : 'repeat on'
+	instance.state.players.forEach((PLAYER) => {
+		newVariables[`Player.${PLAYER.name}.repeat`] = PLAYER.repeat ? 'repeat on' : 'repeat off'
 	})
 	// INPUTS
-	instance.KairosObj.INPUTS.forEach((INPUT) => {
+	instance.state.inputs.forEach((INPUT) => {
 		newVariables[inputVariableId(INPUT.name)] = INPUT.name
 	})
 	// AUDIO
-	newVariables['Audio.mute_master_audio'] = instance.KairosObj.audio_master_mute == 0 ? 'unmuted' : 'muted'
+	newVariables['Audio.mute_master_audio'] = instance.state.masterMuted ? 'muted' : 'unmuted'
 	for (let index = 0; index < 16; index++) {
-		if (instance.KairosObj.AUDIO_CHANNELS[index] == undefined) continue
-		newVariables[`Audio.mute_channel_${index + 1}`] =
-			instance.KairosObj.AUDIO_CHANNELS[index].mute == 0 ? 'unmuted' : 'muted'
+		if (instance.state.audioChannels[index] == undefined) continue
+		newVariables[`Audio.mute_channel_${index + 1}`] = instance.state.audioChannels[index].muted ? 'muted' : 'unmuted'
 	}
 	// Companion drops the values of removed variables, so after a definition change send every value again
 	instance.setChangedVariableValues(newVariables, definitionsChanged)

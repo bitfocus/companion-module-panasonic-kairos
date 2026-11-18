@@ -57,52 +57,52 @@ export class REST {
 	 */
 	public readonly setupKairos = async (): Promise<void> => {
 		// Load players
-		this.instance.KairosObj.PLAYERS = [
-			{ player: 'RR1', repeat: 0 },
-			{ player: 'RR2', repeat: 0 },
-			{ player: 'RR3', repeat: 0 },
-			{ player: 'RR4', repeat: 0 },
-			{ player: 'RR5', repeat: 0 },
-			{ player: 'RR6', repeat: 0 },
-			{ player: 'RR7', repeat: 0 },
-			{ player: 'RR8', repeat: 0 },
-			{ player: 'CP1', repeat: 0 },
-			{ player: 'CP2', repeat: 0 },
-			{ player: 'AP1', repeat: 0 },
-			{ player: 'AP2', repeat: 0 },
-			{ player: 'AP3', repeat: 0 },
-			{ player: 'AP4', repeat: 0 },
-			{ player: 'AP5', repeat: 0 },
-			{ player: 'AP6', repeat: 0 },
-			{ player: 'AP7', repeat: 0 },
-			{ player: 'AP8', repeat: 0 },
-			{ player: 'AP9', repeat: 0 },
-			{ player: 'AP10', repeat: 0 },
-			{ player: 'AP11', repeat: 0 },
-			{ player: 'AP12', repeat: 0 },
-			{ player: 'AP13', repeat: 0 },
-			{ player: 'AP14', repeat: 0 },
-			{ player: 'AP15', repeat: 0 },
-			{ player: 'AP16', repeat: 0 },
+		this.instance.state.players = [
+			{ name: 'RR1', repeat: false },
+			{ name: 'RR2', repeat: false },
+			{ name: 'RR3', repeat: false },
+			{ name: 'RR4', repeat: false },
+			{ name: 'RR5', repeat: false },
+			{ name: 'RR6', repeat: false },
+			{ name: 'RR7', repeat: false },
+			{ name: 'RR8', repeat: false },
+			{ name: 'CP1', repeat: false },
+			{ name: 'CP2', repeat: false },
+			{ name: 'AP1', repeat: false },
+			{ name: 'AP2', repeat: false },
+			{ name: 'AP3', repeat: false },
+			{ name: 'AP4', repeat: false },
+			{ name: 'AP5', repeat: false },
+			{ name: 'AP6', repeat: false },
+			{ name: 'AP7', repeat: false },
+			{ name: 'AP8', repeat: false },
+			{ name: 'AP9', repeat: false },
+			{ name: 'AP10', repeat: false },
+			{ name: 'AP11', repeat: false },
+			{ name: 'AP12', repeat: false },
+			{ name: 'AP13', repeat: false },
+			{ name: 'AP14', repeat: false },
+			{ name: 'AP15', repeat: false },
+			{ name: 'AP16', repeat: false },
 		]
 		// Load audio channels
-		this.instance.KairosObj.AUDIO_CHANNELS = [
-			{ channel: 'Channel 1', mute: 0 },
-			{ channel: 'Channel 2', mute: 0 },
-			{ channel: 'Channel 3', mute: 0 },
-			{ channel: 'Channel 4', mute: 0 },
-			{ channel: 'Channel 5', mute: 0 },
-			{ channel: 'Channel 6', mute: 0 },
-			{ channel: 'Channel 7', mute: 0 },
-			{ channel: 'Channel 8', mute: 0 },
-			{ channel: 'Channel 9', mute: 0 },
-			{ channel: 'Channel 10', mute: 0 },
-			{ channel: 'Channel 11', mute: 0 },
-			{ channel: 'Channel 12', mute: 0 },
-			{ channel: 'Channel 13', mute: 0 },
-			{ channel: 'Channel 14', mute: 0 },
-			{ channel: 'Channel 15', mute: 0 },
-			{ channel: 'Channel 16', mute: 0 },
+		this.instance.state.audioChannels = [
+			{ name: 'Channel 1', muted: false },
+			{ name: 'Channel 2', muted: false },
+			{ name: 'Channel 3', muted: false },
+			{ name: 'Channel 4', muted: false },
+			{ name: 'Channel 5', muted: false },
+			{ name: 'Channel 6', muted: false },
+			{ name: 'Channel 7', muted: false },
+			{ name: 'Channel 8', muted: false },
+			{ name: 'Channel 9', muted: false },
+			{ name: 'Channel 10', muted: false },
+			{ name: 'Channel 11', muted: false },
+			{ name: 'Channel 12', muted: false },
+			{ name: 'Channel 13', muted: false },
+			{ name: 'Channel 14', muted: false },
+			{ name: 'Channel 15', muted: false },
+			{ name: 'Channel 16', muted: false },
 		]
 		/**
 		 * Pulls the macro's
@@ -110,47 +110,47 @@ export class REST {
 		const pullMacros = async () => {
 			const macroResult = await this.sendCommand('/macros')
 			if (this.destroyed) return
-			this.instance.KairosObj.MACROS = JSON.parse(macroResult)
+			this.instance.state.macros = JSON.parse(macroResult)
 		}
 
 		const pullMultiviewers = async () => {
 			const multiviewerResult = await this.sendCommand('/multiviewers')
 			if (this.destroyed) return
-			this.instance.KairosObj.MULTIVIEWERS = JSON.parse(multiviewerResult)
+			this.instance.state.multiviewers = JSON.parse(multiviewerResult)
 		}
 
 		const pullScenesAndAux = async () => {
 			const sceneResult = await this.sendCommand('/scenes')
 			if (this.destroyed) return
-			this.instance.KairosObj.SCENES = JSON.parse(sceneResult)
+			this.instance.state.scenes = JSON.parse(sceneResult)
 
 			// clear arrays
-			this.instance.combinedLayerArray = []
-			this.instance.KairosObj.SCENES_MACROS = []
-			this.instance.KairosObj.SNAPSHOTS = []
+			this.instance.state.layers = []
+			this.instance.state.sceneMacros = []
+			this.instance.state.snapshots = []
 
 			// Load inputs, macros and snapshots from scenes into Kairos
-			this.instance.KairosObj.SCENES.forEach((scene: any) => {
+			this.instance.state.scenes.forEach((scene: any) => {
 				if (scene.macros) {
 					scene.macros.forEach((macro: { color: string; name: string; state: string; uuid: string }) => {
-						this.instance.KairosObj.SCENES_MACROS.push({
+						this.instance.state.sceneMacros.push({
 							...macro,
 							name: `${scene.path ?? ''}${scene.name}-${macro.name}`,
 							macroName: macro.name,
-							scene: scene.name,
+							sceneName: scene.name,
 							path: scene.path ?? '',
 						})
 					})
 				}
 				if (scene.snapshots) {
 					scene.snapshots.forEach((snapshot: any) => {
-						snapshot.scene = scene.name
-						this.instance.KairosObj.SNAPSHOTS.push(snapshot)
+						snapshot.sceneName = scene.name
+						this.instance.state.snapshots.push(snapshot)
 					})
 				}
 				if (!scene.layers) return
 				scene.layers.forEach((layer: any) => {
-					this.instance.combinedLayerArray.push({
+					this.instance.state.layers.push({
 						path: scene.path,
 						sceneName: scene.name,
 						layerName: layer.name,
@@ -160,22 +160,22 @@ export class REST {
 					})
 					if (!layer.sources) return
 					layer.sources.forEach((source: any) => {
-						if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
-							this.instance.KairosObj.INPUTS.push(createInputWithName(source))
+						if (this.instance.state.inputs.findIndex((x) => x.name == source) == -1)
+							this.instance.state.inputs.push(createInputWithName(source))
 					})
 				})
 			})
 
 			const auxResult = await this.sendCommand('/aux')
 			if (this.destroyed) return
-			this.instance.KairosObj.AUX = JSON.parse(auxResult)
+			this.instance.state.auxes = JSON.parse(auxResult)
 
 			// Load inputs from aux into Kairos
-			this.instance.KairosObj.AUX.forEach((aux: any) => {
+			this.instance.state.auxes.forEach((aux: any) => {
 				if (!aux.sources) return
 				aux.sources.forEach((source: any) => {
-					if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
-						this.instance.KairosObj.INPUTS.push(createInputWithName(source))
+					if (this.instance.state.inputs.findIndex((x) => x.name == source) == -1)
+						this.instance.state.inputs.push(createInputWithName(source))
 				})
 			})
 
@@ -224,10 +224,10 @@ export class REST {
 		}
 
 		const addInternalSources = () => {
-			this.instance.KairosObj.INPUTS.push(createInputWithName('Black'))
-			this.instance.KairosObj.INPUTS.push(createInputWithName('White'))
-			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorBar'))
-			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorCircle'))
+			this.instance.state.inputs.push(createInputWithName('Black'))
+			this.instance.state.inputs.push(createInputWithName('White'))
+			this.instance.state.inputs.push(createInputWithName('ColorBar'))
+			this.instance.state.inputs.push(createInputWithName('ColorCircle'))
 		}
 
 		/**

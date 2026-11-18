@@ -21,11 +21,14 @@ export type KairosTypes = {
 
 export { UpgradeScripts }
 
-export type KairosState = {
-	audio_master_mute: number
-	INPUTS: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
-	MEDIA_STILLS: Array<string>
-	SCENES: {
+/**
+ * Everything the module knows about the mixer, from REST and TCP
+ */
+export type MixerState = {
+	masterMuted: boolean
+	inputs: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
+	mediaStills: Array<string>
+	scenes: {
 		layers: { name: string; sourceA: string; sourceB?: string; sources: string[]; uuid: string }[]
 		name: string
 		tally: string
@@ -35,16 +38,25 @@ export type KairosState = {
 		SNAPSHOTS: { name: string; state: string; uuid: string }[]
 		actions: { name: string; state: string; uuid: string }[]
 	}[]
-	AUX: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
-	MACROS: {
+	/** Every layer of every scene */
+	layers: {
+		path: string
+		sceneName: string
+		layerName: string
+		sourceA: string
+		sourceB: string
+		uuid: string
+	}[]
+	auxes: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
+	macros: {
 		color: string
 		name: string
 		path: string
 		state: string
 		uuid: string
 	}[]
-	SCENES_MACROS: {
-		scene: string
+	sceneMacros: {
+		sceneName: string
 		/** The scene's folder path, e.g. `Templates/` */
 		path: string
 		/** The macro's own name, where `name` also has the scene's */
@@ -54,8 +66,10 @@ export type KairosState = {
 		state: string
 		uuid: string
 	}[]
-	SNAPSHOTS: { name: string; state: string; uuid: string; scene: string }[]
-	MULTIVIEWERS: {
+	/** Macro statuses (`Playing`, `Stopped`...) reported over TCP, by protocol path */
+	macroStatus: Map<string, string>
+	snapshots: { name: string; state: string; uuid: string; sceneName: string }[]
+	multiviewers: {
 		index: number
 		name: string
 		preset: string
@@ -63,24 +77,26 @@ export type KairosState = {
 		uuid: string
 		sdp: string
 	}[]
-	PLAYERS: { player: string; repeat: number }[]
-	TRANSITIONS: { sceneName: string; path: string; name: string }[]
-	AUDIO_CHANNELS: { channel: string; mute: number }[]
+	players: { name: string; repeat: boolean }[]
+	transitions: { sceneName: string; path: string; name: string }[]
+	audioChannels: { name: string; muted: boolean }[]
 }
 
-const emptyKairosState = (): KairosState => ({
-	audio_master_mute: 100,
-	INPUTS: [],
-	MEDIA_STILLS: [],
-	SCENES: [],
-	AUX: [],
-	MACROS: [],
-	PLAYERS: [],
-	TRANSITIONS: [],
-	AUDIO_CHANNELS: [],
-	SCENES_MACROS: [],
-	SNAPSHOTS: [],
-	MULTIVIEWERS: [],
+const emptyMixerState = (): MixerState => ({
+	masterMuted: false,
+	inputs: [],
+	mediaStills: [],
+	scenes: [],
+	layers: [],
+	auxes: [],
+	macros: [],
+	sceneMacros: [],
+	macroStatus: new Map(),
+	snapshots: [],
+	multiviewers: [],
+	players: [],
+	transitions: [],
+	audioChannels: [],
 })
 
 /**
@@ -99,19 +115,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		super(internal)
 	}
 
-	public KairosObj: KairosState = emptyKairosState()
-
-	public combinedLayerArray: {
-		path: string
-		sceneName: string
-		layerName: string
-		sourceA: string
-		sourceB: string
-		uuid: string
-	}[] = []
-
-	/** Macro statuses (`Playing`, `Stopped`...) reported over TCP, by protocol path */
-	public readonly macroStatus = new Map<string, string>()
+	public state: MixerState = emptyMixerState()
 
 	private readonly sentDefinitions = new Map<string, string>()
 	private sentVariableValues: CompanionVariableValues = {}
@@ -141,9 +145,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		this.tcp?.destroy()
 		this.rest?.destroy()
 		// Forget what the previous connection found, which may have been a different mixer
-		this.KairosObj = emptyKairosState()
-		this.combinedLayerArray = []
-		this.macroStatus.clear()
+		this.state = emptyMixerState()
 		this.connectionStatus.reset()
 		this.tcp = new TCP(this, config.host, config.tcpPort)
 		this.rest = new REST(this, config.host, config.restPort, config.username, secrets.password)

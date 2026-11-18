@@ -41,7 +41,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					label: 'Layer',
 					id: 'layer',
 					default: '',
-					choices: instance.combinedLayerArray.map((item) => ({
+					choices: instance.state.layers.map((item) => ({
 						id: `/${item.sceneName}/${item.layerName}`,
 						label: `${item.sceneName}/${item.layerName}`,
 					})),
@@ -62,7 +62,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					label: 'Source',
 					id: 'source',
 					default: '',
-					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
+					choices: instance.state.inputs.map((item) => ({ id: item.name, label: item.name })),
 					allowInvalidValues: true,
 				},
 			],
@@ -71,7 +71,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				const layer = feedback.options.layer
 				const source = feedback.options.source
 				const sourceAB = feedback.options.sourceAB
-				for (const LAYER of instance.combinedLayerArray) {
+				for (const LAYER of instance.state.layers) {
 					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceA === source && sourceAB == 'sourceA')
 						return true
 					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceB === source && sourceAB == 'sourceB')
@@ -89,10 +89,10 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: instance.combinedLayerArray[0]
-						? `/${instance.combinedLayerArray[0].sceneName}/${instance.combinedLayerArray[0].layerName}`
+					default: instance.state.layers[0]
+						? `/${instance.state.layers[0].sceneName}/${instance.state.layers[0].layerName}`
 						: 'layer1',
-					choices: instance.combinedLayerArray.map((item) => ({
+					choices: instance.state.layers.map((item) => ({
 						id: `/${item.sceneName}/${item.layerName}`,
 						label: `${item.sceneName}/${item.layerName}`,
 					})),
@@ -112,8 +112,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.MEDIA_STILLS[0] ? instance.KairosObj.MEDIA_STILLS[0] : '1',
-					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: mediaStillLabel(id) })),
+					default: instance.state.mediaStills[0] ? instance.state.mediaStills[0] : '1',
+					choices: instance.state.mediaStills.map((id) => ({ id, label: mediaStillLabel(id) })),
 					allowInvalidValues: true,
 				},
 			],
@@ -122,7 +122,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				const layer = feedback.options.layer
 				const source = feedback.options.source
 				const sourceAB = feedback.options.sourceAB
-				for (const LAYER of instance.combinedLayerArray) {
+				for (const LAYER of instance.state.layers) {
 					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceA === source && sourceAB == 'sourceA')
 						return true
 					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceB === source && sourceAB == 'sourceB')
@@ -138,8 +138,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			options: [],
 			defaultStyle: { bgcolor: RED },
 			callback: (): boolean => {
-				if (instance.KairosObj.audio_master_mute === 1) return true
-				else return false
+				return instance.state.masterMuted
 			},
 		},
 		[FeedbackId.audioMuteChannel]: {
@@ -149,8 +148,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			options: [options.channel],
 			defaultStyle: { bgcolor: RED },
 			callback: (feedback): boolean => {
-				const channel = instance.KairosObj.AUDIO_CHANNELS.find((x) => x.channel === feedback.options.channel)
-				return channel?.mute === 1
+				const channel = instance.state.audioChannels.find((x) => x.name === feedback.options.channel)
+				return channel?.muted ?? false
 			},
 		},
 		[FeedbackId.aux]: {
@@ -162,8 +161,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'AUX',
 					id: 'aux',
-					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].name : '1',
-					choices: instance.KairosObj.AUX.map((id) => ({ id: id.name, label: id.name })),
+					default: instance.state.auxes[0] ? instance.state.auxes[0].name : '1',
+					choices: instance.state.auxes.map((id) => ({ id: id.name, label: id.name })),
 					allowInvalidValues: true,
 				},
 				{
@@ -171,15 +170,15 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					label: 'Source',
 					id: 'source',
 					default: '',
-					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.name, label: id.name })),
+					choices: instance.state.inputs.map((id) => ({ id: id.name, label: id.name })),
 					allowInvalidValues: true,
 				},
 			],
 			defaultStyle: { bgcolor: BLUE },
 			callback: (feedback): boolean => {
-				const index = instance.KairosObj.AUX.findIndex((x) => x.name === feedback.options.aux)
+				const index = instance.state.auxes.findIndex((x) => x.name === feedback.options.aux)
 				if (index == -1) return false
-				if (instance.KairosObj.AUX[index].source === feedback.options.source) return true
+				if (instance.state.auxes[index].source === feedback.options.source) return true
 				else return false
 			},
 		},
@@ -192,13 +191,13 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Player',
 					id: 'player',
-					default: instance.KairosObj.PLAYERS[0]?.player ?? 'RR1',
-					choices: instance.KairosObj.PLAYERS.map(({ player }) => ({ id: player, label: player })),
+					default: instance.state.players[0]?.name ?? 'RR1',
+					choices: instance.state.players.map(({ name }) => ({ id: name, label: name })),
 				},
 			],
 			defaultStyle: { bgcolor: GREEN },
 			callback: (feedback): boolean =>
-				instance.KairosObj.PLAYERS.find((x) => x.player === feedback.options.player)?.repeat === 1,
+				instance.state.players.find((x) => x.name === feedback.options.player)?.repeat ?? false,
 		},
 		[FeedbackId.macroPlaying]: {
 			type: 'boolean',
@@ -209,16 +208,16 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Macro',
 					id: 'macro',
-					default: instance.KairosObj.MACROS[0]?.uuid ?? '',
-					choices: instance.KairosObj.MACROS.map((item) => ({ id: item.uuid, label: `${item.path}${item.name}` })),
+					default: instance.state.macros[0]?.uuid ?? '',
+					choices: instance.state.macros.map((item) => ({ id: item.uuid, label: `${item.path}${item.name}` })),
 					allowInvalidValues: true,
 					minChoicesForSearch: 8,
 				},
 			],
 			defaultStyle: { bgcolor: GREEN },
 			callback: (feedback): boolean => {
-				const macro = instance.KairosObj.MACROS.find((x) => x.uuid === feedback.options.macro)
-				return macro !== undefined && isMacroPlaying(instance.macroStatus.get(macroPath(macro)))
+				const macro = instance.state.macros.find((x) => x.uuid === feedback.options.macro)
+				return macro !== undefined && isMacroPlaying(instance.state.macroStatus.get(macroPath(macro)))
 			},
 		},
 		[FeedbackId.sceneMacroPlaying]: {
@@ -231,8 +230,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					label: 'Scene Macro',
 					id: 'macro',
 					default: '',
-					choices: instance.KairosObj.SCENES_MACROS.map((item) => ({
-						id: `${item.scene}/macros/${item.uuid}`,
+					choices: instance.state.sceneMacros.map((item) => ({
+						id: `${item.sceneName}/macros/${item.uuid}`,
 						label: item.name,
 					})),
 					allowInvalidValues: true,
@@ -241,10 +240,10 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			],
 			defaultStyle: { bgcolor: GREEN },
 			callback: (feedback): boolean => {
-				const macro = instance.KairosObj.SCENES_MACROS.find(
-					(x) => `${x.scene}/macros/${x.uuid}` === feedback.options.macro,
+				const macro = instance.state.sceneMacros.find(
+					(x) => `${x.sceneName}/macros/${x.uuid}` === feedback.options.macro,
 				)
-				return macro !== undefined && isMacroPlaying(instance.macroStatus.get(sceneMacroPath(macro)))
+				return macro !== undefined && isMacroPlaying(instance.state.macroStatus.get(sceneMacroPath(macro)))
 			},
 		},
 	}

@@ -9,6 +9,7 @@ import {
 	type SourceAB,
 } from './utils.js'
 import type KairosInstance from './index.js'
+import type { MixerState } from './index.js'
 import { layerRef, sceneRef, sourcePath, transitionRef } from './refs.js'
 import { updateBasicVariables } from './variables.js'
 import { FeedbackId } from './feedback.js'
@@ -34,7 +35,7 @@ export enum ActionId {
 }
 
 type LayerSourceOptions = { layer: string; sourceAB: SourceAB; source: string }
-type Layer = KairosInstance['combinedLayerArray'][number]
+type Layer = MixerState['layers'][number]
 
 const PLAYER_PREFIX = { RR: 'ramRecorder', CP: 'clipPlayer', AP: 'audioPlayer' } as const
 const PLAYER_TRANSPORT = {
@@ -143,7 +144,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 
 	const setLayerSource = (layer: Layer, sourceAB: SourceAB, source: string): void => {
 		const ref = layerRef(layer)
-		const path = sourcePath(source, instance.KairosObj.SCENES)
+		const path = sourcePath(source, instance.state.scenes)
 		runTcp(`set ${layer.sceneName}/${layer.layerName} ${sourceAB} to ${source}`, async (kairos) =>
 			// The library has sourceB as read only, which it is on current firmware, so this reports that error
 			sourceAB === 'sourceA'
@@ -155,17 +156,17 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		instance.checkFeedbacks(FeedbackId.inputSource, FeedbackId.inputMediaStill)
 	}
 
-	const findScene = (name: string) => instance.KairosObj.SCENES.find((scene) => scene.name === name)
+	const findScene = (name: string) => instance.state.scenes.find((scene) => scene.name === name)
 	const findTransition = (id: string) =>
-		instance.KairosObj.TRANSITIONS.find((transition) => `${transition.sceneName}.${transition.name}` === id)
-	const transitionChoices = instance.KairosObj.TRANSITIONS.map((transition) => ({
+		instance.state.transitions.find((transition) => `${transition.sceneName}.${transition.name}` === id)
+	const transitionChoices = instance.state.transitions.map((transition) => ({
 		id: `${transition.sceneName}.${transition.name}`,
 		label: `${transition.sceneName}/${transition.name}`,
 	}))
 
-	const mvPresetChoices = multiviewerPresetChoices(instance.KairosObj.MULTIVIEWERS)
+	const mvPresetChoices = multiviewerPresetChoices(instance.state.multiviewers)
 	const actionChoices: { id: string; label: string }[] = []
-	instance.KairosObj.SCENES.forEach((scene) => {
+	instance.state.scenes.forEach((scene) => {
 		scene.actions.forEach((action) => {
 			actionChoices.push({ id: `/${scene.name}/actions/${action.uuid}`, label: `${scene.name}/${action.name}` })
 		})
@@ -182,7 +183,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Scene/Layer',
 					id: 'layer',
 					default: '',
-					choices: instance.combinedLayerArray.map((item) => ({
+					choices: instance.state.layers.map((item) => ({
 						id: item.uuid,
 						label: `${item.sceneName}/${item.layerName}`,
 					})),
@@ -204,7 +205,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Source',
 					id: 'source',
 					default: '',
-					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
+					choices: instance.state.inputs.map((item) => ({ id: item.name, label: item.name })),
 					allowInvalidValues: true,
 				},
 			],
@@ -215,12 +216,12 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					body: { [`${action.options.sourceAB}`]: action.options.source },
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				const index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
+				const index = instance.state.layers.findIndex((x) => x.uuid === action.options.layer)
 				if (index != -1) {
 					if (action.options.sourceAB == 'sourceA') {
-						instance.combinedLayerArray[index].sourceA = action.options.source
+						instance.state.layers[index].sourceA = action.options.source
 					} else {
-						instance.combinedLayerArray[index].sourceB = action.options.source
+						instance.state.layers[index].sourceB = action.options.source
 					}
 				}
 				instance.checkFeedbacks(FeedbackId.inputSource)
@@ -237,7 +238,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Scene/Layer',
 					id: 'layer',
 					default: '',
-					choices: instance.combinedLayerArray.map((item) => ({
+					choices: instance.state.layers.map((item) => ({
 						id: `${item.sceneName}.Layers.${item.layerName}`,
 						label: `${item.sceneName}/${item.layerName}`,
 					})),
@@ -259,13 +260,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Source',
 					id: 'source',
 					default: '',
-					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
+					choices: instance.state.inputs.map((item) => ({ id: item.name, label: item.name })),
 					allowInvalidValues: true,
 				},
 			],
 			callback: (action) => {
 				const { layer: layerId, sourceAB, source } = action.options
-				const layer = instance.combinedLayerArray.find((x) => `${x.sceneName}.Layers.${x.layerName}` === layerId)
+				const layer = instance.state.layers.find((x) => `${x.sceneName}.Layers.${x.layerName}` === layerId)
 				if (layer) setLayerSource(layer, sourceAB, source)
 				else sendLegacyCommand(`SCENES.${layerId}.${sourceAB}=${source}`)
 			},
@@ -300,8 +301,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene/Layer',
 					id: 'layer',
-					default: instance.combinedLayerArray[0] ? instance.combinedLayerArray[0].uuid : '',
-					choices: instance.combinedLayerArray.map((id) => ({ id: id.uuid, label: `${id.sceneName}/${id.layerName}` })),
+					default: instance.state.layers[0] ? instance.state.layers[0].uuid : '',
+					choices: instance.state.layers.map((id) => ({ id: id.uuid, label: `${id.sceneName}/${id.layerName}` })),
 					allowInvalidValues: true,
 					minChoicesForSearch: 8,
 				},
@@ -319,13 +320,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: instance.KairosObj.MEDIA_STILLS[0] ? instance.KairosObj.MEDIA_STILLS[0] : '1',
-					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: mediaStillLabel(id) })),
+					default: instance.state.mediaStills[0] ? instance.state.mediaStills[0] : '1',
+					choices: instance.state.mediaStills.map((id) => ({ id, label: mediaStillLabel(id) })),
 					allowInvalidValues: true,
 				},
 			],
 			callback: (action) => {
-				const layer = instance.combinedLayerArray.find((x) => x.uuid === action.options.layer)
+				const layer = instance.state.layers.find((x) => x.uuid === action.options.layer)
 				if (layer) setLayerSource(layer, action.options.sourceAB, action.options.source)
 				else instance.log('warn', `Cannot set media still: unknown layer ${action.options.layer}`)
 			},
@@ -338,8 +339,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene',
 					id: 'scene',
-					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].name : '1',
-					choices: instance.KairosObj.SCENES.map((item) => ({ id: item.name, label: item.name })),
+					default: instance.state.scenes[0] ? instance.state.scenes[0].name : '1',
+					choices: instance.state.scenes.map((item) => ({ id: item.name, label: item.name })),
 					allowInvalidValues: true,
 				},
 			],
@@ -356,8 +357,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene',
 					id: 'scene',
-					default: instance.KairosObj.SCENES[0] ? instance.KairosObj.SCENES[0].name : '1',
-					choices: instance.KairosObj.SCENES.map((item) => ({ id: item.name, label: item.name })),
+					default: instance.state.scenes[0] ? instance.state.scenes[0].name : '1',
+					choices: instance.state.scenes.map((item) => ({ id: item.name, label: item.name })),
 					allowInvalidValues: true,
 				},
 			],
@@ -418,7 +419,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'AUX',
 					id: 'aux',
 					default: '',
-					choices: instance.KairosObj.AUX.map((item) => ({ id: item.name, label: item.name })),
+					choices: instance.state.auxes.map((item) => ({ id: item.name, label: item.name })),
 					allowInvalidValues: true,
 				},
 				{
@@ -426,7 +427,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Source',
 					id: 'source',
 					default: '',
-					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
+					choices: instance.state.inputs.map((item) => ({ id: item.name, label: item.name })),
 					allowInvalidValues: true,
 				},
 			],
@@ -437,9 +438,9 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					body: { source: action.options.source },
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				const index = instance.KairosObj.AUX.findIndex((x) => x.name === action.options.aux)
+				const index = instance.state.auxes.findIndex((x) => x.name === action.options.aux)
 				if (index != -1) {
-					instance.KairosObj.AUX[index].source = action.options.source
+					instance.state.auxes[index].source = action.options.source
 					instance.checkFeedbacks(FeedbackId.aux)
 					updateBasicVariables(instance)
 				}
@@ -455,16 +456,16 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Player',
 					id: 'player',
-					default: instance.KairosObj.PLAYERS[0] ? instance.KairosObj.PLAYERS[0].player : '1',
-					choices: instance.KairosObj.PLAYERS.map((element) => ({ id: element.player, label: element.player })),
+					default: instance.state.players[0]?.name ?? '1',
+					choices: instance.state.players.map(({ name }) => ({ id: name, label: name })),
 				},
 				options.playerControl,
 			],
 			callback: (action) => {
 				const { player } = action.options
-				const entry = instance.KairosObj.PLAYERS.find((x) => x.player === player)
+				const entry = instance.state.players.find((x) => x.name === player)
 				const playerAction =
-					action.options.action === 'repeat=toggle' ? `repeat=${entry?.repeat === 1 ? 0 : 1}` : action.options.action
+					action.options.action === 'repeat=toggle' ? `repeat=${entry?.repeat ? 0 : 1}` : action.options.action
 				const command = playerCommand(player, playerAction)
 				if (command) runTcp(`${player} ${playerAction}`, command)
 				else sendLegacyCommand(`${player}.${playerAction}`)
@@ -472,7 +473,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				// Don't wait for the value to return from the mixer, set it directly
 				const repeat = /^repeat=([01])$/.exec(playerAction)
 				if (repeat && entry) {
-					entry.repeat = Number(repeat[1])
+					entry.repeat = repeat[1] === '1'
 					instance.checkFeedbacks(FeedbackId.playerRepeat)
 					updateBasicVariables(instance)
 				}
@@ -485,8 +486,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Macro',
 					id: 'macro',
-					default: instance.KairosObj.MACROS[0] ? instance.KairosObj.MACROS[0].uuid : 'none exist',
-					choices: instance.KairosObj.MACROS.map((item) => ({ id: item.uuid, label: `${item.path}${item.name}` })),
+					default: instance.state.macros[0] ? instance.state.macros[0].uuid : 'none exist',
+					choices: instance.state.macros.map((item) => ({ id: item.uuid, label: `${item.path}${item.name}` })),
 					allowInvalidValues: true,
 					minChoicesForSearch: 8,
 				},
@@ -508,9 +509,9 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene Macro',
 					id: 'macro',
-					default: instance.KairosObj.SCENES_MACROS[0] ? instance.KairosObj.SCENES_MACROS[0].uuid : 'none exist',
-					choices: instance.KairosObj.SCENES_MACROS.map((item) => ({
-						id: `${item.scene}/macros/${item.uuid}`,
+					default: instance.state.sceneMacros[0] ? instance.state.sceneMacros[0].uuid : 'none exist',
+					choices: instance.state.sceneMacros.map((item) => ({
+						id: `${item.sceneName}/macros/${item.uuid}`,
 						label: item.name,
 					})),
 					allowInvalidValues: true,
@@ -544,7 +545,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Multiviewer',
 					id: 'mv',
 					default: '',
-					choices: instance.KairosObj.MULTIVIEWERS.map((item) => ({ id: item.uuid, label: item.name })),
+					choices: instance.state.multiviewers.map((item) => ({ id: item.uuid, label: item.name })),
 					allowInvalidValues: true,
 				},
 			],
@@ -566,10 +567,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Snapshot',
 					id: 'snapshot',
-					default: instance.KairosObj.SNAPSHOTS[0] ? instance.KairosObj.SNAPSHOTS[0].uuid : '',
-					choices: instance.KairosObj.SNAPSHOTS.map((item) => ({
-						id: `${item.scene}/snapshots/${item.uuid}`,
-						label: `${item.scene}/${item.name}`,
+					default: instance.state.snapshots[0] ? instance.state.snapshots[0].uuid : '',
+					choices: instance.state.snapshots.map((item) => ({
+						id: `${item.sceneName}/snapshots/${item.uuid}`,
+						label: `${item.sceneName}/${item.name}`,
 					})),
 					allowInvalidValues: true,
 					minChoicesForSearch: 8,
@@ -590,9 +591,9 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			name: 'Audio - Mute Master',
 			options: [options.mute],
 			callback: (action) => {
-				const mute = resolveMute(action.options.mute, instance.KairosObj.audio_master_mute === 1)
+				const mute = resolveMute(action.options.mute, instance.state.masterMuted)
 				runTcp(`${mute ? 'mute' : 'unmute'} master`, async (kairos) => kairos.updateAudioMixerMainBus({ mute }))
-				instance.KairosObj.audio_master_mute = mute ? 1 : 0
+				instance.state.masterMuted = mute
 				instance.checkFeedbacks(FeedbackId.audioMuteMaster)
 				updateBasicVariables(instance)
 			},
@@ -601,13 +602,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			name: 'Audio - Mute Channel',
 			options: [options.channel, options.mute],
 			callback: (action) => {
-				const channel = instance.KairosObj.AUDIO_CHANNELS.find((x) => x.channel === action.options.channel)
+				const channel = instance.state.audioChannels.find((x) => x.name === action.options.channel)
 				if (!channel) return
-				const mute = resolveMute(action.options.mute, channel.mute === 1)
-				runTcp(`${mute ? 'mute' : 'unmute'} ${channel.channel}`, async (kairos) =>
-					kairos.updateAudioMixerChannel(refAudioMixerChannel([channel.channel]), { mute }),
+				const mute = resolveMute(action.options.mute, channel.muted)
+				runTcp(`${mute ? 'mute' : 'unmute'} ${channel.name}`, async (kairos) =>
+					kairos.updateAudioMixerChannel(refAudioMixerChannel([channel.name]), { mute }),
 				)
-				channel.mute = mute ? 1 : 0
+				channel.muted = mute
 				instance.checkFeedbacks(FeedbackId.audioMuteChannel)
 				updateBasicVariables(instance)
 			},
