@@ -1,24 +1,15 @@
 import type { config, secrets } from './config.js'
 import { getActions, type ActionsSchema } from './actions.js'
 import { getConfigFields } from './config.js'
-import { getFeedbacks, type FeedbacksSchema } from './feedback.js'
+import { FeedbackId, getFeedbacks, type FeedbacksSchema } from './feedback.js'
 import { getPresets } from './presets.js'
 import { updateBasicVariables } from './variables.js'
 import { TCP } from './tcp.js'
 import { REST } from './rest.js'
 import { InstanceBase, type CompanionVariableValues, type SomeCompanionConfigField } from '@companion-module/base'
-import type {
-	AudioPlayerRef,
-	AuxRef,
-	ClipPlayerRef,
-	MacroRef,
-	MacroStatus,
-	RamRecorderRef,
-	SceneLayerRef,
-	SceneTransitionRef,
-} from 'kairos-connection'
 import { ConnectionStatus } from './status.js'
 import { updateFlags } from './utils.js'
+import { emptyMixerState, type MixerState } from './state.js'
 import { UpgradeScripts } from './upgrades.js'
 
 export type KairosTypes = {
@@ -30,88 +21,6 @@ export type KairosTypes = {
 }
 
 export { UpgradeScripts }
-
-export type PlayerRef = RamRecorderRef | ClipPlayerRef | AudioPlayerRef
-
-/**
- * Everything the module knows about the mixer, from REST and TCP
- */
-export type MixerState = {
-	masterMuted: boolean
-	inputs: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
-	mediaStills: Array<string>
-	scenes: {
-		layers: { name: string; sourceA: string; sourceB?: string; sources: string[]; uuid: string }[]
-		name: string
-		tally: string
-		uuid: string
-		path: string
-		macros: { color: string; name: string; state: string; uuid: string }[]
-		SNAPSHOTS: { name: string; state: string; uuid: string }[]
-		actions: { name: string; state: string; uuid: string }[]
-	}[]
-	/** Every layer of every scene */
-	layers: {
-		path: string
-		sceneName: string
-		layerName: string
-		sourceA: string
-		sourceB: string
-		uuid: string
-		ref: SceneLayerRef
-	}[]
-	auxes: { index: string; name: string; source: string; sources: string[]; uuid: string; ref: AuxRef }[]
-	macros: {
-		color: string
-		name: string
-		path: string
-		state: string
-		uuid: string
-		ref: MacroRef
-	}[]
-	sceneMacros: {
-		sceneName: string
-		/** The scene's folder path, e.g. `Templates/` */
-		path: string
-		/** The macro's own name, where `name` also has the scene's */
-		macroName: string
-		color: string
-		name: string
-		state: string
-		uuid: string
-	}[]
-	/** Macro statuses (`Playing`, `Stopped`...) reported over TCP, by protocol path */
-	macroStatus: Map<string, MacroStatus>
-	snapshots: { name: string; state: string; uuid: string; sceneName: string }[]
-	multiviewers: {
-		index: number
-		name: string
-		preset: string
-		presets: { id: string; name: string; usr: string }[]
-		uuid: string
-		sdp: string
-	}[]
-	players: { name: string; ref: PlayerRef; repeat: boolean }[]
-	transitions: { sceneName: string; path: string; name: string; ref: SceneTransitionRef }[]
-	audioChannels: { name: string; muted: boolean }[]
-}
-
-const emptyMixerState = (): MixerState => ({
-	masterMuted: false,
-	inputs: [],
-	mediaStills: [],
-	scenes: [],
-	layers: [],
-	auxes: [],
-	macros: [],
-	sceneMacros: [],
-	macroStatus: new Map(),
-	snapshots: [],
-	multiviewers: [],
-	players: [],
-	transitions: [],
-	audioChannels: [],
-})
 
 export default class KairosInstance extends InstanceBase<KairosTypes> {
 	config: config | undefined
@@ -161,6 +70,16 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		this.tcp = new TCP(this, config.host, config.tcpPort)
 		this.rest = new REST(this, config.host, config.restPort, config.username, secrets?.password ?? '')
 		this.updateInstance(updateFlags.All)
+		this.checkFeedbacks(
+			FeedbackId.aux,
+			FeedbackId.inputSource,
+			FeedbackId.inputMediaStill,
+			FeedbackId.audioMuteMaster,
+			FeedbackId.audioMuteChannel,
+			FeedbackId.playerRepeat,
+			FeedbackId.macroPlaying,
+			FeedbackId.sceneMacroPlaying,
+		)
 	}
 
 	/**
@@ -169,6 +88,8 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	public async destroy(): Promise<void> {
 		this.tcp?.destroy()
 		this.rest?.destroy()
+		this.tcp = undefined
+		this.rest = undefined
 		this.log('debug', `Instance destroyed: ${this.id}`)
 	}
 
@@ -177,15 +98,14 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	 */
 	public updateInstance(updateFlag: updateFlags): void {
 		if (updateFlag === updateFlags.All) {
+			this.tcp?.sync()
 			const actions = getActions(this)
 			const feedbacks = getFeedbacks(this)
 
 			if (this.definitionsChanged('actions', actions)) this.setActionDefinitions(actions)
 			if (this.definitionsChanged('feedbacks', feedbacks)) this.setFeedbackDefinitions(feedbacks)
 			this.updatePresets()
-
 			updateBasicVariables(this)
-			this.tcp?.sync()
 		} else if (updateFlag === updateFlags.onlyVariables) {
 			updateBasicVariables(this)
 		} else if (updateFlag === updateFlags.presets) {

@@ -2,6 +2,7 @@ import {
 	parseAnySourceRef,
 	protocolEncodeStr,
 	refAudioPlayer,
+	refAudioMixerChannel,
 	refClipPlayer,
 	refMacro,
 	refMatte,
@@ -15,7 +16,7 @@ import {
 	type SceneLayerRef,
 	type SceneRef,
 } from 'kairos-connection'
-import type { MixerState, PlayerRef } from './index.js'
+import type { MixerState, PlayerRef } from './state.js'
 
 type SceneMacro = MixerState['sceneMacros'][number]
 type Layer = MixerState['layers'][number]
@@ -49,13 +50,17 @@ export const layerRef = (scenePath: string | undefined, sceneName: string, layer
 /** A global macro, from its REST folder path (`Folder/`) and name */
 export const macroRef = (path: string | undefined, name: string): MacroRef => refMacro([...folderParts(path), name])
 
+export const masterMutePath = 'AUDIOMIXER.mute'
+export const audioMutePath = (name: string): string => `${refToPath(refAudioMixerChannel([name]))}.mute`
+export const playerRepeatPath = (ref: PlayerRef): string => `${refToPath(ref)}.repeat`
+
 const playerRange = <Ref extends PlayerRef>(count: number, ref: (index: number) => Ref): Ref[] =>
 	Array.from({ length: count }, (_, i) => ref(i + 1))
 
 /** Every RAM recorder, clip player and audio player, named as the protocol names them (`RR1`, `CP1`, `AP1`...) */
 export const allPlayers = (): MixerState['players'] =>
 	[...playerRange(8, refRamRecorder), ...playerRange(2, refClipPlayer), ...playerRange(16, refAudioPlayer)].map(
-		(ref) => ({ name: refToPath(ref), ref, repeat: false }),
+		(ref) => ({ name: refToPath(ref), ref }),
 	)
 
 export const sceneMacroPath = (macro: SceneMacro): string =>

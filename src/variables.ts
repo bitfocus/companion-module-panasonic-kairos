@@ -1,5 +1,7 @@
 import type { CompanionVariableDefinitions, CompanionVariableValues } from '@companion-module/base'
 import type KairosInstance from './index.js'
+import { auxSource, booleanValue, layerSource } from './state.js'
+import { audioMutePath, masterMutePath, playerRepeatPath } from './refs.js'
 
 interface InstanceVariableDefinition {
 	name: string
@@ -17,6 +19,9 @@ export const inputVariableId = (inputName: string): string =>
 export const auxVariableId = (auxName: string): string => `AUX.${sanitizeVariableIdPart(auxName.replace(/ /g, '_'))}`
 const layerVariableId = (sceneName: string, layerName: string): string =>
 	`Scene.${sanitizeVariableIdPart(sceneName)}.${sanitizeVariableIdPart(layerName)}`
+
+const muteLabel = (muted: boolean | undefined): string | undefined =>
+	muted === undefined ? undefined : muted ? 'muted' : 'unmuted'
 
 /**
  * @description Sets variable definitions
@@ -88,26 +93,37 @@ export function updateBasicVariables(instance: KairosInstance): void {
 	const newVariables: CompanionVariableValues = {}
 
 	instance.state.layers.forEach((LAYER) => {
-		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceA`] = LAYER.sourceA
-		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceB`] = LAYER.sourceB
+		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceA`] = layerSource(
+			instance.state,
+			LAYER,
+			'sourceA',
+		)
+		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceB`] = layerSource(
+			instance.state,
+			LAYER,
+			'sourceB',
+		)
 	})
 	instance.state.auxes.forEach((AUX) => {
-		newVariables[`${auxVariableId(AUX.name)}.source`] = AUX.source
+		newVariables[`${auxVariableId(AUX.name)}.source`] = auxSource(instance.state, AUX)
 		newVariables[auxVariableId(AUX.name)] = AUX.name
 	})
 	// PLAYERS
 	instance.state.players.forEach((PLAYER) => {
-		newVariables[`Player.${PLAYER.name}.repeat`] = PLAYER.repeat ? 'repeat on' : 'repeat off'
+		const repeat = booleanValue(instance.state, playerRepeatPath(PLAYER.ref))
+		newVariables[`Player.${PLAYER.name}.repeat`] =
+			repeat === undefined ? undefined : repeat ? 'repeat on' : 'repeat off'
 	})
 	// INPUTS
 	instance.state.inputs.forEach((INPUT) => {
 		newVariables[inputVariableId(INPUT.name)] = INPUT.name
 	})
 	// AUDIO
-	newVariables['Audio.mute_master_audio'] = instance.state.masterMuted ? 'muted' : 'unmuted'
-	for (let index = 0; index < 16; index++) {
-		if (instance.state.audioChannels[index] == undefined) continue
-		newVariables[`Audio.mute_channel_${index + 1}`] = instance.state.audioChannels[index].muted ? 'muted' : 'unmuted'
+	newVariables['Audio.mute_master_audio'] = muteLabel(booleanValue(instance.state, masterMutePath))
+	for (const [index, channel] of instance.state.audioChannels.entries()) {
+		newVariables[`Audio.mute_channel_${index + 1}`] = muteLabel(
+			booleanValue(instance.state, audioMutePath(channel.name)),
+		)
 	}
 	// Companion drops the values of removed variables, so after a definition change send every value again
 	instance.setChangedVariableValues(newVariables, definitionsChanged)

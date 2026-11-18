@@ -1,18 +1,9 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
-import { refAudioMixerChannel, refToPath, type KairosConnection } from 'kairos-connection'
-import {
-	mediaStillLabel,
-	multiviewerPresetChoices,
-	options,
-	resolveMute,
-	type MuteValue,
-	type SourceAB,
-} from './utils.js'
+import { refToPath, type KairosConnection } from 'kairos-connection'
+import { mediaStillLabel, multiviewerPresetChoices, options, type MuteValue, type SourceAB } from './utils.js'
 import type KairosInstance from './index.js'
-import type { MixerState, PlayerRef } from './index.js'
-import { sceneFullName, sceneRef, sourcePath } from './refs.js'
-import { updateBasicVariables } from './variables.js'
-import { FeedbackId } from './feedback.js'
+import type { MixerState, PlayerRef } from './state.js'
+import { audioMutePath, masterMutePath, playerRepeatPath, sceneFullName, sceneRef, sourcePath } from './refs.js'
 
 export enum ActionId {
 	runAction = 'runAction',
@@ -58,22 +49,10 @@ type PlayerTransportMethod =
 	`${(typeof PLAYER_METHOD_PREFIX)[PlayerRef['realm']]}${(typeof PLAYER_TRANSPORT)[keyof typeof PLAYER_TRANSPORT]}`
 
 /**
- * The command for a player action (`play`, `repeat=1`, ...)
+ * The command for a player action (`play`, `rewind`, ...)
  * @returns null when the action isn't one the library knows
  */
 function playerCommand(ref: PlayerRef, action: string): ((kairos: KairosConnection) => Promise<void>) | null {
-	const repeat = /^repeat=([01])$/.exec(action)
-	if (repeat) {
-		const props = { repeat: repeat[1] === '1' }
-		switch (ref.realm) {
-			case 'ramRecorder':
-				return async (kairos) => kairos.updateRamRecorder(ref, props)
-			case 'clipPlayer':
-				return async (kairos) => kairos.updateClipPlayer(ref, props)
-			case 'audio-player':
-				return async (kairos) => kairos.updateAudioPlayer(ref, props)
-		}
-	}
 	if (!(action in PLAYER_TRANSPORT)) return null
 	const method: PlayerTransportMethod = `${PLAYER_METHOD_PREFIX[ref.realm]}${PLAYER_TRANSPORT[action as keyof typeof PLAYER_TRANSPORT]}`
 	return async (kairos) => kairos[method](ref.playerIndex)
@@ -103,59 +82,27 @@ export type ActionsSchema = {
 // values are still meaningful before that (or if the mixer is unreachable), so `allowInvalidValues` stops Companion
 // from skipping actions whose value is not in the current choices.
 export function getActions(instance: KairosInstance): CompanionActionDefinitions<ActionsSchema> {
-	/**
-	 * Send PATCH Request
-	 * @param action
-	 * @param _info
-	 */
-	const sendPatchCommand = (action: { patchCommand: string; options: string; body: object }): void => {
-		const base64Credentials = Buffer.from(`${instance.config?.username}:${instance.secrets?.password ?? ''}`).toString(
-			'base64',
-		)
-		try {
-			instance.log(
-				'debug',
-				`Sending PATCH command: http://${instance.config?.host}:${instance.config?.restPort}${action.patchCommand}${
-					action.options
-				} + ${JSON.stringify(action.body)}`,
-			)
-			void fetch(
-				`http://${instance.config?.host}:${instance.config?.restPort}${action.patchCommand}${action.options}`,
-				{
-					method: 'PATCH',
-					headers: {
-						Authorization: `Basic ${base64Credentials}`,
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify(action.body),
-				},
-			).catch((error: unknown) => {
-				instance.log('error', `Error sending PATCH command: ${error}`)
-			})
-		} catch (error) {
-			instance.log('error', `Error sending PATCH command: ${error}`)
+	const sendPatch = (prefix: string, target: string, body: object): Promise<void> | undefined => {
+		if (!target) {
+			instance.log('error', `Cannot send KAIROS REST PATCH to ${prefix}: no target selected`)
+			return
 		}
+		return instance.rest?.patch(`${prefix}${target}`, body)
 	}
 
-	/** @returns whether the command was sent */
-	const runTcp = (description: string, command: (kairos: KairosConnection) => Promise<unknown>): boolean =>
-		instance.tcp?.run(description, command) ?? false
+	const runTcp = async (description: string, command: (kairos: KairosConnection) => Promise<unknown>) =>
+		instance.tcp?.run(description, command)
 
-	// Options whose value doesn't match anything the mixer reported (yet) are sent as the command they always were
-	const sendLegacyCommand = (command: string): boolean => instance.tcp?.sendCommand(command) ?? false
+	// Preserve stored paths that aren't currently in the discovery catalog.
+	const sendLegacyCommand = async (command: string) => instance.tcp?.sendCommand(command)
 
-	const setLayerSource = (layer: Layer, sourceAB: SourceAB, source: string): void => {
-		const ref = layer.ref
-		const path = sourcePath(source, instance.state.scenes)
-		runTcp(`set ${layer.sceneName}/${layer.layerName} ${sourceAB} to ${source}`, async (kairos) =>
-			// The library has sourceB as read only, which it is on current firmware, so this reports that error
-			sourceAB === 'sourceA'
-				? kairos.updateSceneLayer(ref, { sourceA: path })
-				: kairos.setAttribute(`${refToPath(ref)}.sourceB`, path),
-		)
-		// Don't wait for the value to return from the mixer, set it directly
-		layer[sourceAB] = source
-		instance.checkFeedbacks(FeedbackId.inputSource, FeedbackId.inputMediaStill)
+	const setLayerSource = async (layer: Layer, sourceAB: SourceAB, source: string) => {
+		return runTcp(`set ${layer.sceneName}/${layer.layerName} ${sourceAB} to ${source}`, async (kairos) => {
+			const path = sourcePath(source, instance.state.scenes)
+			return sourceAB === 'sourceA'
+				? kairos.updateSceneLayer(layer.ref, { sourceA: path })
+				: kairos.setAttribute(`${refToPath(layer.ref)}.sourceB`, path)
+		})
 	}
 
 	// Scenes are chosen by their full name (`Templates/2Box`), or by the bare name stored before scenes in folders were
@@ -219,25 +166,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: (action) => {
-				const setSource: any = {
-					patchCommand: '/scenes',
-					options: action.options.layer,
-					body: { [`${action.options.sourceAB}`]: action.options.source },
-				}
-				// Don't wait for the value to return from the mixer, set it directly
-				const index = instance.state.layers.findIndex((x) => x.uuid === action.options.layer)
-				if (index != -1) {
-					if (action.options.sourceAB == 'sourceA') {
-						instance.state.layers[index].sourceA = action.options.source
-					} else {
-						instance.state.layers[index].sourceB = action.options.source
-					}
-				}
-				instance.checkFeedbacks(FeedbackId.inputSource)
-
-				sendPatchCommand(setSource)
-			},
+			callback: async ({ options: { layer, sourceAB, source } }) => sendPatch('/scenes', layer, { [sourceAB]: source }),
 		},
 		[ActionId.forceSource]: {
 			name: 'Layers - Set Source (TCP)',
@@ -274,11 +203,11 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: (action) => {
+			callback: async (action) => {
 				const { layer: layerId, sourceAB, source } = action.options
 				const layer = instance.state.layers.find((x) => `${x.sceneName}.Layers.${x.layerName}` === layerId)
-				if (layer) setLayerSource(layer, sourceAB, source)
-				else sendLegacyCommand(`SCENES.${layerId}.${sourceAB}=${source}`)
+				if (layer) return setLayerSource(layer, sourceAB, source)
+				return sendLegacyCommand(`SCENES.${layerId}.${sourceAB}=${source}`)
 			},
 		},
 		[ActionId.runAction]: {
@@ -294,14 +223,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					minChoicesForSearch: 8,
 				},
 			],
-			callback: (action) => {
-				const runAction: any = {
-					patchCommand: '/scenes',
-					options: action.options.action,
-					body: { state: 'play' },
-				}
-				sendPatchCommand(runAction)
-			},
+			callback: async ({ options: { action } }) => sendPatch('/scenes', action, { state: 'play' }),
 		},
 		// Layer Source Assignment
 		[ActionId.setMediaStill]: {
@@ -335,10 +257,11 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: (action) => {
-				const layer = instance.state.layers.find((x) => x.uuid === action.options.layer)
-				if (layer) setLayerSource(layer, action.options.sourceAB, action.options.source)
-				else instance.log('warn', `Cannot set media still: unknown layer ${action.options.layer}`)
+			callback: async ({ options: { layer: id, sourceAB, source } }) => {
+				const layer = instance.state.layers.find((entry) => entry.uuid === id)
+				if (layer) return setLayerSource(layer, sourceAB, source)
+				instance.log('error', `Cannot set KAIROS media still: layer ${id || '(none selected)'} was not found`)
+				return
 			},
 		},
 		// Transition
@@ -354,10 +277,11 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: (action) => {
+			callback: async (action) => {
 				const scene = findScene(action.options.scene)
-				if (scene) runTcp(`cut ${scene.name}`, async (kairos) => kairos.sceneCut(sceneRef(scene.path, scene.name)))
-				else sendLegacyCommand(`SCENES.${action.options.scene}.cut`)
+				if (scene)
+					return runTcp(`cut ${scene.name}`, async (kairos) => kairos.sceneCut(sceneRef(scene.path, scene.name)))
+				return sendLegacyCommand(`SCENES.${action.options.scene}.cut`)
 			},
 		},
 		[ActionId.programAuto]: {
@@ -372,10 +296,11 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: (action) => {
+			callback: async (action) => {
 				const scene = findScene(action.options.scene)
-				if (scene) runTcp(`auto ${scene.name}`, async (kairos) => kairos.sceneAuto(sceneRef(scene.path, scene.name)))
-				else sendLegacyCommand(`SCENES.${action.options.scene}.auto`)
+				if (scene)
+					return runTcp(`auto ${scene.name}`, async (kairos) => kairos.sceneAuto(sceneRef(scene.path, scene.name)))
+				return sendLegacyCommand(`SCENES.${action.options.scene}.auto`)
 			},
 		},
 		[ActionId.autoTransition]: {
@@ -390,13 +315,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: (action) => {
+			callback: async (action) => {
 				const transition = findTransition(action.options.layer)
 				if (transition)
-					runTcp(`auto transition ${transition.sceneName}/${transition.name}`, async (kairos) =>
+					return runTcp(`auto transition ${transition.sceneName}/${transition.name}`, async (kairos) =>
 						kairos.sceneTransitionTransitionAuto(transition.ref),
 					)
-				else sendLegacyCommand(`SCENES.${action.options.layer}.transition_auto`)
+				return sendLegacyCommand(`SCENES.${action.options.layer}.transition_auto`)
 			},
 		},
 		[ActionId.cutTransition]: {
@@ -411,13 +336,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: (action) => {
+			callback: async (action) => {
 				const transition = findTransition(action.options.layer)
 				if (transition)
-					runTcp(`cut transition ${transition.sceneName}/${transition.name}`, async (kairos) =>
+					return runTcp(`cut transition ${transition.sceneName}/${transition.name}`, async (kairos) =>
 						kairos.sceneTransitionTransitionCut(transition.ref),
 					)
-				else sendLegacyCommand(`SCENES.${action.options.layer}.transition_cut`)
+				return sendLegacyCommand(`SCENES.${action.options.layer}.transition_cut`)
 			},
 		},
 		//AUX
@@ -441,21 +366,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: (action) => {
-				const setAUX: any = {
-					patchCommand: '/aux/',
-					options: action.options.aux,
-					body: { source: action.options.source },
-				}
-				// Don't wait for the value to return from the mixer, set it directly
-				const index = instance.state.auxes.findIndex((x) => x.name === action.options.aux)
-				if (index != -1) {
-					instance.state.auxes[index].source = action.options.source
-					instance.checkFeedbacks(FeedbackId.aux)
-					updateBasicVariables(instance)
-				}
-				sendPatchCommand(setAUX)
-			},
+			callback: async ({ options: { aux, source } }) => sendPatch('/aux/', encodeURIComponent(aux), { source }),
 		},
 		//Control
 		[ActionId.playerControl]: {
@@ -471,23 +382,18 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 				options.playerControl,
 			],
-			callback: (action) => {
-				const { player } = action.options
-				const entry = instance.state.players.find((x) => x.name === player)
-				const playerAction =
-					action.options.action === 'repeat=toggle' ? `repeat=${entry?.repeat ? 0 : 1}` : action.options.action
-				const command = entry ? playerCommand(entry.ref, playerAction) : null
-				const sent = command
-					? runTcp(`${player} ${playerAction}`, command)
-					: sendLegacyCommand(`${player}.${playerAction}`)
-
-				// Don't wait for the value to return from the mixer, set it directly, but only if it was sent
-				const repeat = /^repeat=([01])$/.exec(playerAction)
-				if (sent && repeat && entry) {
-					entry.repeat = repeat[1] === '1'
-					instance.checkFeedbacks(FeedbackId.playerRepeat)
-					updateBasicVariables(instance)
+			callback: async ({ options: { player, action } }) => {
+				const entry = instance.state.players.find((item) => item.name === player)
+				if (action === 'repeat=toggle' || action === 'repeat=0' || action === 'repeat=1') {
+					if (!entry) {
+						instance.log('error', `Cannot set KAIROS player repeat: player ${player} was not found`)
+						return
+					}
+					const repeat = action === 'repeat=toggle' ? 'toggle' : action === 'repeat=1'
+					return instance.tcp?.setBoolean(playerRepeatPath(entry.ref), repeat, `set repeat on ${player} to ${repeat}`)
 				}
+				const command = entry ? playerCommand(entry.ref, action) : null
+				return command ? runTcp(`${action} on ${player}`, command) : sendLegacyCommand(`${player}.${action}`)
 			},
 		},
 		[ActionId.macroControl]: {
@@ -504,14 +410,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 				options.macroStateControl,
 			],
-			callback: (action) => {
-				const macroControl: any = {
-					patchCommand: '/macros/',
-					options: action.options.macro,
-					body: { state: action.options.action },
-				}
-				sendPatchCommand(macroControl)
-			},
+			callback: async ({ options: { macro, action } }) => sendPatch('/macros/', macro, { state: action }),
 		},
 		[ActionId.macroSceneControl]: {
 			name: 'Macros - Control Scene Macro',
@@ -530,14 +429,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 				options.macroStateControl,
 			],
-			callback: (action) => {
-				const macroControl: any = {
-					patchCommand: '/scenes/',
-					options: action.options.macro,
-					body: { state: action.options.action },
-				}
-				sendPatchCommand(macroControl)
-			},
+			callback: async ({ options: { macro, action } }) => sendPatch('/scenes/', macro, { state: action }),
 		},
 		// Recall MV presets
 		[ActionId.mvRecall]: {
@@ -560,15 +452,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: (action) => {
-				const mvRecall: any = {
-					patchCommand: '/multiviewers/',
-					options: action.options.mv,
-					body: { preset: action.options.preset },
-				}
-
-				sendPatchCommand(mvRecall)
-			},
+			callback: async ({ options: { mv, preset } }) => sendPatch('/multiviewers/', mv, { preset }),
 		},
 		// Snapshots
 		[ActionId.triggerSnapshot]: {
@@ -587,43 +471,28 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					minChoicesForSearch: 8,
 				},
 			],
-			callback: (action) => {
-				const triggerSnapshot: any = {
-					patchCommand: '/scenes/',
-					options: action.options.snapshot,
-					body: { state: 'recall' },
-				}
-
-				sendPatchCommand(triggerSnapshot)
-			},
+			callback: async ({ options: { snapshot } }) => sendPatch('/scenes/', snapshot, { state: 'recall' }),
 		},
 		//Audio
 		[ActionId.muteMaster]: {
 			name: 'Audio - Mute Master',
 			options: [options.mute],
-			callback: (action) => {
-				const mute = resolveMute(action.options.mute, instance.state.masterMuted)
-				if (!runTcp(`${mute ? 'mute' : 'unmute'} master`, async (kairos) => kairos.updateAudioMixerMainBus({ mute })))
-					return
-				instance.state.masterMuted = mute
-				instance.checkFeedbacks(FeedbackId.audioMuteMaster)
-				updateBasicVariables(instance)
-			},
+			callback: async ({ options: { mute } }) =>
+				instance.tcp?.setBoolean(masterMutePath, mute === 'toggle' ? mute : mute === 1, 'set master mute'),
 		},
 		[ActionId.muteChannel]: {
 			name: 'Audio - Mute Channel',
 			options: [options.channel, options.mute],
-			callback: (action) => {
-				const channel = instance.state.audioChannels.find((x) => x.name === action.options.channel)
-				if (!channel) return
-				const mute = resolveMute(action.options.mute, channel.muted)
-				const sent = runTcp(`${mute ? 'mute' : 'unmute'} ${channel.name}`, async (kairos) =>
-					kairos.updateAudioMixerChannel(refAudioMixerChannel([channel.name]), { mute }),
+			callback: async ({ options: { channel, mute } }) => {
+				if (!instance.state.audioChannels.some((entry) => entry.name === channel)) {
+					instance.log('error', `Cannot set KAIROS channel mute: channel ${channel} was not found`)
+					return
+				}
+				return instance.tcp?.setBoolean(
+					audioMutePath(channel),
+					mute === 'toggle' ? mute : mute === 1,
+					`set mute on ${channel}`,
 				)
-				if (!sent) return
-				channel.muted = mute
-				instance.checkFeedbacks(FeedbackId.audioMuteChannel)
-				updateBasicVariables(instance)
 			},
 		},
 		// Custom
@@ -639,9 +508,9 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					useVariables: true,
 				},
 			],
-			callback: (action) => {
+			callback: async (action) => {
 				if (!action.options.functionID) return
-				instance.tcp?.sendCommand(action.options.functionID)
+				return sendLegacyCommand(action.options.functionID)
 			},
 		},
 	}

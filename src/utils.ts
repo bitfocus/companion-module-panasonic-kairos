@@ -21,8 +21,6 @@ export type SourceAB = 'sourceA' | 'sourceB'
 export type MuteValue = number | 'toggle'
 
 /** Whether to mute, given the mute option and whether it is muted now */
-export const resolveMute = (value: MuteValue, muted: boolean): boolean => (value === 'toggle' ? !muted : value === 1)
-
 /**
  * The multiviewer presets, for a dropdown. Preset ids are per multiviewer, and every multiviewer has the same ones, so
  * each id is listed once; the multiviewer is chosen in its own option.

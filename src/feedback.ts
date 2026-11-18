@@ -1,6 +1,14 @@
 import type KairosInstance from './index.js'
+import { auxSource, booleanValue, layerSource, macroStatus } from './state.js'
 import { refToPath } from 'kairos-connection'
-import { findLayerByFeedbackId, layerFeedbackId, sceneMacroPath } from './refs.js'
+import {
+	audioMutePath,
+	findLayerByFeedbackId,
+	layerFeedbackId,
+	masterMutePath,
+	playerRepeatPath,
+	sceneMacroPath,
+} from './refs.js'
 import { BLUE, GREEN, RED, isMacroPlaying, mediaStillLabel, options, type SourceAB } from './utils.js'
 import type { CompanionFeedbackDefinitions } from '@companion-module/base'
 
@@ -30,6 +38,18 @@ export type FeedbacksSchema = {
 // are still meaningful before that (or if the mixer is unreachable), so `allowInvalidValues` stops Companion from
 // rejecting values that are not in the current choices.
 export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinitions<FeedbacksSchema> {
+	const layerSourceSelected = ({
+		layer: id,
+		sourceAB,
+		source,
+	}: {
+		layer: string
+		sourceAB: SourceAB
+		source: string
+	}): boolean => {
+		const layer = findLayerByFeedbackId(instance.state.layers, id)
+		return layer !== undefined && layerSource(instance.state, layer, sourceAB) === source
+	}
 	const feedbacks: CompanionFeedbackDefinitions<FeedbacksSchema> = {
 		// Tally
 		[FeedbackId.inputSource]: {
@@ -68,9 +88,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				},
 			],
 			defaultStyle: { bgcolor: RED },
-			callback: (feedback): boolean =>
-				findLayerByFeedbackId(instance.state.layers, feedback.options.layer)?.[feedback.options.sourceAB] ===
-				feedback.options.source,
+			callback: (feedback) => layerSourceSelected(feedback.options),
 		},
 		[FeedbackId.inputMediaStill]: {
 			type: 'boolean',
@@ -108,9 +126,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				},
 			],
 			defaultStyle: { bgcolor: RED },
-			callback: (feedback): boolean =>
-				findLayerByFeedbackId(instance.state.layers, feedback.options.layer)?.[feedback.options.sourceAB] ===
-				feedback.options.source,
+			callback: (feedback) => layerSourceSelected(feedback.options),
 		},
 		[FeedbackId.audioMuteMaster]: {
 			type: 'boolean',
@@ -119,7 +135,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			options: [],
 			defaultStyle: { bgcolor: RED },
 			callback: (): boolean => {
-				return instance.state.masterMuted
+				return booleanValue(instance.state, masterMutePath) === true
 			},
 		},
 		[FeedbackId.audioMuteChannel]: {
@@ -129,8 +145,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			options: [options.channel],
 			defaultStyle: { bgcolor: RED },
 			callback: (feedback): boolean => {
-				const channel = instance.state.audioChannels.find((x) => x.name === feedback.options.channel)
-				return channel?.muted ?? false
+				return booleanValue(instance.state, audioMutePath(feedback.options.channel)) === true
 			},
 		},
 		[FeedbackId.aux]: {
@@ -157,10 +172,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			],
 			defaultStyle: { bgcolor: BLUE },
 			callback: (feedback): boolean => {
-				const index = instance.state.auxes.findIndex((x) => x.name === feedback.options.aux)
-				if (index == -1) return false
-				if (instance.state.auxes[index].source === feedback.options.source) return true
-				else return false
+				const aux = instance.state.auxes.find((entry) => entry.name === feedback.options.aux)
+				return aux !== undefined && auxSource(instance.state, aux) === feedback.options.source
 			},
 		},
 		[FeedbackId.playerRepeat]: {
@@ -177,8 +190,10 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				},
 			],
 			defaultStyle: { bgcolor: GREEN },
-			callback: (feedback): boolean =>
-				instance.state.players.find((x) => x.name === feedback.options.player)?.repeat ?? false,
+			callback: (feedback): boolean => {
+				const player = instance.state.players.find((entry) => entry.name === feedback.options.player)
+				return player !== undefined && booleanValue(instance.state, playerRepeatPath(player.ref)) === true
+			},
 		},
 		[FeedbackId.macroPlaying]: {
 			type: 'boolean',
@@ -198,7 +213,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			defaultStyle: { bgcolor: GREEN },
 			callback: (feedback): boolean => {
 				const macro = instance.state.macros.find((x) => x.uuid === feedback.options.macro)
-				return macro !== undefined && isMacroPlaying(instance.state.macroStatus.get(refToPath(macro.ref)))
+				return macro !== undefined && isMacroPlaying(macroStatus(instance.state, refToPath(macro.ref), macro.uuid))
 			},
 		},
 		[FeedbackId.sceneMacroPlaying]: {
@@ -224,7 +239,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				const macro = instance.state.sceneMacros.find(
 					(x) => `${x.sceneName}/macros/${x.uuid}` === feedback.options.macro,
 				)
-				return macro !== undefined && isMacroPlaying(instance.state.macroStatus.get(sceneMacroPath(macro)))
+				return macro !== undefined && isMacroPlaying(macroStatus(instance.state, sceneMacroPath(macro), macro.uuid))
 			},
 		},
 	}

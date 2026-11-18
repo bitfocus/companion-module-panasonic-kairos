@@ -1,258 +1,214 @@
 import type KairosInstance from './index.js'
+import { INTERNAL_SOURCES, type MixerState } from './state.js'
 import { InstanceStatus } from '@companion-module/base'
 import { FeedbackId } from './feedback.js'
 import type { SourceStatus } from './status.js'
-import { allPlayers, layerRef, macroRef } from './refs.js'
+import { layerRef, macroRef } from './refs.js'
 import { createInputWithName, updateFlags } from './utils.js'
 import { refAuxName } from 'kairos-connection'
 
 const POLL_INTERVAL_MS = 5000
 const REQUEST_TIMEOUT_MS = 4000
 
-/**
- * The mixer could not be reached: refused, timed out, or the host is unknown
- */
-export class RestConnectionError extends Error {
+class RestConnectionError extends Error {
 	constructor(error: unknown) {
-		// fetch only says "fetch failed", the reason (ECONNREFUSED etc.) is in its cause
-		const cause = (error as { cause?: { code?: string; message?: string } }).cause
-		const timedOut = (error as Error).name === 'TimeoutError'
-		super(timedOut ? 'Timed out' : (cause?.code ?? cause?.message ?? (error as Error).message))
+		const cause = (error as { cause?: { code?: string; message?: string } } | null)?.cause
+		const message = error instanceof Error ? error.message : String(error)
+		super(cause?.code ?? cause?.message ?? message)
 	}
 }
 
-/**
- * The mixer answered, but with an HTTP error
- */
-export class RestHttpError extends Error {
-	readonly status: number
-
-	constructor(status: number, statusText: string) {
-		super(`HTTP ${status} ${statusText}`)
-		this.status = status
+class RestHttpError extends Error {
+	constructor(
+		readonly status: number,
+		statusText: string,
+		detail: string,
+	) {
+		super(`HTTP ${status} ${statusText}${detail ? ` (${detail})` : ''}`)
 	}
 }
 
 export class REST {
-	private readonly instance: KairosInstance
 	private pollTimer: NodeJS.Timeout | undefined
-	private destroyed = false
+	private readonly lifetime = new AbortController()
 	private lastStatus: SourceStatus | null = null
 	private readonly pullErrors = new Map<string, string>()
-	host: string
-	restPort: number
-	username: string
-	password: string
+	private readonly headers: Headers
 
-	constructor(instance: KairosInstance, host: string, restPort: number, username: string, password: string) {
-		this.instance = instance
-		this.host = host
-		this.restPort = restPort
-		this.username = username
-		this.password = password
-
-		void this.setupKairos()
+	constructor(
+		private readonly instance: KairosInstance,
+		private readonly host: string,
+		private readonly restPort: number,
+		username: string,
+		password: string,
+	) {
+		this.headers = new Headers({ Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}` })
+		void this.poll()
 	}
 
-	/**
-	 * @description Create initial requests to Kairos
-	 */
-	public readonly setupKairos = async (): Promise<void> => {
-		this.instance.state.players = allPlayers()
-		this.instance.state.audioChannels = Array.from({ length: 16 }, (_, i) => ({
-			name: `Channel ${i + 1}`,
-			muted: false,
-		}))
-		/**
-		 * Pulls the macro's
-		 */
-		const pullMacros = async () => {
-			const macroResult = await this.sendCommand('/macros')
-			if (this.destroyed) return
-			this.instance.state.macros = JSON.parse(macroResult).map((macro: { path: string; name: string }) => ({
-				...macro,
-				ref: macroRef(macro.path, macro.name),
-			}))
+	private readonly poll = async (): Promise<void> => {
+		this.pollTimer = undefined
+		try {
+			await this.pullState()
+		} catch (error) {
+			if (!this.lifetime.signal.aborted)
+				this.setStatus(InstanceStatus.UnknownError, error instanceof Error ? error.message : String(error))
+		} finally {
+			if (!this.lifetime.signal.aborted) this.pollTimer = setTimeout(() => void this.poll(), POLL_INTERVAL_MS)
 		}
+	}
 
-		const pullMultiviewers = async () => {
-			const multiviewerResult = await this.sendCommand('/multiviewers')
-			if (this.destroyed) return
-			this.instance.state.multiviewers = JSON.parse(multiviewerResult)
-		}
+	private async pullState(): Promise<void> {
+		const [scenes, auxes, macros, multiviewers] = await Promise.allSettled([
+			this.readScenes(),
+			this.readList<Omit<MixerState['auxes'][number], 'ref'>>('/aux').then((list) =>
+				list.map((aux) => ({ ...aux, ref: refAuxName(aux.name) })),
+			),
+			this.readList<Omit<MixerState['macros'][number], 'ref'>>('/macros').then((list) =>
+				list.map((macro) => ({ ...macro, ref: macroRef(macro.path, macro.name) })),
+			),
+			this.readList<MixerState['multiviewers'][number]>('/multiviewers'),
+		])
+		if (this.lifetime.signal.aborted) return
 
-		const pullScenesAndAux = async () => {
-			const sceneResult = await this.sendCommand('/scenes')
-			if (this.destroyed) return
-			this.instance.state.scenes = JSON.parse(sceneResult)
+		const state = this.instance.state
+		if (scenes.status === 'fulfilled') Object.assign(state, scenes.value)
+		if (auxes.status === 'fulfilled') state.auxes = auxes.value
+		if (macros.status === 'fulfilled') state.macros = macros.value
+		if (multiviewers.status === 'fulfilled') state.multiviewers = multiviewers.value
 
-			// clear arrays
-			this.instance.state.layers = []
-			this.instance.state.sceneMacros = []
-			this.instance.state.snapshots = []
-
-			// Load inputs, macros and snapshots from scenes into Kairos
-			this.instance.state.scenes.forEach((scene: any) => {
-				if (scene.macros) {
-					scene.macros.forEach((macro: { color: string; name: string; state: string; uuid: string }) => {
-						this.instance.state.sceneMacros.push({
-							...macro,
-							name: `${scene.path ?? ''}${scene.name}-${macro.name}`,
-							macroName: macro.name,
-							sceneName: scene.name,
-							path: scene.path ?? '',
-						})
-					})
+		const pulls = { scenes, auxes, macros, multiviewers }
+		if (Object.values(pulls).some((result) => result.status === 'fulfilled')) {
+			// Source choices describe the current catalog. Keep the existing input objects for names that still exist.
+			const inputsByName = new Map(state.inputs.map((input) => [input.name, input]))
+			const names = new Set<string>(INTERNAL_SOURCES)
+			for (const scene of state.scenes) {
+				for (const layer of scene.layers ?? []) {
+					for (const source of layer.sources ?? []) names.add(source)
 				}
-				if (scene.snapshots) {
-					scene.snapshots.forEach((snapshot: any) => {
-						snapshot.sceneName = scene.name
-						this.instance.state.snapshots.push(snapshot)
-					})
-				}
-				if (!scene.layers) return
-				scene.layers.forEach((layer: any) => {
-					this.instance.state.layers.push({
-						path: scene.path,
-						sceneName: scene.name,
-						layerName: layer.name,
-						sourceA: layer.sourceA,
-						sourceB: layer.sourceB,
-						uuid: `/${scene.uuid}/${layer.uuid}`,
-						ref: layerRef(scene.path, scene.name, layer.name),
-					})
-					if (!layer.sources) return
-					layer.sources.forEach((source: any) => {
-						if (this.instance.state.inputs.findIndex((x) => x.name == source) == -1)
-							this.instance.state.inputs.push(createInputWithName(source))
-					})
-				})
-			})
-
-			const auxResult = await this.sendCommand('/aux')
-			if (this.destroyed) return
-			this.instance.state.auxes = JSON.parse(auxResult).map((aux: { name: string }) => ({
-				...aux,
-				ref: refAuxName(aux.name),
-			}))
-
-			// Load inputs from aux into Kairos
-			this.instance.state.auxes.forEach((aux: any) => {
-				if (!aux.sources) return
-				aux.sources.forEach((source: any) => {
-					if (this.instance.state.inputs.findIndex((x) => x.name == source) == -1)
-						this.instance.state.inputs.push(createInputWithName(source))
-				})
-			})
-
-			this.instance.checkFeedbacks(FeedbackId.aux)
-			this.instance.checkFeedbacks(FeedbackId.inputSource)
+			}
+			for (const aux of state.auxes) {
+				for (const source of aux.sources ?? []) names.add(source)
+			}
+			state.inputs = Array.from(names, (name) => inputsByName.get(name) ?? createInputWithName(name))
 			this.instance.updateInstance(updateFlags.All)
-		}
-
-		/**
-		 * Pulls the current state of the switcher and updates the REST connection status from the result
-		 */
-		const pullState = async (): Promise<void> => {
-			const pulls = { macros: pullMacros, multiviewers: pullMultiviewers, 'scenes and aux': pullScenesAndAux }
-			const results = await Promise.allSettled(Object.values(pulls).map(async (pull) => pull()))
-			if (this.destroyed) return
-
-			const errors = results.flatMap((result) => (result.status === 'rejected' ? [result.reason as Error] : []))
-			const connectionError = errors.find((error) => error instanceof RestConnectionError)
-			const authError = errors.find(
-				(error) => error instanceof RestHttpError && (error.status === 401 || error.status === 403),
+			this.instance.checkFeedbacks(
+				FeedbackId.aux,
+				FeedbackId.inputSource,
+				FeedbackId.inputMediaStill,
+				FeedbackId.macroPlaying,
+				FeedbackId.sceneMacroPlaying,
 			)
-			if (connectionError) {
-				this.setStatus(InstanceStatus.ConnectionFailure, connectionError.message)
-				return
-			}
-			if (authError) {
-				this.setStatus(InstanceStatus.BadConfig, 'Authentication failed, check the username and password')
-				return
-			}
-			if (errors.length === results.length) {
-				this.setStatus(InstanceStatus.UnknownError, errors[0].message)
-				return
-			}
-			this.setStatus(InstanceStatus.Ok, null)
-
-			// Any other failure is specific to one endpoint, so log it without repeating it on every poll
-			Object.keys(pulls).forEach((name, i) => {
-				const result = results[i]
-				const message = result.status === 'rejected' ? (result.reason as Error).message : null
-				if (message !== null && message !== this.pullErrors.get(name)) {
-					this.instance.log('error', `Error pulling ${name}: ${message}`)
-				}
-				if (message === null) this.pullErrors.delete(name)
-				else this.pullErrors.set(name, message)
-			})
 		}
 
-		const addInternalSources = () => {
-			this.instance.state.inputs.push(createInputWithName('Black'))
-			this.instance.state.inputs.push(createInputWithName('White'))
-			this.instance.state.inputs.push(createInputWithName('ColorBar'))
-			this.instance.state.inputs.push(createInputWithName('ColorCircle'))
+		const errors: Error[] = []
+		for (const [name, result] of Object.entries(pulls)) {
+			if (result.status === 'fulfilled') {
+				this.pullErrors.delete(name)
+				continue
+			}
+			const error = result.reason instanceof Error ? result.reason : new Error(String(result.reason))
+			errors.push(error)
+			if (error.message !== this.pullErrors.get(name)) {
+				this.instance.log('warn', `Unable to read KAIROS REST ${name}: ${error.message}`)
+				this.pullErrors.set(name, error.message)
+			}
 		}
-
-		/**
-		 * Polls every few seconds, scheduling the next poll only once the previous one has finished
-		 */
-		const poll = async (): Promise<void> => {
-			this.pollTimer = undefined
-			await pullState()
-			if (this.destroyed) return
-			this.pollTimer = setTimeout(() => void poll(), POLL_INTERVAL_MS)
-		}
-
-		addInternalSources()
-		this.instance.updateInstance(updateFlags.All)
-		await poll()
+		const connectionError = errors.find((error) => error instanceof RestConnectionError)
+		const authError = errors.find(
+			(error) => error instanceof RestHttpError && (error.status === 401 || error.status === 403),
+		)
+		if (connectionError) this.setStatus(InstanceStatus.ConnectionFailure, connectionError.message)
+		else if (authError)
+			this.setStatus(InstanceStatus.BadConfig, 'Authentication failed, check the username and password')
+		else if (errors.length === Object.keys(pulls).length) this.setStatus(InstanceStatus.UnknownError, errors[0].message)
+		else this.setStatus(InstanceStatus.Ok, null)
 	}
 
-	/**
-	 * Reports the REST connection status, logging only when it changes
-	 */
-	private readonly setStatus = (status: InstanceStatus, message: string | null): void => {
-		if (this.destroyed) return
+	private async readScenes(): Promise<Pick<MixerState, 'scenes' | 'layers' | 'sceneMacros' | 'snapshots'>> {
+		const data = await this.readList<MixerState['scenes'][number]>('/scenes')
+		const scenes = data.map((scene) => ({ ...scene, actions: scene.actions ?? [] }))
+		const layers = scenes.flatMap((scene) =>
+			(scene.layers ?? []).map((layer) => ({
+				path: scene.path,
+				sceneName: scene.name,
+				layerName: layer.name,
+				sourceA: layer.sourceA,
+				sourceB: layer.sourceB,
+				uuid: `/${scene.uuid}/${layer.uuid}`,
+				ref: layerRef(scene.path, scene.name, layer.name),
+			})),
+		)
+		const sceneMacros = scenes.flatMap((scene) =>
+			(scene.macros ?? []).map((macro) => ({
+				...macro,
+				name: `${scene.path ?? ''}${scene.name}-${macro.name}`,
+				macroName: macro.name,
+				sceneName: scene.name,
+				path: scene.path ?? '',
+			})),
+		)
+		const snapshots = scenes.flatMap((scene) =>
+			(scene.snapshots ?? []).map((snapshot) => ({ ...snapshot, sceneName: scene.name })),
+		)
+		return { scenes, layers, sceneMacros, snapshots }
+	}
+
+	private async readList<T>(path: string): Promise<T[]> {
+		const data: unknown = JSON.parse(await this.request(path))
+		if (!Array.isArray(data) || data.some((item) => typeof item?.name !== 'string'))
+			throw new Error(`Expected an array of named objects from ${path}`)
+		return data as T[]
+	}
+
+	private setStatus(status: InstanceStatus, message: string | null): void {
 		if (status === this.lastStatus?.status && message === this.lastStatus.message) return
 		this.lastStatus = { status, message }
-
 		if (status !== InstanceStatus.Ok)
 			this.instance.log('error', `REST API at ${this.host}:${this.restPort} unavailable: ${message}`)
 		this.instance.connectionStatus.set('rest', status, message)
 	}
 
-	/**
-	 * @description Close connection on instance disable/removal
-	 */
-	public readonly destroy = (): void => {
-		this.destroyed = true
-		if (this.pollTimer != undefined) clearTimeout(this.pollTimer)
+	public destroy(): void {
+		this.lifetime.abort()
+		clearTimeout(this.pollTimer)
 	}
-	/**
-	 * Send rest command to Kairos
-	 * @param command
-	 * @returns string response
-	 * @throws RestConnectionError when the mixer can't be reached, RestHttpError when it answers with an error
-	 */
-	public readonly sendCommand = async (command: string): Promise<string> => {
-		const formattedRestRequest = `http://${this.host}:${this.restPort}${command}`
-		const base64Credentials = Buffer.from(`${this.username}:${this.password}`).toString('base64')
-		const headers = new Headers({
-			Authorization: `Basic ${base64Credentials}`,
-		})
-		if (command !== '/scenes' && command !== '/aux' && command !== '/macros' && command !== '/multiviewers')
-			this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
+
+	public async patch(path: string, body: object): Promise<void> {
+		if (this.lifetime.signal.aborted) return
+		this.instance.log('debug', `Sending KAIROS REST PATCH ${path}`)
+		try {
+			await this.request(path, body)
+		} catch (error) {
+			if (!this.lifetime.signal.aborted)
+				this.instance.log(
+					'error',
+					`KAIROS REST PATCH ${path} failed: ${error instanceof Error ? error.message : String(error)}`,
+				)
+		}
+	}
+
+	private async request(path: string, patchBody?: object): Promise<string> {
+		const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+		const signal = AbortSignal.any([this.lifetime.signal, timeout])
+		const headers = new Headers(this.headers)
+		if (patchBody) headers.set('Content-Type', 'application/merge-patch+json')
 
 		let response: Response
+		let body: string
 		try {
-			response = await fetch(formattedRestRequest, { headers, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
+			response = await fetch(`http://${this.host}:${this.restPort}${path}`, {
+				method: patchBody ? 'PATCH' : 'GET',
+				body: patchBody ? JSON.stringify(patchBody) : undefined,
+				headers,
+				signal,
+			})
+			body = await response.text()
 		} catch (error) {
+			if (timeout.aborted) throw new RestConnectionError(new Error('Timed out'))
 			throw new RestConnectionError(error)
 		}
-		if (!response.ok) throw new RestHttpError(response.status, response.statusText)
-		return response.text()
+		if (!response.ok) throw new RestHttpError(response.status, response.statusText, body.trim().slice(0, 300))
+		return body
 	}
 }

@@ -1,5 +1,6 @@
 import type KairosInstance from './index.js'
-import type { KairosTypes, PlayerRef } from './index.js'
+import type { KairosTypes } from './index.js'
+import type { PlayerRef } from './state.js'
 import { ActionId } from './actions.js'
 import { layerFeedbackId, sceneFullName } from './refs.js'
 import { FeedbackId } from './feedback.js'
