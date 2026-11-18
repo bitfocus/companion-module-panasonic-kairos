@@ -189,7 +189,7 @@ export class REST {
 		 * Starts polling once the server is reachable, checking again every few seconds until it is
 		 */
 		const startPulling = async (): Promise<void> => {
-			const reachable = await isReachable(this.host).catch(() => false)
+			const reachable = await isReachable(`${this.host}:${this.restPort}`).catch(() => false)
 			if (this.destroyed) return
 			if (!reachable) {
 				this.instance.updateStatus(InstanceStatus.ConnectionFailure, 'Server not reachable')
