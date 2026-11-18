@@ -1,5 +1,6 @@
 import {
 	parseAnySourceRef,
+	refMacro,
 	refMatte,
 	refRamRecorder,
 	refScene,
@@ -16,6 +17,7 @@ import type KairosInstance from './index.js'
 
 type Layer = KairosInstance['combinedLayerArray'][number]
 type Transition = KairosInstance['KairosObj']['TRANSITIONS'][number]
+type SceneMacro = KairosInstance['KairosObj']['SCENES_MACROS'][number]
 
 export const sceneRef = (path: string | undefined, sceneName: string): SceneRef =>
 	refScene([...(path ?? '').split('/').filter((part) => part !== ''), sceneName])
@@ -25,6 +27,13 @@ export const layerRef = (layer: Layer): SceneLayerRef =>
 
 export const transitionRef = (transition: Transition): SceneTransitionRef =>
 	refSceneTransition(sceneRef(transition.path, transition.sceneName), [transition.name])
+
+/** The protocol path of a global macro, from its REST folder path (`Folder/`) and name */
+export const macroPath = (macro: { path: string; name: string }): string =>
+	refToPath(refMacro([...macro.path.split('/').filter((part) => part !== ''), macro.name]))
+
+export const sceneMacroPath = (macro: SceneMacro): string =>
+	`${refToPath(sceneRef(macro.path, macro.scene))}.Macros.${macro.macroName}`
 
 const protocolDecode = (value: string): string =>
 	value.replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))

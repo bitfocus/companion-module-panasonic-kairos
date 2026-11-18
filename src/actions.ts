@@ -1,6 +1,13 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
 import { refAudioMixerChannel, refToPath, type KairosConnection } from 'kairos-connection'
-import { mediaStillLabel, options, type SourceAB } from './utils.js'
+import {
+	mediaStillLabel,
+	multiviewerPresetChoices,
+	options,
+	resolveMute,
+	type MuteValue,
+	type SourceAB,
+} from './utils.js'
 import type KairosInstance from './index.js'
 import { layerRef, sceneRef, sourcePath, transitionRef } from './refs.js'
 import { updateBasicVariables } from './variables.js'
@@ -82,8 +89,8 @@ export type ActionsSchema = {
 	[ActionId.macroSceneControl]: { options: { macro: string; action: string } }
 	[ActionId.mvRecall]: { options: { preset: string; mv: string } }
 	[ActionId.triggerSnapshot]: { options: { snapshot: string } }
-	[ActionId.muteMaster]: { options: { mute: number } }
-	[ActionId.muteChannel]: { options: { channel: string; mute: number } }
+	[ActionId.muteMaster]: { options: { mute: MuteValue } }
+	[ActionId.muteChannel]: { options: { channel: string; mute: MuteValue } }
 	[ActionId.custom]: { options: { functionID: string } }
 }
 
@@ -156,14 +163,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		label: `${transition.sceneName}/${transition.name}`,
 	}))
 
-	const multiviewerPresetChoices: { id: string; label: string }[] = []
-	instance.KairosObj.MULTIVIEWERS.forEach((multiviewer) => {
-		if (!multiviewer.presets) return
-		multiviewer.presets.forEach((preset) => {
-			if (!preset) return
-			multiviewerPresetChoices.push({ id: preset.id, label: `${multiviewer.name} - ${preset.name}` })
-		})
-	})
+	const mvPresetChoices = multiviewerPresetChoices(instance.KairosObj.MULTIVIEWERS)
 	const actionChoices: { id: string; label: string }[] = []
 	instance.KairosObj.SCENES.forEach((scene) => {
 		scene.actions.forEach((action) => {
@@ -461,10 +461,21 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				options.playerControl,
 			],
 			callback: (action) => {
-				const { player, action: playerAction } = action.options
+				const { player } = action.options
+				const entry = instance.KairosObj.PLAYERS.find((x) => x.player === player)
+				const playerAction =
+					action.options.action === 'repeat=toggle' ? `repeat=${entry?.repeat === 1 ? 0 : 1}` : action.options.action
 				const command = playerCommand(player, playerAction)
 				if (command) runTcp(`${player} ${playerAction}`, command)
 				else sendLegacyCommand(`${player}.${playerAction}`)
+
+				// Don't wait for the value to return from the mixer, set it directly
+				const repeat = /^repeat=([01])$/.exec(playerAction)
+				if (repeat && entry) {
+					entry.repeat = Number(repeat[1])
+					instance.checkFeedbacks(FeedbackId.playerRepeat)
+					updateBasicVariables(instance)
+				}
 			},
 		},
 		[ActionId.macroControl]: {
@@ -524,8 +535,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Preset',
 					id: 'preset',
-					default: multiviewerPresetChoices[0] ? multiviewerPresetChoices[0].id : '',
-					choices: multiviewerPresetChoices,
+					default: mvPresetChoices[0]?.id ?? '',
+					choices: mvPresetChoices,
 					allowInvalidValues: true,
 				},
 				{
@@ -579,9 +590,9 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			name: 'Audio - Mute Master',
 			options: [options.mute],
 			callback: (action) => {
-				const mute = action.options.mute === 1
+				const mute = resolveMute(action.options.mute, instance.KairosObj.audio_master_mute === 1)
 				runTcp(`${mute ? 'mute' : 'unmute'} master`, async (kairos) => kairos.updateAudioMixerMainBus({ mute }))
-				instance.KairosObj.audio_master_mute = action.options.mute
+				instance.KairosObj.audio_master_mute = mute ? 1 : 0
 				instance.checkFeedbacks(FeedbackId.audioMuteMaster)
 				updateBasicVariables(instance)
 			},
@@ -592,11 +603,11 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			callback: (action) => {
 				const channel = instance.KairosObj.AUDIO_CHANNELS.find((x) => x.channel === action.options.channel)
 				if (!channel) return
-				const mute = action.options.mute === 1
+				const mute = resolveMute(action.options.mute, channel.mute === 1)
 				runTcp(`${mute ? 'mute' : 'unmute'} ${channel.channel}`, async (kairos) =>
 					kairos.updateAudioMixerChannel(refAudioMixerChannel([channel.channel]), { mute }),
 				)
-				channel.mute = action.options.mute
+				channel.mute = mute ? 1 : 0
 				instance.checkFeedbacks(FeedbackId.audioMuteChannel)
 				updateBasicVariables(instance)
 			},

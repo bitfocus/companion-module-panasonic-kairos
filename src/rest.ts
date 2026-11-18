@@ -132,15 +132,15 @@ export class REST {
 			// Load inputs, macros and snapshots from scenes into Kairos
 			this.instance.KairosObj.SCENES.forEach((scene: any) => {
 				if (scene.macros) {
-					if (scene.macros.lenght != this.instance.KairosObj.SCENES_MACROS.length) {
-						scene.macros.forEach(
-							(macro: { color: string; name: string; state: string; uuid: string; scene: string; path: string }) => {
-								macro.name = scene.path ? `${scene.path}${scene.name}-${macro.name}` : `${scene.name}-${macro.name}`
-								macro.scene = scene.name
-								this.instance.KairosObj.SCENES_MACROS.push(macro)
-							},
-						)
-					}
+					scene.macros.forEach((macro: { color: string; name: string; state: string; uuid: string }) => {
+						this.instance.KairosObj.SCENES_MACROS.push({
+							...macro,
+							name: `${scene.path ?? ''}${scene.name}-${macro.name}`,
+							macroName: macro.name,
+							scene: scene.name,
+							path: scene.path ?? '',
+						})
+					})
 				}
 				if (scene.snapshots) {
 					scene.snapshots.forEach((snapshot: any) => {

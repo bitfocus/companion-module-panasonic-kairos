@@ -1,5 +1,6 @@
 import type KairosInstance from './index.js'
-import { BLUE, RED, mediaStillLabel, options, type SourceAB } from './utils.js'
+import { macroPath, sceneMacroPath } from './refs.js'
+import { BLUE, GREEN, RED, isMacroPlaying, mediaStillLabel, options, type SourceAB } from './utils.js'
 import type { CompanionFeedbackDefinitions } from '@companion-module/base'
 
 export enum FeedbackId {
@@ -8,6 +9,9 @@ export enum FeedbackId {
 	audioMuteMaster = 'audioMuteMaster',
 	audioMuteChannel = 'audioMuteChannel',
 	aux = 'aux',
+	playerRepeat = 'playerRepeat',
+	macroPlaying = 'macroPlaying',
+	sceneMacroPlaying = 'sceneMacroPlaying',
 }
 
 export type FeedbacksSchema = {
@@ -16,6 +20,9 @@ export type FeedbacksSchema = {
 	[FeedbackId.audioMuteMaster]: { type: 'boolean'; options: Record<string, never> }
 	[FeedbackId.audioMuteChannel]: { type: 'boolean'; options: { channel: string } }
 	[FeedbackId.aux]: { type: 'boolean'; options: { aux: string; source: string } }
+	[FeedbackId.playerRepeat]: { type: 'boolean'; options: { player: string } }
+	[FeedbackId.macroPlaying]: { type: 'boolean'; options: { macro: string } }
+	[FeedbackId.sceneMacroPlaying]: { type: 'boolean'; options: { macro: string } }
 }
 
 // Dropdowns listing layers, sources and AUXes are filled from the mixer once it has been polled. Their stored values
@@ -174,6 +181,70 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				if (index == -1) return false
 				if (instance.KairosObj.AUX[index].source === feedback.options.source) return true
 				else return false
+			},
+		},
+		[FeedbackId.playerRepeat]: {
+			type: 'boolean',
+			name: 'Players - Repeat On',
+			description: 'Shows when a player is in repeat mode',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Player',
+					id: 'player',
+					default: instance.KairosObj.PLAYERS[0]?.player ?? 'RR1',
+					choices: instance.KairosObj.PLAYERS.map(({ player }) => ({ id: player, label: player })),
+				},
+			],
+			defaultStyle: { bgcolor: GREEN },
+			callback: (feedback): boolean =>
+				instance.KairosObj.PLAYERS.find((x) => x.player === feedback.options.player)?.repeat === 1,
+		},
+		[FeedbackId.macroPlaying]: {
+			type: 'boolean',
+			name: 'Macros - Global Macro Playing',
+			description: 'Shows while a global macro is playing',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Macro',
+					id: 'macro',
+					default: instance.KairosObj.MACROS[0]?.uuid ?? '',
+					choices: instance.KairosObj.MACROS.map((item) => ({ id: item.uuid, label: `${item.path}${item.name}` })),
+					allowInvalidValues: true,
+					minChoicesForSearch: 8,
+				},
+			],
+			defaultStyle: { bgcolor: GREEN },
+			callback: (feedback): boolean => {
+				const macro = instance.KairosObj.MACROS.find((x) => x.uuid === feedback.options.macro)
+				return macro !== undefined && isMacroPlaying(instance.macroStatus.get(macroPath(macro)))
+			},
+		},
+		[FeedbackId.sceneMacroPlaying]: {
+			type: 'boolean',
+			name: 'Macros - Scene Macro Playing',
+			description: 'Shows while a scene macro is playing',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Scene Macro',
+					id: 'macro',
+					default: '',
+					choices: instance.KairosObj.SCENES_MACROS.map((item) => ({
+						id: `${item.scene}/macros/${item.uuid}`,
+						label: item.name,
+					})),
+					allowInvalidValues: true,
+					minChoicesForSearch: 8,
+				},
+			],
+			defaultStyle: { bgcolor: GREEN },
+			callback: (feedback): boolean => {
+				const macro = instance.KairosObj.SCENES_MACROS.find(
+					(x) => `${x.scene}/macros/${x.uuid}` === feedback.options.macro,
+				)
+				return macro !== undefined && isMacroPlaying(instance.macroStatus.get(sceneMacroPath(macro)))
 			},
 		},
 	}

@@ -18,7 +18,7 @@ const SECTIONS = [
 	{ name: 'Sources', description: "Set a layer's source A or B, active while it is on that bus" },
 	{ name: 'AUX', description: 'Route a source to an AUX, active while it is routed' },
 	{ name: 'Snapshots', description: 'Recall a scene snapshot' },
-	{ name: 'Macros', description: 'Play or stop a global or scene macro' },
+	{ name: 'Macros', description: 'Play or stop a global or scene macro, active while it plays' },
 	{ name: 'Multiviewers', description: 'Recall a multiviewer preset' },
 	{ name: 'Scene Actions', description: "Run one of a scene's actions" },
 	{ name: 'RAM Recorders', description: 'Control the RAM recorders' },
@@ -36,14 +36,14 @@ type Feedbacks = Preset['feedbacks']
 const PLAYER_SECTIONS: Record<string, SectionName> = { RR: 'RAM Recorders', CP: 'Clip Players', AP: 'Audio Players' }
 
 const PLAYER_CONTROLS = [
+	{ action: 'begin', id: 'begin', name: 'Go to Start', text: 'START', bgcolor: BLACK },
+	{ action: 'rewind', id: 'rewind', name: 'Rewind', text: 'REWIND', bgcolor: BLACK },
+	{ action: 'step_back', id: 'step_back', name: 'Step Back', text: 'STEP BACK', bgcolor: BLACK },
 	{ action: 'play', id: 'play', name: 'Play', text: 'PLAY', bgcolor: GREEN },
 	{ action: 'pause', id: 'pause', name: 'Pause', text: 'PAUSE', bgcolor: YELLOW },
-	{ action: 'begin', id: 'begin', name: 'Go to Start', text: 'START', bgcolor: BLACK },
-	{ action: 'step_back', id: 'step_back', name: 'Step Back', text: 'STEP BACK', bgcolor: BLACK },
 	{ action: 'step_forward', id: 'step_forward', name: 'Step Forward', text: 'STEP FWD', bgcolor: BLACK },
+	{ action: 'fast_forward', id: 'fast_forward', name: 'Fast Forward', text: 'FAST FWD', bgcolor: BLACK },
 	{ action: 'end', id: 'end', name: 'Go to End', text: 'END', bgcolor: BLACK },
-	{ action: 'repeat=0', id: 'repeat_off', name: 'Repeat Off', text: 'REPEAT OFF', bgcolor: BLACK },
-	{ action: 'repeat=1', id: 'repeat_on', name: 'Repeat On', text: 'REPEAT ON', bgcolor: BLACK },
 ] as const
 
 /** Scene, layer and source names as used in preset ids */
@@ -188,8 +188,9 @@ export function getPresets(instance: KairosInstance): {
 		const name = `${macro.path}${macro.name}`
 		addPreset('Macros', 'Global', `${macro.uuid}.play`, {
 			name: `${name} Play`,
-			style: style(`${name}\\nPLAY`, 'auto', GREEN),
+			style: style(`${name}\\nPLAY`),
 			steps: onPress({ actionId: ActionId.macroControl, options: { macro: macro.uuid, action: 'play' } }),
+			feedbacks: [{ feedbackId: FeedbackId.macroPlaying, options: { macro: macro.uuid }, style: { bgcolor: GREEN } }],
 		})
 		addPreset('Macros', 'Global', `${macro.uuid}.stop`, {
 			name: `${name} Stop`,
@@ -201,8 +202,9 @@ export function getPresets(instance: KairosInstance): {
 		const macroId = `${macro.scene}/macros/${macro.uuid}`
 		addPreset('Macros', 'Scene', `${macro.uuid}.play`, {
 			name: `${macro.name} Play`,
-			style: style(`${macro.name}\\nPLAY`, 'auto', GREEN),
+			style: style(`${macro.name}\\nPLAY`),
 			steps: onPress({ actionId: ActionId.macroSceneControl, options: { macro: macroId, action: 'play' } }),
+			feedbacks: [{ feedbackId: FeedbackId.sceneMacroPlaying, options: { macro: macroId }, style: { bgcolor: GREEN } }],
 		})
 		addPreset('Macros', 'Scene', `${macro.uuid}.stop`, {
 			name: `${macro.name} Stop`,
@@ -222,6 +224,12 @@ export function getPresets(instance: KairosInstance): {
 				steps: onPress({ actionId: ActionId.playerControl, options: { player, action: control.action } }),
 			})
 		}
+		addPreset(section, player, `${player}.repeat`, {
+			name: `${player} Repeat`,
+			style: style(`${player}\\nREPEAT`, '18'),
+			steps: onPress({ actionId: ActionId.playerControl, options: { player, action: 'repeat=toggle' } }),
+			feedbacks: [{ feedbackId: FeedbackId.playerRepeat, options: { player }, style: { bgcolor: GREEN } }],
+		})
 	}
 
 	// Media stills, purple as the layer has to be chosen after placing the button
@@ -278,20 +286,14 @@ export function getPresets(instance: KairosInstance): {
 	addPreset('Audio', undefined, 'Audio_mute', {
 		name: 'Master Mute',
 		style: style('MASTER\\nMUTE', '18'),
-		steps: [
-			{ down: [{ actionId: ActionId.muteMaster, options: { mute: 1 } }], up: [] },
-			{ down: [{ actionId: ActionId.muteMaster, options: { mute: 0 } }], up: [] },
-		],
+		steps: onPress({ actionId: ActionId.muteMaster, options: { mute: 'toggle' } }),
 		feedbacks: [{ feedbackId: FeedbackId.audioMuteMaster, options: {}, style: { bgcolor: RED } }],
 	})
 	for (const { channel } of instance.KairosObj.AUDIO_CHANNELS) {
 		addPreset('Audio', undefined, `${channel}.Audio_mute`, {
 			name: `${channel} Mute`,
 			style: style(`${channel.replace('Channel ', 'CH ')}\\nMUTE`, '18'),
-			steps: [
-				{ down: [{ actionId: ActionId.muteChannel, options: { channel, mute: 1 } }], up: [] },
-				{ down: [{ actionId: ActionId.muteChannel, options: { channel, mute: 0 } }], up: [] },
-			],
+			steps: onPress({ actionId: ActionId.muteChannel, options: { channel, mute: 'toggle' } }),
 			feedbacks: [{ feedbackId: FeedbackId.audioMuteChannel, options: { channel }, style: { bgcolor: RED } }],
 		})
 	}

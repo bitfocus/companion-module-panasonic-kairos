@@ -52,12 +52,12 @@ Actions are named by what they control, so related ones are listed together. Mos
 
 **Players**
 
-- **Players - Control**: for RAM recorders RR1–8, clip players CP1–2 and audio players AP1–16: go to start, rewind, step back, reverse play, play, pause, step forward, fast forward, go to end, and repeat on/off.
+- **Players - Control**: for RAM recorders RR1–8, clip players CP1–2 and audio players AP1–16: go to start, rewind, step back, reverse play, play, pause, step forward, fast forward, go to end, and repeat on, off or toggle.
 
 **Audio**
 
-- **Audio - Mute Master**: mute or unmute the master.
-- **Audio - Mute Channel**: mute or unmute channels 1–16.
+- **Audio - Mute Master**: mute, unmute or toggle the master.
+- **Audio - Mute Channel**: mute, unmute or toggle channels 1–16.
 
 **Advanced**
 
@@ -68,6 +68,8 @@ Actions are named by what they control, so related ones are listed together. Mos
 - **Layers - Source Selected** / **Layers - Media Still Selected**: a layer's source A or B is a given source or media still.
 - **AUX - Source Selected**: an AUX shows a given source.
 - **Audio - Master Muted** / **Audio - Channel Muted**: the master or a channel is muted.
+- **Players - Repeat On**: a player is in repeat mode.
+- **Macros - Global Macro Playing** / **Macros - Scene Macro Playing**: a macro is playing.
 
 ### Variables
 

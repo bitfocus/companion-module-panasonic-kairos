@@ -9,7 +9,7 @@ import {
 } from 'kairos-connection'
 import type KairosInstance from './index.js'
 import { FeedbackId } from './feedback.js'
-import { layerRef, sceneRef, sourceName } from './refs.js'
+import { layerRef, macroPath, sceneMacroPath, sceneRef, sourceName } from './refs.js'
 import { updateFlags } from './utils.js'
 import { updateBasicVariables } from './variables.js'
 
@@ -201,6 +201,7 @@ export class TCP {
 			wanted.set(`${player}.repeat`, (value) => {
 				const entry = KairosObj.PLAYERS.find((x) => x.player === player)
 				if (entry) entry.repeat = parseInt(value)
+				this.instance.checkFeedbacks(FeedbackId.playerRepeat)
 			})
 		}
 		for (const { name } of KairosObj.AUX) {
@@ -208,6 +209,20 @@ export class TCP {
 				const entry = KairosObj.AUX.find((x) => x.name === name)
 				if (entry) entry.source = sourceName(value, this.inputNames())
 				this.instance.checkFeedbacks(FeedbackId.aux)
+			})
+		}
+		// REST doesn't report whether a macro is running, so follow its status here
+		const macros = [
+			...KairosObj.MACROS.map((macro) => ({ path: macroPath(macro), feedback: FeedbackId.macroPlaying })),
+			...KairosObj.SCENES_MACROS.map((macro) => ({
+				path: sceneMacroPath(macro),
+				feedback: FeedbackId.sceneMacroPlaying,
+			})),
+		]
+		for (const { path, feedback } of macros) {
+			wanted.set(`${path}.status`, (value) => {
+				this.instance.macroStatus.set(path, value)
+				this.instance.checkFeedbacks(feedback)
 			})
 		}
 		// Only the A/B sources are needed: subscribeSceneLayer would subscribe to every attribute of every layer

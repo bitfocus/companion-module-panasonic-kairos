@@ -45,10 +45,13 @@ export type KairosState = {
 	}[]
 	SCENES_MACROS: {
 		scene: string
+		/** The scene's folder path, e.g. `Templates/` */
+		path: string
+		/** The macro's own name, where `name` also has the scene's */
+		macroName: string
 		color: string
 		name: string
 		state: string
-		path: string
 		uuid: string
 	}[]
 	SNAPSHOTS: { name: string; state: string; uuid: string; scene: string }[]
@@ -107,6 +110,9 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		uuid: string
 	}[] = []
 
+	/** Macro statuses (`Playing`, `Stopped`...) reported over TCP, by protocol path */
+	public readonly macroStatus = new Map<string, string>()
+
 	private readonly sentDefinitions = new Map<string, string>()
 	private sentVariableValues: CompanionVariableValues = {}
 
@@ -137,6 +143,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		// Forget what the previous connection found, which may have been a different mixer
 		this.KairosObj = emptyKairosState()
 		this.combinedLayerArray = []
+		this.macroStatus.clear()
 		this.connectionStatus.reset()
 		this.tcp = new TCP(this, config.host, config.tcpPort)
 		this.rest = new REST(this, config.host, config.restPort, config.username, secrets.password)

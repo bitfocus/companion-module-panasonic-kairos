@@ -16,13 +16,32 @@ export enum updateFlags {
 
 export type SourceAB = 'sourceA' | 'sourceB'
 
+/** 0 unmutes, 1 mutes, and 'toggle' does the opposite of the current state */
+export type MuteValue = number | 'toggle'
+
+/** Whether to mute, given the mute option and whether it is muted now */
+export const resolveMute = (value: MuteValue, muted: boolean): boolean => (value === 'toggle' ? !muted : value === 1)
+
+/** The presets of every multiviewer, for a dropdown */
+export const multiviewerPresetChoices = (
+	multiviewers: { name: string; presets?: ({ id: string; name: string } | null)[] }[],
+): { id: string; label: string }[] =>
+	multiviewers.flatMap((multiviewer) =>
+		(multiviewer.presets ?? []).flatMap((preset) =>
+			preset ? [{ id: preset.id, label: `${multiviewer.name} - ${preset.name}` }] : [],
+		),
+	)
+
+/** Whether a macro status reported over TCP (`Playing`, `Stopped`, `Waiting`, `Recording`) means it is running */
+export const isMacroPlaying = (status: string | undefined): boolean => status === 'Playing'
+
 // Force options to have a default to prevent sending undefined values
 type EnforceDefault<T, U> = Omit<T, 'default'> & { default: U }
 
 export interface Options {
 	playerControl: EnforceDefault<CompanionInputFieldDropdown<'action', string>, string>
 	macroStateControl: EnforceDefault<CompanionInputFieldDropdown<'action', string>, string>
-	mute: EnforceDefault<CompanionInputFieldDropdown<'mute', number>, number>
+	mute: EnforceDefault<CompanionInputFieldDropdown<'mute', MuteValue>, MuteValue>
 	channel: EnforceDefault<CompanionInputFieldDropdown<'channel', string>, string>
 }
 
@@ -47,6 +66,7 @@ export const options: Options = {
 			{ id: 'end', label: 'Go to End' },
 			{ id: 'repeat=0', label: 'Repeat Off' },
 			{ id: 'repeat=1', label: 'Repeat On' },
+			{ id: 'repeat=toggle', label: 'Repeat Toggle' },
 		],
 	},
 
@@ -71,6 +91,7 @@ export const options: Options = {
 		choices: [
 			{ id: 0, label: 'Unmute' },
 			{ id: 1, label: 'Mute' },
+			{ id: 'toggle', label: 'Toggle' },
 		],
 	},
 
