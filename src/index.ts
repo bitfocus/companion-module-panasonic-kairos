@@ -1,4 +1,4 @@
-import type { config } from './config.js'
+import type { config, secrets } from './config.js'
 import { getActions, type ActionsSchema } from './actions.js'
 import { getConfigFields } from './config.js'
 import { getFeedbacks, type FeedbacksSchema } from './feedback.js'
@@ -13,7 +13,7 @@ import { UpgradeScripts } from './upgrades.js'
 
 export type KairosTypes = {
 	config: config
-	secrets: undefined
+	secrets: secrets
 	actions: ActionsSchema
 	feedbacks: FeedbacksSchema
 	variables: CompanionVariableValues
@@ -21,11 +21,71 @@ export type KairosTypes = {
 
 export { UpgradeScripts }
 
+export type KairosState = {
+	audio_master_mute: number
+	INPUTS: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
+	MEDIA_STILLS: Array<string>
+	SCENES: {
+		layers: { name: string; sourceA: string; sourceB?: string; sources: string[]; uuid: string }[]
+		name: string
+		tally: string
+		uuid: string
+		path: string
+		macros: { color: string; name: string; state: string; uuid: string }[]
+		SNAPSHOTS: { name: string; state: string; uuid: string }[]
+		actions: { name: string; state: string; uuid: string }[]
+	}[]
+	AUX: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
+	MACROS: {
+		color: string
+		name: string
+		path: string
+		state: string
+		uuid: string
+	}[]
+	SCENES_MACROS: {
+		scene: string
+		color: string
+		name: string
+		state: string
+		path: string
+		uuid: string
+	}[]
+	SNAPSHOTS: { name: string; state: string; uuid: string; scene: string }[]
+	MULTIVIEWERS: {
+		index: number
+		name: string
+		preset: string
+		presets: { id: string; name: string; usr: string }[]
+		uuid: string
+		sdp: string
+	}[]
+	PLAYERS: { player: string; repeat: number }[]
+	TRANSITIONS: { sceneName: string; path: string; name: string }[]
+	AUDIO_CHANNELS: { channel: string; mute: number }[]
+}
+
+const emptyKairosState = (): KairosState => ({
+	audio_master_mute: 100,
+	INPUTS: [],
+	MEDIA_STILLS: [],
+	SCENES: [],
+	AUX: [],
+	MACROS: [],
+	PLAYERS: [],
+	TRANSITIONS: [],
+	AUDIO_CHANNELS: [],
+	SCENES_MACROS: [],
+	SNAPSHOTS: [],
+	MULTIVIEWERS: [],
+})
+
 /**
  * Companion instance class for Panasonic Kairos
  */
 export default class KairosInstance extends InstanceBase<KairosTypes> {
 	config: config | undefined
+	secrets: secrets | undefined
 	rest: REST | undefined
 	tcp: TCP | undefined
 	readonly connectionStatus = new ConnectionStatus(
@@ -36,62 +96,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		super(internal)
 	}
 
-	public KairosObj: {
-		audio_master_mute: number
-		INPUTS: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
-		MEDIA_STILLS: Array<string>
-		SCENES: {
-			layers: { name: string; sourceA: string; sourceB?: string; sources: string[]; uuid: string }[]
-			name: string
-			tally: string
-			uuid: string
-			path: string
-			macros: { color: string; name: string; state: string; uuid: string }[]
-			SNAPSHOTS: { name: string; state: string; uuid: string }[]
-			actions: { name: string; state: string; uuid: string }[]
-		}[]
-		AUX: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
-		MACROS: {
-			color: string
-			name: string
-			path: string
-			state: string
-			uuid: string
-		}[]
-		SCENES_MACROS: {
-			scene: string
-			color: string
-			name: string
-			state: string
-			path: string
-			uuid: string
-		}[]
-		SNAPSHOTS: { name: string; state: string; uuid: string; scene: string }[]
-		MULTIVIEWERS: {
-			index: number
-			name: string
-			preset: string
-			presets: { id: string; name: string; usr: string }[]
-			uuid: string
-			sdp: string
-		}[]
-		PLAYERS: { player: string; repeat: number }[]
-		TRANSITIONS: { sceneName: string; path: string; name: string }[]
-		AUDIO_CHANNELS: { channel: string; mute: number }[]
-	} = {
-		audio_master_mute: 100,
-		INPUTS: [],
-		MEDIA_STILLS: [],
-		SCENES: [],
-		AUX: [],
-		MACROS: [],
-		PLAYERS: [],
-		TRANSITIONS: [],
-		AUDIO_CHANNELS: [],
-		SCENES_MACROS: [],
-		SNAPSHOTS: [],
-		MULTIVIEWERS: [],
-	}
+	public KairosObj: KairosState = emptyKairosState()
 
 	public combinedLayerArray: {
 		path: string
@@ -108,9 +113,8 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	/**
 	 * @description triggered on instance being enabled
 	 */
-	async init(config: config): Promise<void> {
-		await this.configUpdated(config)
-		updateBasicVariables(this)
+	async init(config: config, _isFirstInit: boolean, secrets: secrets): Promise<void> {
+		await this.configUpdated(config, secrets)
 	}
 
 	/**
@@ -122,15 +126,20 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 
 	/**
 	 * @param config new configuration data
+	 * @param secrets new secrets, stored apart from the config
 	 * @description triggered every time the config for this instance is saved
 	 */
-	public async configUpdated(config: config): Promise<void> {
+	public async configUpdated(config: config, secrets: secrets): Promise<void> {
 		this.config = config
+		this.secrets = secrets
 		this.tcp?.destroy()
 		this.rest?.destroy()
+		// Forget what the previous connection found, which may have been a different mixer
+		this.KairosObj = emptyKairosState()
+		this.combinedLayerArray = []
 		this.connectionStatus.reset()
-		this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
-		this.rest = new REST(this, this.config.host, this.config.restPort, this.config.username, this.config.password)
+		this.tcp = new TCP(this, config.host, config.tcpPort)
+		this.rest = new REST(this, config.host, config.restPort, config.username, secrets.password)
 		this.updateInstance(updateFlags.All)
 	}
 

@@ -97,7 +97,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 	 * @param _info
 	 */
 	const sendPatchCommand = (action: { patchCommand: string; options: string; body: object }): void => {
-		const base64Credentials = Buffer.from(`${instance.config?.username}:${instance.config?.password}`).toString(
+		const base64Credentials = Buffer.from(`${instance.config?.username}:${instance.secrets?.password}`).toString(
 			'base64',
 		)
 		try {
@@ -320,7 +320,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					default: instance.KairosObj.MEDIA_STILLS[0] ? instance.KairosObj.MEDIA_STILLS[0] : '1',
 					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({
 						id,
-						label: id.search('&#46;rr') + '.rr' ? id.slice(0, -7) : id,
+						label: id.endsWith('&#46;rr') ? id.slice(0, -7) : id,
 					})),
 					allowInvalidValues: true,
 				},

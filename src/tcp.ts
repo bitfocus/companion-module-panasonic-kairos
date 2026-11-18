@@ -32,6 +32,7 @@ export class TCP {
 	private transitionScenes = ''
 	private lastErrorMessage: string | null = null
 	private destroyed = false
+	private variablesPending = false
 
 	constructor(instance: KairosInstance, host: string, tcpPort: number) {
 		this.instance = instance
@@ -63,10 +64,16 @@ export class TCP {
 		this.destroyed = true
 		clearTimeout(this.connectTimer)
 		this.connection.removeAllListeners()
+		// The socket still forwards errors while it closes, and an 'error' event with no listener throws
+		this.connection.on('error', () => undefined)
 		// disconnect() only ends the socket, and the library reconnects whenever its socket closes
-		const internal = (this.connection as unknown as { _connection: InternalConnection })._connection
-		clearTimeout(internal._reconnectTimeout)
-		internal._socket?.removeAllListeners('close')
+		const internal = (this.connection as unknown as { _connection?: InternalConnection })._connection
+		if (internal) {
+			clearTimeout(internal._reconnectTimeout)
+			internal._socket?.removeAllListeners('close')
+		} else {
+			this.instance.log('warn', 'kairos-connection internals changed, the old connection may keep reconnecting')
+		}
 		this.connection.disconnect()
 		this.connection.discard()
 		this.subscriptions.clear()
@@ -169,7 +176,8 @@ export class TCP {
 				this.instance.updateInstance(updateFlags.All)
 			})
 			.catch((error: Error) => {
-				this.transitionScenes = ''
+				// Only retry if no newer list has been requested since
+				if (key === this.transitionScenes) this.transitionScenes = ''
 				this.instance.log('debug', `Unable to list scene transitions: ${error.message}`)
 			})
 	}
@@ -240,7 +248,17 @@ export class TCP {
 			}
 			if (value === null) return
 			onValue(value)
-			updateBasicVariables(this.instance)
+			this.scheduleVariables()
+		})
+	}
+
+	// Subscriptions report their values in bursts (on every connect and reset), so rebuild the variables once per burst
+	private readonly scheduleVariables = (): void => {
+		if (this.variablesPending) return
+		this.variablesPending = true
+		setImmediate(() => {
+			this.variablesPending = false
+			if (!this.destroyed) updateBasicVariables(this.instance)
 		})
 	}
 

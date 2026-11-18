@@ -154,10 +154,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				bgcolor: combineRgb(255, 0, 0),
 			},
 			callback: (feedback): boolean => {
-				const channelString = feedback.options.channel
-				const channelNumber = parseInt(channelString.slice(7)) - 1
-				if (instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute === 1) return true
-				else return false
+				const channel = instance.KairosObj.AUDIO_CHANNELS.find((x) => x.channel === feedback.options.channel)
+				return channel?.mute === 1
 			},
 		},
 		[FeedbackId.aux]: {

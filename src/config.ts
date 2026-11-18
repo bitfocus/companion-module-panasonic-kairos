@@ -6,6 +6,9 @@ export type config = {
 	tcpPort: number
 	restPort: number
 	username: string
+}
+
+export type secrets = {
 	password: string
 }
 
@@ -46,7 +49,7 @@ export const getConfigFields = (): SomeCompanionConfigField[] => {
 			default: 'Kairos',
 		},
 		{
-			type: 'textinput',
+			type: 'secret-text',
 			id: 'password',
 			label: 'Password',
 			width: 6,
