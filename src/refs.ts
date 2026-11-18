@@ -11,6 +11,7 @@ import {
 	refSceneLayer,
 	refSourceBase,
 	refSourceInt,
+	refStreamInput,
 	refToPath,
 	type MacroRef,
 	type SceneLayerRef,
@@ -72,6 +73,7 @@ const protocolDecode = (value: string): string =>
 // REST names the RAM recorders RAM1..8, TCP RR1..8
 const REST_RAM_RECORDER = /^RAM(\d+)$/
 const TCP_RAM_RECORDER = /^RR(\d+)$/
+const REST_STREAM_INPUT = /^Stream([1-8])$/i
 
 /**
  * TCP reports a source by its protocol path (`BLACK`, `MATTES.ColA`, `SCENES.Templates.2Box`) where REST, and so the
@@ -97,6 +99,8 @@ export function sourcePath(name: string, scenes: { path: string; name: string }[
 	}
 	const ramRecorder = REST_RAM_RECORDER.exec(name)
 	if (ramRecorder) return refToPath(refRamRecorder(Number(ramRecorder[1])))
+	const streamInput = REST_STREAM_INPUT.exec(name)
+	if (streamInput) return refToPath(refStreamInput(Number(streamInput[1])))
 	const lower = name.toLowerCase()
 	if (lower === 'black') return refToPath(refSourceBase(['BLACK']))
 	if (lower === 'white') return refToPath(refSourceBase(['WHITE']))
