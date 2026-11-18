@@ -1,6 +1,6 @@
 import type KairosInstance from './index.js'
 import { refToPath } from 'kairos-connection'
-import { sceneMacroPath } from './refs.js'
+import { findLayerByFeedbackId, layerFeedbackId, sceneMacroPath } from './refs.js'
 import { BLUE, GREEN, RED, isMacroPlaying, mediaStillLabel, options, type SourceAB } from './utils.js'
 import type { CompanionFeedbackDefinitions } from '@companion-module/base'
 
@@ -43,8 +43,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					id: 'layer',
 					default: '',
 					choices: instance.state.layers.map((item) => ({
-						id: `/${item.sceneName}/${item.layerName}`,
-						label: `${item.sceneName}/${item.layerName}`,
+						id: layerFeedbackId(item),
+						label: layerFeedbackId(item).slice(1),
 					})),
 					allowInvalidValues: true,
 				},
@@ -68,18 +68,9 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				},
 			],
 			defaultStyle: { bgcolor: RED },
-			callback: (feedback): boolean => {
-				const layer = feedback.options.layer
-				const source = feedback.options.source
-				const sourceAB = feedback.options.sourceAB
-				for (const LAYER of instance.state.layers) {
-					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceA === source && sourceAB == 'sourceA')
-						return true
-					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceB === source && sourceAB == 'sourceB')
-						return true
-				}
-				return false
-			},
+			callback: (feedback): boolean =>
+				findLayerByFeedbackId(instance.state.layers, feedback.options.layer)?.[feedback.options.sourceAB] ===
+				feedback.options.source,
 		},
 		[FeedbackId.inputMediaStill]: {
 			type: 'boolean',
@@ -90,12 +81,10 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: instance.state.layers[0]
-						? `/${instance.state.layers[0].sceneName}/${instance.state.layers[0].layerName}`
-						: 'layer1',
+					default: instance.state.layers[0] ? layerFeedbackId(instance.state.layers[0]) : 'layer1',
 					choices: instance.state.layers.map((item) => ({
-						id: `/${item.sceneName}/${item.layerName}`,
-						label: `${item.sceneName}/${item.layerName}`,
+						id: layerFeedbackId(item),
+						label: layerFeedbackId(item).slice(1),
 					})),
 					allowInvalidValues: true,
 				},
@@ -119,18 +108,9 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				},
 			],
 			defaultStyle: { bgcolor: RED },
-			callback: (feedback): boolean => {
-				const layer = feedback.options.layer
-				const source = feedback.options.source
-				const sourceAB = feedback.options.sourceAB
-				for (const LAYER of instance.state.layers) {
-					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceA === source && sourceAB == 'sourceA')
-						return true
-					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceB === source && sourceAB == 'sourceB')
-						return true
-				}
-				return false
-			},
+			callback: (feedback): boolean =>
+				findLayerByFeedbackId(instance.state.layers, feedback.options.layer)?.[feedback.options.sourceAB] ===
+				feedback.options.source,
 		},
 		[FeedbackId.audioMuteMaster]: {
 			type: 'boolean',

@@ -10,7 +10,7 @@ import {
 } from './utils.js'
 import type KairosInstance from './index.js'
 import type { MixerState, PlayerRef } from './index.js'
-import { sceneRef, sourcePath } from './refs.js'
+import { sceneFullName, sceneRef, sourcePath } from './refs.js'
 import { updateBasicVariables } from './variables.js'
 import { FeedbackId } from './feedback.js'
 
@@ -109,7 +109,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 	 * @param _info
 	 */
 	const sendPatchCommand = (action: { patchCommand: string; options: string; body: object }): void => {
-		const base64Credentials = Buffer.from(`${instance.config?.username}:${instance.secrets?.password}`).toString(
+		const base64Credentials = Buffer.from(`${instance.config?.username}:${instance.secrets?.password ?? ''}`).toString(
 			'base64',
 		)
 		try {
@@ -137,14 +137,12 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		}
 	}
 
-	const runTcp = (description: string, command: (kairos: KairosConnection) => Promise<unknown>): void => {
-		instance.tcp?.run(description, command)
-	}
+	/** @returns whether the command was sent */
+	const runTcp = (description: string, command: (kairos: KairosConnection) => Promise<unknown>): boolean =>
+		instance.tcp?.run(description, command) ?? false
 
 	// Options whose value doesn't match anything the mixer reported (yet) are sent as the command they always were
-	const sendLegacyCommand = (command: string): void => {
-		instance.tcp?.sendCommand(command)
-	}
+	const sendLegacyCommand = (command: string): boolean => instance.tcp?.sendCommand(command) ?? false
 
 	const setLayerSource = (layer: Layer, sourceAB: SourceAB, source: string): void => {
 		const ref = layer.ref
@@ -160,12 +158,20 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		instance.checkFeedbacks(FeedbackId.inputSource, FeedbackId.inputMediaStill)
 	}
 
-	const findScene = (name: string) => instance.state.scenes.find((scene) => scene.name === name)
+	// Scenes are chosen by their full name (`Templates/2Box`), or by the bare name stored before scenes in folders were
+	// told apart
+	const findScene = (id: string) =>
+		instance.state.scenes.find((scene) => sceneFullName(scene.path, scene.name) === id) ??
+		instance.state.scenes.find((scene) => scene.name === id)
+	const sceneChoices = instance.state.scenes.map((scene) => sceneFullName(scene.path, scene.name))
+	const transitionId = (transition: MixerState['transitions'][number]) =>
+		`${sceneFullName(transition.path, transition.sceneName)}.${transition.name}`
 	const findTransition = (id: string) =>
+		instance.state.transitions.find((transition) => transitionId(transition) === id) ??
 		instance.state.transitions.find((transition) => `${transition.sceneName}.${transition.name}` === id)
 	const transitionChoices = instance.state.transitions.map((transition) => ({
-		id: `${transition.sceneName}.${transition.name}`,
-		label: `${transition.sceneName}/${transition.name}`,
+		id: transitionId(transition),
+		label: `${sceneFullName(transition.path, transition.sceneName)}/${transition.name}`,
 	}))
 
 	const mvPresetChoices = multiviewerPresetChoices(instance.state.multiviewers)
@@ -343,8 +349,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene',
 					id: 'scene',
-					default: instance.state.scenes[0] ? instance.state.scenes[0].name : '1',
-					choices: instance.state.scenes.map((item) => ({ id: item.name, label: item.name })),
+					default: sceneChoices[0] ?? '1',
+					choices: sceneChoices.map((id) => ({ id, label: id })),
 					allowInvalidValues: true,
 				},
 			],
@@ -361,8 +367,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'Scene',
 					id: 'scene',
-					default: instance.state.scenes[0] ? instance.state.scenes[0].name : '1',
-					choices: instance.state.scenes.map((item) => ({ id: item.name, label: item.name })),
+					default: sceneChoices[0] ?? '1',
+					choices: sceneChoices.map((id) => ({ id, label: id })),
 					allowInvalidValues: true,
 				},
 			],
@@ -471,12 +477,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				const playerAction =
 					action.options.action === 'repeat=toggle' ? `repeat=${entry?.repeat ? 0 : 1}` : action.options.action
 				const command = entry ? playerCommand(entry.ref, playerAction) : null
-				if (command) runTcp(`${player} ${playerAction}`, command)
-				else sendLegacyCommand(`${player}.${playerAction}`)
+				const sent = command
+					? runTcp(`${player} ${playerAction}`, command)
+					: sendLegacyCommand(`${player}.${playerAction}`)
 
-				// Don't wait for the value to return from the mixer, set it directly
+				// Don't wait for the value to return from the mixer, set it directly, but only if it was sent
 				const repeat = /^repeat=([01])$/.exec(playerAction)
-				if (repeat && entry) {
+				if (sent && repeat && entry) {
 					entry.repeat = repeat[1] === '1'
 					instance.checkFeedbacks(FeedbackId.playerRepeat)
 					updateBasicVariables(instance)
@@ -596,7 +603,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			options: [options.mute],
 			callback: (action) => {
 				const mute = resolveMute(action.options.mute, instance.state.masterMuted)
-				runTcp(`${mute ? 'mute' : 'unmute'} master`, async (kairos) => kairos.updateAudioMixerMainBus({ mute }))
+				if (!runTcp(`${mute ? 'mute' : 'unmute'} master`, async (kairos) => kairos.updateAudioMixerMainBus({ mute })))
+					return
 				instance.state.masterMuted = mute
 				instance.checkFeedbacks(FeedbackId.audioMuteMaster)
 				updateBasicVariables(instance)
@@ -609,9 +617,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				const channel = instance.state.audioChannels.find((x) => x.name === action.options.channel)
 				if (!channel) return
 				const mute = resolveMute(action.options.mute, channel.muted)
-				runTcp(`${mute ? 'mute' : 'unmute'} ${channel.name}`, async (kairos) =>
+				const sent = runTcp(`${mute ? 'mute' : 'unmute'} ${channel.name}`, async (kairos) =>
 					kairos.updateAudioMixerChannel(refAudioMixerChannel([channel.name]), { mute }),
 				)
+				if (!sent) return
 				channel.muted = mute
 				instance.checkFeedbacks(FeedbackId.audioMuteChannel)
 				updateBasicVariables(instance)

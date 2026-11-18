@@ -1,5 +1,6 @@
 import {
 	parseAnySourceRef,
+	protocolEncodeStr,
 	refAudioPlayer,
 	refClipPlayer,
 	refMacro,
@@ -17,9 +18,27 @@ import {
 import type { MixerState, PlayerRef } from './index.js'
 
 type SceneMacro = MixerState['sceneMacros'][number]
+type Layer = MixerState['layers'][number]
 
 /** Splits a REST folder path (`Folder/Sub/`) into its parts */
 const folderParts = (path: string | undefined): string[] => (path ?? '').split('/').filter((part) => part !== '')
+
+/**
+ * A scene's name with its folder, e.g. `Templates/2Box`, which tells apart scenes with the same name in different
+ * folders
+ */
+export const sceneFullName = (path: string | undefined, sceneName: string): string => `${path ?? ''}${sceneName}`
+
+/** The id the layer feedbacks use for a layer, e.g. `/Templates/2Box/Background` */
+export const layerFeedbackId = (layer: Layer): string =>
+	`/${sceneFullName(layer.path, layer.sceneName)}/${layer.layerName}`
+
+/**
+ * Finds a layer by its feedback id, or by the id stored before scenes in folders were told apart (`/2Box/Background`)
+ */
+export const findLayerByFeedbackId = (layers: Layer[], id: string): Layer | undefined =>
+	layers.find((layer) => layerFeedbackId(layer) === id) ??
+	layers.find((layer) => `/${layer.sceneName}/${layer.layerName}` === id)
 
 export const sceneRef = (path: string | undefined, sceneName: string): SceneRef =>
 	refScene([...folderParts(path), sceneName])
@@ -40,7 +59,7 @@ export const allPlayers = (): MixerState['players'] =>
 	)
 
 export const sceneMacroPath = (macro: SceneMacro): string =>
-	`${refToPath(sceneRef(macro.path, macro.sceneName))}.Macros.${macro.macroName}`
+	`${refToPath(sceneRef(macro.path, macro.sceneName))}.Macros.${protocolEncodeStr(macro.macroName)}`
 
 const protocolDecode = (value: string): string =>
 	value.replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))

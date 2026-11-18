@@ -59,25 +59,10 @@ export class REST {
 	 */
 	public readonly setupKairos = async (): Promise<void> => {
 		this.instance.state.players = allPlayers()
-		// Load audio channels
-		this.instance.state.audioChannels = [
-			{ name: 'Channel 1', muted: false },
-			{ name: 'Channel 2', muted: false },
-			{ name: 'Channel 3', muted: false },
-			{ name: 'Channel 4', muted: false },
-			{ name: 'Channel 5', muted: false },
-			{ name: 'Channel 6', muted: false },
-			{ name: 'Channel 7', muted: false },
-			{ name: 'Channel 8', muted: false },
-			{ name: 'Channel 9', muted: false },
-			{ name: 'Channel 10', muted: false },
-			{ name: 'Channel 11', muted: false },
-			{ name: 'Channel 12', muted: false },
-			{ name: 'Channel 13', muted: false },
-			{ name: 'Channel 14', muted: false },
-			{ name: 'Channel 15', muted: false },
-			{ name: 'Channel 16', muted: false },
-		]
+		this.instance.state.audioChannels = Array.from({ length: 16 }, (_, i) => ({
+			name: `Channel ${i + 1}`,
+			muted: false,
+		}))
 		/**
 		 * Pulls the macro's
 		 */

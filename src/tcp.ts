@@ -8,6 +8,7 @@ import {
 	refToPath,
 } from 'kairos-connection'
 import type KairosInstance from './index.js'
+import type { MixerState } from './index.js'
 import { FeedbackId } from './feedback.js'
 import { sceneMacroPath, sceneRef, sourceName } from './refs.js'
 import { parseMacroStatus, updateFlags } from './utils.js'
@@ -33,6 +34,8 @@ export class TCP {
 	private lastErrorMessage: string | null = null
 	private destroyed = false
 	private variablesPending = false
+	// The layers by protocol path, rebuilt with the subscriptions whenever REST replaces the layer list
+	private layersByPath = new Map<string, MixerState['layers'][number]>()
 
 	constructor(instance: KairosInstance, host: string, tcpPort: number) {
 		this.instance = instance
@@ -81,23 +84,25 @@ export class TCP {
 
 	/**
 	 * Runs a command on the mixer, logging a failure rather than throwing it
+	 * @returns whether the command was sent, which it isn't while disconnected
 	 */
-	public readonly run = (description: string, command: (kairos: KairosConnection) => Promise<unknown>): void => {
+	public readonly run = (description: string, command: (kairos: KairosConnection) => Promise<unknown>): boolean => {
 		if (!this.connection.connected) {
 			this.instance.log('warn', `Cannot ${description}: not connected to Kairos`)
-			return
+			return false
 		}
 		this.instance.log('debug', `Sending command: ${description}`)
 		command(this.connection).catch((error: Error) => {
 			this.instance.log('warn', `Failed to ${description}: ${error.message}`)
 		})
+		return true
 	}
 
 	/**
 	 * @param command raw protocol command, e.g. `SCENES.Main.cut` or `SCENES.Main.Layers.Background.sourceA=IP1`
 	 */
-	public readonly sendCommand = (command: string): void => {
-		this.run(`send ${command}`, async (kairos) => kairos.executeCommand(command, 'OK' as ExpectedResponse, null))
+	public readonly sendCommand = (command: string): boolean => {
+		return this.run(`send ${command}`, async (kairos) => kairos.executeCommand(command, 'OK' as ExpectedResponse, null))
 	}
 
 	/**
@@ -236,14 +241,14 @@ export class TCP {
 			})
 		}
 		// Only the A/B sources are needed: subscribeSceneLayer would subscribe to every attribute of every layer
-		for (const layer of this.instance.state.layers) {
-			const path = refToPath(layer.ref)
+		this.layersByPath = new Map(state.layers.map((layer) => [refToPath(layer.ref), layer]))
+		for (const [path, layer] of this.layersByPath) {
 			// REST has no sourceB for layers without a B bus, where TCP would still report one (BLACK)
 			const buses = layer.sourceB == null ? (['sourceA'] as const) : (['sourceA', 'sourceB'] as const)
 			for (const sourceAB of buses) {
 				wanted.set(`${path}.${sourceAB}`, (value) => {
 					// REST replaces the layer list on every poll, so look the layer up again
-					const entry = this.instance.state.layers.find((x) => refToPath(x.ref) === path)
+					const entry = this.layersByPath.get(path)
 					if (entry) entry[sourceAB] = sourceName(value, this.inputNames())
 					this.instance.checkFeedbacks(FeedbackId.inputSource, FeedbackId.inputMediaStill)
 				})

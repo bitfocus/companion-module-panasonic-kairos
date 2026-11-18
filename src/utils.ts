@@ -23,15 +23,22 @@ export type MuteValue = number | 'toggle'
 /** Whether to mute, given the mute option and whether it is muted now */
 export const resolveMute = (value: MuteValue, muted: boolean): boolean => (value === 'toggle' ? !muted : value === 1)
 
-/** The presets of every multiviewer, for a dropdown */
+/**
+ * The multiviewer presets, for a dropdown. Preset ids are per multiviewer, and every multiviewer has the same ones, so
+ * each id is listed once; the multiviewer is chosen in its own option.
+ */
 export const multiviewerPresetChoices = (
-	multiviewers: { name: string; presets?: ({ id: string; name: string } | null)[] }[],
-): { id: string; label: string }[] =>
-	multiviewers.flatMap((multiviewer) =>
-		(multiviewer.presets ?? []).flatMap((preset) =>
-			preset ? [{ id: preset.id, label: `${multiviewer.name} - ${preset.name}` }] : [],
-		),
-	)
+	multiviewers: { presets?: ({ id: string | number; name: string } | null)[] }[],
+): { id: string | number; label: string }[] => {
+	const names = new Map<string | number, Set<string>>()
+	for (const preset of multiviewers.flatMap((multiviewer) => multiviewer.presets ?? [])) {
+		if (!preset) continue
+		const presetNames = names.get(preset.id) ?? new Set()
+		presetNames.add(preset.name)
+		names.set(preset.id, presetNames)
+	}
+	return Array.from(names, ([id, presetNames]) => ({ id, label: Array.from(presetNames).join(' / ') }))
+}
 
 /** A macro status reported over TCP, or undefined if it isn't one the library knows */
 export const parseMacroStatus = (value: string): MacroStatus | undefined =>

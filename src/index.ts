@@ -113,9 +113,6 @@ const emptyMixerState = (): MixerState => ({
 	audioChannels: [],
 })
 
-/**
- * Companion instance class for Panasonic Kairos
- */
 export default class KairosInstance extends InstanceBase<KairosTypes> {
 	config: config | undefined
 	secrets: secrets | undefined
@@ -162,7 +159,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		this.state = emptyMixerState()
 		this.connectionStatus.reset()
 		this.tcp = new TCP(this, config.host, config.tcpPort)
-		this.rest = new REST(this, config.host, config.restPort, config.username, secrets.password)
+		this.rest = new REST(this, config.host, config.restPort, config.username, secrets?.password ?? '')
 		this.updateInstance(updateFlags.All)
 	}
 
