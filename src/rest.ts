@@ -1,12 +1,14 @@
-import KairosInstance from '.'
+import type KairosInstance from './index.js'
 import { InstanceStatus } from '@companion-module/base'
-import { FeedbackId } from './feedback'
-import { createInputWithName, updateFlags } from './utils'
-const isReachable = require('is-reachable')
+import isReachable from 'is-reachable'
+import { FeedbackId } from './feedback.js'
+import { createInputWithName, updateFlags } from './utils.js'
 
 export class REST {
 	private readonly instance: KairosInstance
-	private pullerInterval: NodeJS.Timer | undefined
+	private pullerInterval: NodeJS.Timeout | undefined
+	private reachableRetryTimer: NodeJS.Timeout | undefined
+	private destroyed = false
 	host: string
 	restPort: number
 	username: string
@@ -78,6 +80,7 @@ export class REST {
 		 * Pulls the current state of the switcher
 		 */
 		let pullScenes = async () => {
+			if (this.destroyed) return
 			try {
 				/**
 				 * Pulls the macro's
@@ -85,6 +88,7 @@ export class REST {
 				let pullMacros = async () => {
 					try {
 						let macroResult = await this.sendCommand('/macros')
+						if (this.destroyed) return
 						let convertedMacros = JSON.parse(macroResult)
 						this.instance.KairosObj.MACROS = convertedMacros
 					} catch (error: any) {
@@ -96,6 +100,7 @@ export class REST {
 				let pullMultiviewers = async () => {
 					try {
 						let multiviewerResult = await this.sendCommand('/multiviewers')
+						if (this.destroyed) return
 						let convertedMultiviewers = JSON.parse(multiviewerResult)
 						this.instance.KairosObj.MULTIVIEWERS = convertedMultiviewers
 					} catch (error: any) {
@@ -105,6 +110,7 @@ export class REST {
 				pullMultiviewers()
 
 				let sceneResult = await this.sendCommand('/scenes')
+				if (this.destroyed) return
 				let convertedScenes = JSON.parse(sceneResult)
 				this.instance.KairosObj.SCENES = convertedScenes
 
@@ -152,6 +158,7 @@ export class REST {
 				})
 
 				let auxResult = await this.sendCommand('/aux')
+				if (this.destroyed) return
 				let convertedAux = JSON.parse(auxResult)
 				this.instance.KairosObj.AUX = convertedAux
 
@@ -178,16 +185,25 @@ export class REST {
 			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorBar'))
 			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorCircle'))
 		}
-		//check server
-		await isReachable(this.host).then((reachable: boolean) => {
+		/**
+		 * Starts polling once the server is reachable, checking again every few seconds until it is
+		 */
+		const startPulling = async (): Promise<void> => {
+			const reachable = await isReachable(this.host).catch(() => false)
+			if (this.destroyed) return
 			if (!reachable) {
 				this.instance.updateStatus(InstanceStatus.ConnectionFailure, 'Server not reachable')
-			} else {
-				this.instance.updateStatus(InstanceStatus.Ok, 'Server reachable')
-				pullScenes()
-				this.pullerInterval = setInterval(pullScenes, 5000) //Change pulling Time?
+				this.reachableRetryTimer = setTimeout(() => void startPulling(), 5000)
+				return
 			}
-		})
+			this.reachableRetryTimer = undefined
+			this.instance.updateStatus(InstanceStatus.Ok, 'Server reachable')
+			void pullScenes()
+			this.pullerInterval = setInterval(() => void pullScenes(), 5000) //Change pulling Time?
+		}
+		//check server
+		await startPulling()
+		if (this.destroyed) return
 		addInternalSources()
 		this.instance.updateInstance(updateFlags.All as number)
 	}
@@ -196,7 +212,9 @@ export class REST {
 	 * @description Close connection on instance disable/removal
 	 */
 	public readonly destroy = (): void => {
+		this.destroyed = true
 		if (this.pullerInterval != undefined) clearInterval(this.pullerInterval)
+		if (this.reachableRetryTimer != undefined) clearTimeout(this.reachableRetryTimer)
 	}
 	/**
 	 * Send rest command to Kairos
@@ -214,10 +232,10 @@ export class REST {
 		try {
 			const response = await fetch(formattedRestRequest, { headers })
 			const result = await response.text()
-			this.instance.updateStatus(InstanceStatus.Ok)
+			if (!this.destroyed) this.instance.updateStatus(InstanceStatus.Ok)
 			return result
 		} catch (error) {
-			this.instance.updateStatus(InstanceStatus.UnknownError, 'Error sending command')
+			if (!this.destroyed) this.instance.updateStatus(InstanceStatus.UnknownError, 'Error sending command')
 			return (error as Error).message
 		}
 	}

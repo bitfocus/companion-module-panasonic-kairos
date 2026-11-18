@@ -1,4 +1,4 @@
-import {
+import type {
 	CompanionInputFieldColor,
 	CompanionInputFieldDropdown,
 	CompanionInputFieldNumber,
@@ -20,6 +20,8 @@ export enum updateFlags {
 	presets = 3,
 }
 
+export type SourceAB = 'sourceA' | 'sourceB'
+
 type TimeFormat = 'hh:mm:ss' | 'hh:mm:ss.ms' | 'mm:ss' | 'mm:ss.ms'
 
 // interface NumericDropdownChoice {
@@ -36,11 +38,11 @@ type EnforceDefault<T, U> = Omit<T, 'default'> & { default: U }
 
 export interface Options {
 	input: EnforceDefault<CompanionInputFieldTextInput, string>
-	playerControl: EnforceDefault<CompanionInputFieldDropdown, string>
-	macroStateControl: EnforceDefault<CompanionInputFieldDropdown, string>
+	playerControl: EnforceDefault<CompanionInputFieldDropdown<'action', string>, string>
+	macroStateControl: EnforceDefault<CompanionInputFieldDropdown<'action', string>, string>
 	mvRecall: EnforceDefault<CompanionInputFieldDropdown, string>
-	mute: EnforceDefault<CompanionInputFieldDropdown, number>
-	channel: EnforceDefault<CompanionInputFieldDropdown, string>
+	mute: EnforceDefault<CompanionInputFieldDropdown<'mute', number>, number>
+	channel: EnforceDefault<CompanionInputFieldDropdown<'channel', string>, string>
 	layerSelect: EnforceDefault<CompanionInputFieldDropdown, string>
 	sourceSelect: EnforceDefault<CompanionInputFieldDropdown, string>
 	foregroundColor: EnforceDefault<CompanionInputFieldColor, number>
@@ -139,7 +141,7 @@ export const options: Options = {
 		type: 'dropdown',
 		label: 'Channel',
 		id: 'channel',
-		default: 'Channel1',
+		default: 'Channel 1',
 		choices: [
 			{ id: 'Channel 1', label: 'Channel 1' },
 			{ id: 'Channel 2', label: 'Channel 2' },

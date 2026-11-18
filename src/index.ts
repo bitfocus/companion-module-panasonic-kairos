@@ -1,21 +1,37 @@
-import { config } from './config'
-import { getActions } from './actions'
-import { getConfigFields } from './config'
-import { getFeedbacks } from './feedback'
-import { getPresets } from './presets'
-import { updateBasicVariables } from './variables'
-import { TCP } from './tcp'
-import { REST } from './rest'
-import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from '@companion-module/base'
-import { updateFlags } from './utils'
+import type { config } from './config.js'
+import { getActions, type ActionsSchema } from './actions.js'
+import { getConfigFields } from './config.js'
+import { getFeedbacks, type FeedbacksSchema } from './feedback.js'
+import { getPresets } from './presets.js'
+import { updateBasicVariables } from './variables.js'
+import { TCP } from './tcp.js'
+import { REST } from './rest.js'
+import {
+	InstanceBase,
+	InstanceStatus,
+	type CompanionVariableValues,
+	type SomeCompanionConfigField,
+} from '@companion-module/base'
+import { updateFlags } from './utils.js'
+import { UpgradeScripts } from './upgrades.js'
+
+export type KairosTypes = {
+	config: config
+	secrets: undefined
+	actions: ActionsSchema
+	feedbacks: FeedbacksSchema
+	variables: CompanionVariableValues
+}
+
+export { UpgradeScripts }
 
 /**
  * Companion instance class for Panasonic Kairos
  */
-class KairosInstance extends InstanceBase<config> {
+export default class KairosInstance extends InstanceBase<KairosTypes> {
 	config: config | undefined
 	rest: REST | undefined
-	tcp: any
+	tcp: TCP | undefined
 	constructor(internal: unknown) {
 		super(internal)
 	}
@@ -117,6 +133,7 @@ class KairosInstance extends InstanceBase<config> {
 	public configUpdated(config: config): Promise<void> {
 		this.config = config
 		this.tcp?.destroy()
+		this.rest?.destroy()
 		this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
 		this.rest = new REST(this, this.config.host, this.config.restPort, this.config.username, this.config.password)
 		this.updateInstance(updateFlags.All)
@@ -158,24 +175,20 @@ class KairosInstance extends InstanceBase<config> {
 		if (updateFlag === updateFlags.All) {
 			const actions = getActions(this)
 			const feedbacks = getFeedbacks(this)
-			const presets = getPresets(this)
+			const { structure, presets } = getPresets(this)
 
 			this.setActionDefinitions(actions)
 			this.setFeedbackDefinitions(feedbacks)
-			this.setPresetDefinitions(presets)
+			this.setPresetDefinitions(structure, presets)
 
 			updateBasicVariables(this)
 		} else if (updateFlag === updateFlags.onlyVariables) {
 			updateBasicVariables(this)
 		} else if (updateFlag === updateFlags.presets) {
-			const presets = getPresets(this)
-			this.setPresetDefinitions(presets)
+			const { structure, presets } = getPresets(this)
+			this.setPresetDefinitions(structure, presets)
 		}
 		// const end = Date.now()
 		// this.log('debug',`updateInstance:${updateFlag === updateFlags.onlyVariables ? 'variables' : 'all'} ${end - begin}, 'ms'`)
 	}
 }
-
-runEntrypoint(KairosInstance, [])
-
-export = KairosInstance

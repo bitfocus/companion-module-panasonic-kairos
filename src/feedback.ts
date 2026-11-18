@@ -1,6 +1,6 @@
-import KairosInstance from './'
-import { options } from './utils'
-import { combineRgb, CompanionFeedbackDefinition, CompanionFeedbackDefinitions } from '@companion-module/base'
+import type KairosInstance from './index.js'
+import { options, type SourceAB } from './utils.js'
+import { combineRgb, type CompanionFeedbackDefinitions } from '@companion-module/base'
 
 export enum FeedbackId {
 	inputSource = 'inputSource',
@@ -10,8 +10,19 @@ export enum FeedbackId {
 	aux = 'aux',
 }
 
-export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinitions {
-	const feedbacks: { [id in FeedbackId]: CompanionFeedbackDefinition | undefined } = {
+export type FeedbacksSchema = {
+	[FeedbackId.inputSource]: { type: 'boolean'; options: { layer: string; sourceAB: SourceAB; source: string } }
+	[FeedbackId.inputMediaStill]: { type: 'boolean'; options: { layer: string; sourceAB: SourceAB; source: string } }
+	[FeedbackId.audioMuteMaster]: { type: 'boolean'; options: Record<string, never> }
+	[FeedbackId.audioMuteChannel]: { type: 'boolean'; options: { channel: string } }
+	[FeedbackId.aux]: { type: 'boolean'; options: { aux: string; source: string } }
+}
+
+// Dropdowns listing layers, sources and AUXes are filled from the mixer once it has been polled. Their stored values
+// are still meaningful before that (or if the mixer is unreachable), so `allowInvalidValues` stops Companion from
+// rejecting values that are not in the current choices.
+export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinitions<FeedbacksSchema> {
+	const feedbacks: CompanionFeedbackDefinitions<FeedbacksSchema> = {
 		// Tally
 		[FeedbackId.inputSource]: {
 			type: 'boolean',
@@ -24,6 +35,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					id: 'layer',
 					default: '',
 					choices: instance.combinedLayerArray.map((item) => ({ id: `/${item.sceneName}/${item.layerName}`, label: `/${item.sceneName}/${item.layerName}` })),
+					allowInvalidValues: true,
 				},
 				{
 					type: 'dropdown',
@@ -41,6 +53,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					id: 'source',
 					default: '',
 					choices: instance.KairosObj.INPUTS.map((item) => ({ id: item.name, label: item.name })),
+					allowInvalidValues: true,
 				},
 			],
 			defaultStyle: {
@@ -69,6 +82,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					id: 'layer',
 					default: instance.combinedLayerArray[0] ? `/${instance.combinedLayerArray[0].sceneName}/${instance.combinedLayerArray[0].layerName}` : 'layer1',
 					choices: instance.combinedLayerArray.map((item) => ({ id: `/${item.sceneName}/${item.layerName}`, label: `/${item.sceneName}/${item.layerName}` })),
+					allowInvalidValues: true,
 				},
 				{
 					type: 'dropdown',
@@ -86,6 +100,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					id: 'source',
 					default: instance.KairosObj.MEDIA_STILLS[0] ? instance.KairosObj.MEDIA_STILLS[0] : '1',
 					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: id })),
+					allowInvalidValues: true,
 				},
 			],
 			defaultStyle: {
@@ -144,6 +159,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					id: 'aux',
 					default: instance.KairosObj.AUX[0] ? instance.KairosObj.AUX[0].name : '1',
 					choices: instance.KairosObj.AUX.map((id) => ({ id: id.name, label: id.name })),
+					allowInvalidValues: true,
 				},
 				{
 					type: 'dropdown',
@@ -151,6 +167,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					id: 'source',
 					default: '',
 					choices: instance.KairosObj.INPUTS.map((id) => ({ id: id.name, label: id.name })),
+					allowInvalidValues: true,
 				},
 			],
 			defaultStyle: {

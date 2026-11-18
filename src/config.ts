@@ -1,20 +1,12 @@
-import { InstanceBase, SomeCompanionConfigField } from "@companion-module/base"
+import type { SomeCompanionConfigField } from '@companion-module/base'
 
-export interface config {
+export type config = {
 	label: string
 	host: string
 	tcpPort: number
 	restPort: number
 	username: string
 	password: string
-}
-
-export interface InstanceBaseExt<TConfig> extends InstanceBase<TConfig> {
-	[x: string]: any
-	tcp: any
-	config: TConfig
-	UpdateVariablesValues(): void
-	InitVariables(): void
 }
 
 export const getConfigFields = (): SomeCompanionConfigField[] => {

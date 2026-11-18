@@ -1,19 +1,27 @@
-import KairosInstance from './'
+import type { CompanionVariableDefinitions, CompanionVariableValues } from '@companion-module/base'
+import type KairosInstance from './index.js'
 
 interface InstanceVariableDefinition {
 	name: string
 	variableId: string
-	type?: string
 }
 
-interface InstanceVariableValue {
-	[key: string]: string | number | undefined
-}
+/**
+ * Variable ids may only contain letters, numbers, '-', '_', '.' and '!', and Companion drops definitions with any
+ * other character. These names come from the mixer, so strip anything else (ids that were already valid are unchanged).
+ */
+const sanitizeVariableIdPart = (name: string): string => name.replace(/[^a-zA-Z0-9\-_.!]/g, '')
+
+export const inputVariableId = (inputName: string): string =>
+	`INPUT.${sanitizeVariableIdPart(inputName.replace(/ /g, '_'))}`
+export const auxVariableId = (auxName: string): string => `AUX.${sanitizeVariableIdPart(auxName.replace(/ /g, '_'))}`
+const layerVariableId = (sceneName: string, layerName: string): string =>
+	`Scene.${sanitizeVariableIdPart(sceneName)}.${sanitizeVariableIdPart(layerName)}`
 
 /**
  * @description Sets variable definitions
  */
-export function updateBasicVariables(instance: KairosInstance) {
+export function updateBasicVariables(instance: KairosInstance): void {
 	const audio_mute: Set<InstanceVariableDefinition> = new Set([
 		// Status
 		{ name: 'Mute Master', variableId: 'Audio.mute_master_audio' },
@@ -37,25 +45,25 @@ export function updateBasicVariables(instance: KairosInstance) {
 
 	let inputSources: { name: string; variableId: string }[] = []
 	instance.KairosObj.INPUTS.forEach((INPUT) => {
-		inputSources.push({ name: `Source ${INPUT.name} name`, variableId: `INPUT.${INPUT.name.replace(/ /g, '_')}` })
+		inputSources.push({ name: `Source ${INPUT.name} name`, variableId: inputVariableId(INPUT.name) })
 	})
 
 	let auxSources: { name: string; variableId: string }[] = []
 	let auxNames: { name: string; variableId: string }[] = []
 	instance.KairosObj.AUX.forEach((AUX) => {
-		auxSources.push({ name: `Source in ${AUX.name}`, variableId: `AUX.${AUX.name.replace(/ /g, '_')}.source` })
-		auxNames.push({ name: `AUX ${AUX.name} name`, variableId: `AUX.${AUX.name.replace(/ /g, '_')}` })
+		auxSources.push({ name: `Source in ${AUX.name}`, variableId: `${auxVariableId(AUX.name)}.source` })
+		auxNames.push({ name: `AUX ${AUX.name} name`, variableId: auxVariableId(AUX.name) })
 	})
 
 	let layerSources: { name: string; variableId: string }[] = []
 	instance.combinedLayerArray.forEach((LAYER) => {
 		layerSources.push({
 			name: `SourceA in ${LAYER.sceneName}.${LAYER.layerName}`,
-			variableId: `Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceA`,
+			variableId: `${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceA`,
 		})
 		layerSources.push({
 			name: `SourceB in ${LAYER.sceneName}.${LAYER.layerName}`,
-			variableId: `Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceB`,
+			variableId: `${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceB`,
 		})
 	})
 	// let auxAvailable = []
@@ -82,21 +90,25 @@ export function updateBasicVariables(instance: KairosInstance) {
 		//...presetEnabled,
 	]
 	// instance.log('debug', `filtered ${JSON.stringify(filteredVariables)}`)
-	instance.setVariableDefinitions(filteredVariables)
+	const variableDefinitions: CompanionVariableDefinitions = {}
+	for (const variable of filteredVariables) {
+		variableDefinitions[variable.variableId] = { name: variable.name }
+	}
+	instance.setVariableDefinitions(variableDefinitions)
 
-	const newVariables: InstanceVariableValue = {}
+	const newVariables: CompanionVariableValues = {}
 
 	// LIVE LAYERS
 	instance.combinedLayerArray.forEach((LAYER) => {
-		newVariables[`Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceA`] = LAYER.sourceA
-		newVariables[`Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceB`] = LAYER.sourceB
+		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceA`] = LAYER.sourceA
+		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceB`] = LAYER.sourceB
 		//newVariables[`${LAYER.name}.preset_enabled`] = LAYER.preset_enabled === 1 ? 'enabled' : 'disabled'
 	})
 	// AUX
 	instance.KairosObj.AUX.forEach((AUX) => {
 		// newVariables[AUX.name] = instance.KairosObj.INPUTS.find((x) => x.input == AUX.live)
-		newVariables[`AUX.${AUX.name.replace(/ /g, '_')}.source`] = AUX.source
-		newVariables[`AUX.${AUX.name.replace(/ /g, '_')}`] = AUX.name
+		newVariables[`${auxVariableId(AUX.name)}.source`] = AUX.source
+		newVariables[auxVariableId(AUX.name)] = AUX.name
 		//newVariables[`${AUX.name}.available`] = AUX.available == 0 ? 'disabled' : 'enabled'
 	})
 	// PLAYERS
@@ -105,13 +117,14 @@ export function updateBasicVariables(instance: KairosInstance) {
 	})
 	// INPUTS
 	instance.KairosObj.INPUTS.forEach((INPUT) => {
-		newVariables[`INPUT.${INPUT.name.replace(/ /g, '_')}`] = INPUT.name
+		newVariables[inputVariableId(INPUT.name)] = INPUT.name
 	})
 	// AUDIO
 	newVariables['Audio.mute_master_audio'] = instance.KairosObj.audio_master_mute == 0 ? 'unmuted' : 'muted'
 	for (let index = 0; index < 16; index++) {
 		if (instance.KairosObj.AUDIO_CHANNELS[index] == undefined) continue
-		newVariables[`Audio.mute_channel_${index + 1}`] = instance.KairosObj.AUDIO_CHANNELS[index].mute == 0 ? 'unmuted' : 'muted'
+		newVariables[`Audio.mute_channel_${index + 1}`] =
+			instance.KairosObj.AUDIO_CHANNELS[index].mute == 0 ? 'unmuted' : 'muted'
 	}
 	instance.setVariableValues(newVariables)
 }

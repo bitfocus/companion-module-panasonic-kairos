@@ -1,7 +1,8 @@
 import { InstanceStatus, TCPHelper } from '@companion-module/base'
-import KairosInstance from '.'
-import { updateFlags } from './utils'
-import { updateBasicVariables } from './variables'
+import type KairosInstance from './index.js'
+import { FeedbackId } from './feedback.js'
+import { updateFlags } from './utils.js'
+import { updateBasicVariables } from './variables.js'
 
 interface TCPSockets {
 	main: TCPHelper | null
@@ -14,7 +15,7 @@ export class TCP {
 	}
 	private tcpHost: string
 	private tcpPort: number
-	private keepAliveInterval: NodeJS.Timer | undefined
+	private keepAliveInterval: NodeJS.Timeout | undefined
 	private recvRemain = ''
 	private listQueue: string[] = [] // queue of outstanding command of list or info
 	private nCommand = 0 // number of outstanding command
@@ -176,7 +177,7 @@ export class TCP {
 									(x) => x.layerName === returningData.split('=')[0].slice(0, -8)
 								)
 								if (index != -1) this.instance.combinedLayerArray[index].sourceA = returningData.split('=')[1]
-								this.instance.checkFeedbacks('inputSource')
+								this.instance.checkFeedbacks(FeedbackId.inputSource)
 							}
 							break
 						case /\.sourceB/i.test(returningData):
@@ -185,14 +186,14 @@ export class TCP {
 									(x) => x.layerName === returningData.split('=')[0].slice(0, -8)
 								)
 								if (index != -1) this.instance.combinedLayerArray[index].sourceB = returningData.split('=')[1]
-								this.instance.checkFeedbacks('inputSource')
+								this.instance.checkFeedbacks(FeedbackId.inputSource)
 							}
 							break
 						//case /^Mixer\.AudioMixers\.AudioMixer\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
 						case /^AUDIOMIXER\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
 							{
 								this.instance.KairosObj.audio_master_mute = parseInt(returningData.split('=')[1])
-								this.instance.checkFeedbacks('audioMuteMaster')
+								this.instance.checkFeedbacks(FeedbackId.audioMuteMaster)
 							}
 							break
 						//case /^Mixer\.AudioMixers\.AudioMixer\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
@@ -200,7 +201,7 @@ export class TCP {
 							{
 								let index = parseInt(returningData.slice(returningData.search('.Channel') + 9, -7)) - 1
 								this.instance.KairosObj.AUDIO_CHANNELS[index].mute = parseInt(returningData.split('=')[1])
-								this.instance.checkFeedbacks('audioMuteChannel')
+								this.instance.checkFeedbacks(FeedbackId.audioMuteChannel)
 							}
 							break
 						case /\.source=/i.test(returningData): // This is an AUX source
@@ -209,7 +210,7 @@ export class TCP {
 									(x) => x.name === returningData.split('=')[0].slice(0, returningData.split('=')[0].search('.source'))
 								)
 								if (index != -1) this.instance.KairosObj.AUX[index].source = returningData.split('=')[1]
-								this.instance.checkFeedbacks('aux')
+								this.instance.checkFeedbacks(FeedbackId.aux)
 							}
 							break
 						// case /^MACROS\./i.test(returningData): // This is an MACRO
@@ -399,7 +400,7 @@ export class TCP {
 			}
 			const message = `${command}\r\n`
 
-			this.sockets.main.send(message).catch((err) => {
+			this.sockets.main.sendAsync(message).catch((err) => {
 				if (err) this.instance.log('debug', err.message)
 			})
 			if (message != '\r\n') this.instance.log('debug', `Sending command: ${message}`)
