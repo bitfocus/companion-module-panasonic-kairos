@@ -16,6 +16,7 @@ export class TCP {
 	private tcpHost: string
 	private tcpPort: number
 	private keepAliveInterval: NodeJS.Timeout | undefined
+	private lastErrorMessage: string | null = null
 	private recvRemain = ''
 	private listQueue: string[] = [] // queue of outstanding command of list or info
 	private nCommand = 0 // number of outstanding command
@@ -36,7 +37,12 @@ export class TCP {
 	 */
 	public readonly destroy = (): void => {
 		if (this.sockets.main) this.sockets.main.destroy()
+		this.stopKeepAlive()
+	}
+
+	private readonly stopKeepAlive = (): void => {
 		if (this.keepAliveInterval != undefined) clearInterval(this.keepAliveInterval)
+		this.keepAliveInterval = undefined
 	}
 
 	/**
@@ -53,13 +59,17 @@ export class TCP {
 
 		this.sockets.main = new TCPHelper(this.tcpHost, this.tcpPort)
 
-		this.sockets.main.on('status_change', (status: InstanceStatus) => {
+		this.sockets.main.on('status_change', (status: InstanceStatus, message: string | undefined) => {
 			this.instance.log('debug', 'status change ' + status)
-			this.instance.updateStatus(status)
+			this.instance.connectionStatus.set('tcp', status, message ?? null)
+			if (status !== InstanceStatus.Ok) this.stopKeepAlive()
 		})
 
+		// TCPHelper retries every few seconds, so only log an error when it differs from the last one
 		this.sockets.main.on('error', (err: Error) => {
-			this.instance.updateStatus(InstanceStatus.UnknownError, err.message)
+			if (err.message === this.lastErrorMessage) return
+			this.lastErrorMessage = err.message
+			this.instance.log('error', `TCP connection error: ${err.message}`)
 		})
 
 		const fetchStills = () => {
@@ -132,7 +142,8 @@ export class TCP {
 		}
 		this.sockets.main.on('connect', async () => {
 			this.instance.log('debug', 'Connected to mixer')
-			this.instance.updateStatus(InstanceStatus.Ok, 'Connected')
+			this.lastErrorMessage = null
+			this.stopKeepAlive()
 			this.keepAliveInterval = setInterval(keepAlive, 4500) //session expires at 5 seconds
 			fetchStills()
 			await subscribeToData()
@@ -417,7 +428,7 @@ export class TCP {
 		if (hostCheck) {
 			this.tcpHost = this.instance.config.host
 			this.tcpPort = this.instance.config.tcpPort
-			if (this.keepAliveInterval != undefined) clearInterval(this.keepAliveInterval)
+			this.stopKeepAlive()
 
 			let ready = true
 

@@ -6,12 +6,8 @@ import { getPresets } from './presets.js'
 import { updateBasicVariables } from './variables.js'
 import { TCP } from './tcp.js'
 import { REST } from './rest.js'
-import {
-	InstanceBase,
-	InstanceStatus,
-	type CompanionVariableValues,
-	type SomeCompanionConfigField,
-} from '@companion-module/base'
+import { InstanceBase, type CompanionVariableValues, type SomeCompanionConfigField } from '@companion-module/base'
+import { ConnectionStatus } from './status.js'
 import { updateFlags } from './utils.js'
 import { UpgradeScripts } from './upgrades.js'
 
@@ -32,6 +28,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	config: config | undefined
 	rest: REST | undefined
 	tcp: TCP | undefined
+	readonly connectionStatus = new ConnectionStatus((status, message) => this.updateStatus(status, message))
 	constructor(internal: unknown) {
 		super(internal)
 	}
@@ -113,7 +110,6 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	async init(config: config): Promise<void> {
 		// New Module warning
 		this.log('info', `Welcome, Panasonic module is loading`)
-		this.updateStatus(InstanceStatus.Connecting, 'Connecting')
 
 		await this.configUpdated(config)
 		updateBasicVariables(this)
@@ -134,6 +130,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		this.config = config
 		this.tcp?.destroy()
 		this.rest?.destroy()
+		this.connectionStatus.reset()
 		this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
 		this.rest = new REST(this, this.config.host, this.config.restPort, this.config.username, this.config.password)
 		this.updateInstance(updateFlags.All)
