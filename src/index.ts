@@ -127,7 +127,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	 * @param config new configuration data
 	 * @description triggered every time the config for this instance is saved
 	 */
-	public configUpdated(config: config): Promise<void> {
+	public async configUpdated(config: config): Promise<void> {
 		this.config = config
 		this.tcp?.destroy()
 		this.rest?.destroy()
@@ -135,7 +135,6 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
 		this.rest = new REST(this, this.config.host, this.config.restPort, this.config.username, this.config.password)
 		this.updateInstance(updateFlags.All)
-		return Promise.resolve()
 	}
 
 	/**

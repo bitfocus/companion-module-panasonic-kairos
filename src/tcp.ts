@@ -139,17 +139,17 @@ export class TCP {
 			// 	this.sendCommand(`subscribe:${LAYER.name}.sourceB`)
 			// }
 		}
-		this.sockets.main.on('connect', async () => {
+		this.sockets.main.on('connect', () => {
 			this.instance.log('debug', 'Connected to mixer')
 			this.lastErrorMessage = null
 			this.stopKeepAlive()
 			this.keepAliveInterval = setInterval(keepAlive, 4500) //session expires at 5 seconds
 			fetchStills()
-			await subscribeToData()
-			this.instance.updateInstance(updateFlags.All as number)
+			subscribeToData()
+			this.instance.updateInstance(updateFlags.All)
 		})
 
-		let keepAlive = () => {
+		const keepAlive = () => {
 			this.sendCommand('')
 			// this.instance.log('debug', 'Keepalive sent')
 		}
@@ -167,7 +167,7 @@ export class TCP {
 				this.instance.log('debug', 'Complete refresh of all data')
 				// SEND UPDATE ALL??????
 				subscribeToData()
-				this.instance.updateInstance(updateFlags.All as number)
+				this.instance.updateInstance(updateFlags.All)
 			} else {
 				whatTodo = updateFlags.onlyVariables
 				// Do a switch block to go fast through the rest of the data
@@ -183,7 +183,7 @@ export class TCP {
 							break
 						case /\.sourceA/i.test(returningData):
 							{
-								let index = this.instance.combinedLayerArray.findIndex(
+								const index = this.instance.combinedLayerArray.findIndex(
 									(x) => x.layerName === returningData.split('=')[0].slice(0, -8),
 								)
 								if (index != -1) this.instance.combinedLayerArray[index].sourceA = returningData.split('=')[1]
@@ -192,7 +192,7 @@ export class TCP {
 							break
 						case /\.sourceB/i.test(returningData):
 							{
-								let index = this.instance.combinedLayerArray.findIndex(
+								const index = this.instance.combinedLayerArray.findIndex(
 									(x) => x.layerName === returningData.split('=')[0].slice(0, -8),
 								)
 								if (index != -1) this.instance.combinedLayerArray[index].sourceB = returningData.split('=')[1]
@@ -209,14 +209,14 @@ export class TCP {
 						//case /^Mixer\.AudioMixers\.AudioMixer\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
 						case /^AUDIOMIXER\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
 							{
-								let index = parseInt(returningData.slice(returningData.search('.Channel') + 9, -7)) - 1
+								const index = parseInt(returningData.slice(returningData.search('.Channel') + 9, -7)) - 1
 								this.instance.KairosObj.AUDIO_CHANNELS[index].mute = parseInt(returningData.split('=')[1])
 								this.instance.checkFeedbacks(FeedbackId.audioMuteChannel)
 							}
 							break
 						case /\.source=/i.test(returningData): // This is an AUX source
 							{
-								let index = this.instance.KairosObj.AUX.findIndex(
+								const index = this.instance.KairosObj.AUX.findIndex(
 									(x) => x.name === returningData.split('=')[0].slice(0, returningData.split('=')[0].search('.source')),
 								)
 								if (index != -1) this.instance.KairosObj.AUX[index].source = returningData.split('=')[1]
@@ -248,7 +248,7 @@ export class TCP {
 						//	break
 						case /\.repeat=/i.test(returningData): // //This is an PLAYER repeat check
 							{
-								let index = this.instance.KairosObj.PLAYERS.findIndex(
+								const index = this.instance.KairosObj.PLAYERS.findIndex(
 									(x) => x.player === returningData.split('=')[0].slice(0, -7),
 								)
 								if (index != -1) this.instance.KairosObj.PLAYERS[index].repeat = parseInt(returningData.split('=')[1])
@@ -278,8 +278,10 @@ export class TCP {
 						// 	break
 						case /\.preset_enabled/i.test(returningData): //This is an response to SCENES.Main.Layers.Background.preset_enabled=1
 							{
-								let layer = returningData.split('=')[0].slice(0, returningData.split('=')[0].search('.preset_enabled'))
-								let index = this.instance.combinedLayerArray.findIndex((s) => s.layerName === layer)
+								const layer = returningData
+									.split('=')[0]
+									.slice(0, returningData.split('=')[0].search('.preset_enabled'))
+								const index = this.instance.combinedLayerArray.findIndex((s) => s.layerName === layer)
 								if (index != -1)
 									this.instance.combinedLayerArray[index].preset_enabled = parseInt(returningData.split('=')[1])
 							}
@@ -307,10 +309,10 @@ export class TCP {
 						// 	break
 						case /\.name=/i.test(returningData): // This is an name for an Input or AUX (BE AWARE THIS CAN CHANGE IN THE FUTURE)
 							{
-								let source = returningData.split('=')[0].slice(0, -5)
-								let name = returningData.split('=')[1]
-								let index_i = this.instance.KairosObj.INPUTS.findIndex((x) => x.shortcut === source)
-								let index_a = this.instance.KairosObj.AUX.findIndex((x) => x.name === source)
+								const source = returningData.split('=')[0].slice(0, -5)
+								const name = returningData.split('=')[1]
+								const index_i = this.instance.KairosObj.INPUTS.findIndex((x) => x.shortcut === source)
+								const index_a = this.instance.KairosObj.AUX.findIndex((x) => x.name === source)
 								if (index_i != -1) this.instance.KairosObj.INPUTS[index_i].name = name
 								else if (index_a != -1) this.instance.KairosObj.AUX[index_a].name = name
 							}
@@ -339,7 +341,7 @@ export class TCP {
 		}
 
 		// ToDo: It should operate call back function with each transitions
-		this.sockets.main.on('data', async (data: Buffer) => {
+		this.sockets.main.on('data', (data: Buffer) => {
 			let str = this.recvRemain + data.toString()
 			// this.instance.log('debug', 'Received: ' + str)
 			this.recvRemain = ''
@@ -362,7 +364,7 @@ export class TCP {
 					// error return
 					str = str.substring(7)
 				} else {
-					let end = str.indexOf('\r\n\r\n')
+					const end = str.indexOf('\r\n\r\n')
 					if (end < 0) {
 						this.recvRemain = str + this.recvRemain
 						return

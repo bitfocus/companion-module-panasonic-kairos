@@ -43,19 +43,19 @@ export function updateBasicVariables(instance: KairosInstance): void {
 		{ name: 'Mute Channel 16', variableId: 'Audio.mute_channel_16' },
 	])
 
-	let inputSources: { name: string; variableId: string }[] = []
+	const inputSources: { name: string; variableId: string }[] = []
 	instance.KairosObj.INPUTS.forEach((INPUT) => {
 		inputSources.push({ name: `Source ${INPUT.name} name`, variableId: inputVariableId(INPUT.name) })
 	})
 
-	let auxSources: { name: string; variableId: string }[] = []
-	let auxNames: { name: string; variableId: string }[] = []
+	const auxSources: { name: string; variableId: string }[] = []
+	const auxNames: { name: string; variableId: string }[] = []
 	instance.KairosObj.AUX.forEach((AUX) => {
 		auxSources.push({ name: `Source in ${AUX.name}`, variableId: `${auxVariableId(AUX.name)}.source` })
 		auxNames.push({ name: `AUX ${AUX.name} name`, variableId: auxVariableId(AUX.name) })
 	})
 
-	let layerSources: { name: string; variableId: string }[] = []
+	const layerSources: { name: string; variableId: string }[] = []
 	instance.combinedLayerArray.forEach((LAYER) => {
 		layerSources.push({
 			name: `SourceA in ${LAYER.sceneName}.${LAYER.layerName}`,
@@ -70,7 +70,7 @@ export function updateBasicVariables(instance: KairosInstance): void {
 	// for (const AUX of instance.KairosObj.AUX) {
 	// 	auxAvailable.push({ name: `${AUX.name} available`, variableId: `${AUX.name}.available` })
 	// }
-	let playerRepeat: { name: string; variableId: string }[] = []
+	const playerRepeat: { name: string; variableId: string }[] = []
 	instance.KairosObj.PLAYERS.forEach((PLAYER) => {
 		playerRepeat.push({ name: `${PLAYER.player} in repeat mode`, variableId: `Player.${PLAYER.player}.repeat` })
 	})
@@ -79,7 +79,7 @@ export function updateBasicVariables(instance: KairosInstance): void {
 	//for (const LAYER of instance.combinedLayerArray) {
 	//	presetEnabled.push({ name: `PVW bus for ${LAYER.name.slice(7)}`, variableId: `${LAYER.name}.preset_enabled` })
 	//}
-	let filteredVariables = [
+	const filteredVariables = [
 		...layerSources,
 		...inputSources,
 		...auxSources,

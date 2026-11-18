@@ -64,9 +64,9 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				bgcolor: combineRgb(255, 0, 0),
 			},
 			callback: (feedback): boolean => {
-				let layer = feedback.options.layer
-				let source = feedback.options.source
-				let sourceAB = feedback.options.sourceAB
+				const layer = feedback.options.layer
+				const source = feedback.options.source
+				const sourceAB = feedback.options.sourceAB
 				for (const LAYER of instance.combinedLayerArray) {
 					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceA === source && sourceAB == 'sourceA')
 						return true
@@ -118,9 +118,9 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				bgcolor: combineRgb(255, 0, 0),
 			},
 			callback: (feedback): boolean => {
-				let layer = feedback.options.layer
-				let source = feedback.options.source
-				let sourceAB = feedback.options.sourceAB
+				const layer = feedback.options.layer
+				const source = feedback.options.source
+				const sourceAB = feedback.options.sourceAB
 				for (const LAYER of instance.combinedLayerArray) {
 					if (`/${LAYER.sceneName}/${LAYER.layerName}` == layer && LAYER.sourceA === source && sourceAB == 'sourceA')
 						return true
@@ -154,8 +154,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				bgcolor: combineRgb(255, 0, 0),
 			},
 			callback: (feedback): boolean => {
-				let channelString = feedback.options.channel as string
-				let channelNumber = parseInt(channelString.slice(7)) - 1
+				const channelString = feedback.options.channel
+				const channelNumber = parseInt(channelString.slice(7)) - 1
 				if (instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute === 1) return true
 				else return false
 			},
@@ -187,7 +187,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 				bgcolor: combineRgb(0, 255, 0),
 			},
 			callback: (feedback): boolean => {
-				let index = instance.KairosObj.AUX.findIndex((x) => x.name === feedback.options.aux)
+				const index = instance.KairosObj.AUX.findIndex((x) => x.name === feedback.options.aux)
 				if (index == -1) return false
 				if (instance.KairosObj.AUX[index].source === feedback.options.source) return true
 				else return false

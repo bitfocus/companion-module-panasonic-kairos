@@ -262,7 +262,7 @@ export const formatTime = (time: number, interval: 'ms' | 's', format: TimeForma
 
 export const createUUID = (): string => {
 	let dt: number = new Date().getTime()
-	let uuid: string = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+	const uuid: string = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
 		const r: number = ((dt + Math.random() * 16) % 16) | 0
 		dt = Math.floor(dt / 16)
 		return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)

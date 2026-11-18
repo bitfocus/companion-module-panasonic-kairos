@@ -58,7 +58,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 	 * @param _info
 	 */
 	const sendPatchCommand = (
-		action: { patchCommand: string; options: string; body: {} },
+		action: { patchCommand: string; options: string; body: object },
 		_info?: CompanionActionDefinition | null,
 	): void => {
 		const base64Credentials = Buffer.from(`${instance.config?.username}:${instance.config?.password}`).toString(
@@ -71,13 +71,18 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					action.options
 				} + ${JSON.stringify(action.body)}`,
 			)
-			fetch(`http://${instance.config?.host}:${instance.config?.restPort}${action.patchCommand}${action.options}`, {
-				method: 'PATCH',
-				headers: {
-					Authorization: `Basic ${base64Credentials}`,
-					'Content-Type': 'application/json',
+			void fetch(
+				`http://${instance.config?.host}:${instance.config?.restPort}${action.patchCommand}${action.options}`,
+				{
+					method: 'PATCH',
+					headers: {
+						Authorization: `Basic ${base64Credentials}`,
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(action.body),
 				},
-				body: JSON.stringify(action.body),
+			).catch((error: unknown) => {
+				instance.log('error', `Error sending PATCH command: ${error}`)
 			})
 		} catch (error) {
 			instance.log('error', `Error sending PATCH command: ${error}`)
@@ -96,7 +101,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		if (instance.tcp) instance.tcp.sendCommand(functionName)
 	}
 
-	let multiviewerPresetChoices: { id: string; label: string }[] = []
+	const multiviewerPresetChoices: { id: string; label: string }[] = []
 	instance.KairosObj.MULTIVIEWERS.forEach((multiviewer) => {
 		if (!multiviewer.presets) return
 		multiviewer.presets.forEach((preset) => {
@@ -104,7 +109,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			multiviewerPresetChoices.push({ id: preset.id, label: `${multiviewer.name} - ${preset.name}` })
 		})
 	})
-	let actionChoices: { id: string; label: string }[] = []
+	const actionChoices: { id: string; label: string }[] = []
 	instance.KairosObj.SCENES.forEach((scene) => {
 		scene.actions.forEach((action) => {
 			actionChoices.push({ id: `/${scene.name}/actions/${action.uuid}`, label: `${scene.name}/${action.name}` })
@@ -154,11 +159,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					body: { [`${action.options.sourceAB}`]: action.options.source },
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
+				const index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
 				if (index != -1) {
-					action.options.sourceAB == 'sourceA'
-						? (instance.combinedLayerArray[index].sourceA = action.options.source as string)
-						: (instance.combinedLayerArray[index].sourceB = action.options.source as string)
+					if (action.options.sourceAB == 'sourceA') {
+						instance.combinedLayerArray[index].sourceA = action.options.source
+					} else {
+						instance.combinedLayerArray[index].sourceB = action.options.source
+					}
 				}
 				instance.checkFeedbacks(FeedbackId.inputSource)
 
@@ -207,11 +214,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					},
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
+				const index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
 				if (index != -1) {
-					action.options.sourceAB == 'sourceA'
-						? (instance.combinedLayerArray[index].sourceA = action.options.source as string)
-						: (instance.combinedLayerArray[index].sourceB = action.options.source as string)
+					if (action.options.sourceAB == 'sourceA') {
+						instance.combinedLayerArray[index].sourceA = action.options.source
+					} else {
+						instance.combinedLayerArray[index].sourceB = action.options.source
+					}
 				}
 				instance.checkFeedbacks(FeedbackId.inputSource)
 
@@ -283,11 +292,13 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					},
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
+				const index = instance.combinedLayerArray.findIndex((x) => x.uuid === action.options.layer)
 				if (index != -1) {
-					action.options.sourceAB == 'sourceA'
-						? (instance.combinedLayerArray[index].sourceA = action.options.source as string)
-						: (instance.combinedLayerArray[index].sourceB = action.options.source as string)
+					if (action.options.sourceAB == 'sourceA') {
+						instance.combinedLayerArray[index].sourceA = action.options.source
+					} else {
+						instance.combinedLayerArray[index].sourceB = action.options.source
+					}
 				}
 				instance.checkFeedbacks(FeedbackId.inputSource)
 
@@ -453,7 +464,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					body: { source: action.options.source },
 				}
 				// Don't wait for the value to return from the mixer, set it directly
-				let index = instance.KairosObj.AUX.findIndex((x) => x.name === action.options.aux)
+				const index = instance.KairosObj.AUX.findIndex((x) => x.name === action.options.aux)
 				if (index != -1) {
 					instance.KairosObj.AUX[index].source = action.options.source
 					instance.checkFeedbacks(FeedbackId.aux)
@@ -604,7 +615,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 						functionID: `AUDIOMIXER.mute=${action.options.mute}`,
 					},
 				}
-				instance.KairosObj.audio_master_mute = action.options.mute as number
+				instance.KairosObj.audio_master_mute = action.options.mute
 				instance.checkFeedbacks(FeedbackId.audioMuteMaster)
 				updateBasicVariables(instance)
 				sendSimpleProtocolCommand(muteMaster)
@@ -622,9 +633,9 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					},
 				}
 				if (action.options.channel) {
-					let channelNumberString = action.options.channel as string
-					let channelNumber = parseInt(channelNumberString.slice(7)) - 1
-					instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute = action.options.mute as number
+					const channelNumberString = action.options.channel
+					const channelNumber = parseInt(channelNumberString.slice(7)) - 1
+					instance.KairosObj.AUDIO_CHANNELS[channelNumber].mute = action.options.mute
 					instance.checkFeedbacks(FeedbackId.audioMuteChannel)
 					updateBasicVariables(instance)
 					sendSimpleProtocolCommand(muteChannel)
