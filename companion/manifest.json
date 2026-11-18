@@ -4,12 +4,16 @@
 	"id": "panasonic-kairos",
 	"name": "panasonic-kairos",
 	"shortname": "kairos",
-	"description": "Module to control Kairos",
+	"description": "Controls the Panasonic KAIROS live production platform.",
 	"version": "0.0.0",
 	"license": "MIT",
 	"repository": "git+https://github.com/bitfocus/companion-module-panasonic-kairos.git",
 	"bugs": "https://github.com/bitfocus/companion-module-panasonic-kairos/issues",
 	"maintainers": [
+		{
+			"name": "Bitfocus AS",
+			"email": "connections@bitfocus.io"
+		},
 		{
 			"name": "Jeffrey Davidsz",
 			"email": "jeffrey.davidsz@vicreo.eu"
@@ -23,6 +27,6 @@
 		"entrypoint": "../dist/index.js"
 	},
 	"manufacturer": "Panasonic",
-	"products": ["Kairos"],
-	"keywords": ["Software", "Vision Mixer"]
+	"products": ["KAIROS"],
+	"keywords": ["Software", "Vision Mixer", "Video Switcher", "Switcher", "Video"]
 }
