@@ -175,16 +175,17 @@ export class REST {
 	}
 
 	public async patch(path: string, body: object): Promise<void> {
-		if (this.lifetime.signal.aborted) return
+		if (this.lifetime.signal.aborted) throw new Error(`Cannot send KAIROS REST PATCH ${path}: connection was closed`)
 		this.instance.log('debug', `Sending KAIROS REST PATCH ${path}`)
 		try {
 			await this.request(path, body)
 		} catch (error) {
-			if (!this.lifetime.signal.aborted)
-				this.instance.log(
-					'error',
-					`KAIROS REST PATCH ${path} failed: ${error instanceof Error ? error.message : String(error)}`,
-				)
+			const message = this.lifetime.signal.aborted
+				? 'connection was closed'
+				: error instanceof Error
+					? error.message
+					: String(error)
+			throw new Error(`KAIROS REST PATCH ${path} failed: ${message}`, { cause: error })
 		}
 	}
 

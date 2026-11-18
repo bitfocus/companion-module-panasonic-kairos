@@ -84,12 +84,10 @@ export type ActionsSchema = {
 // values are still meaningful before that (or if the mixer is unreachable), so `allowInvalidValues` stops Companion
 // from skipping actions whose value is not in the current choices.
 export function getActions(instance: KairosInstance): CompanionActionDefinitions<ActionsSchema> {
-	const sendPatch = (prefix: string, target: string, body: object): Promise<void> | undefined => {
-		if (!target) {
-			instance.log('error', `Cannot send KAIROS REST PATCH to ${prefix}: no target selected`)
-			return
-		}
-		return instance.rest?.patch(`${prefix}${target}`, body)
+	const sendPatch = async (prefix: string, target: string, body: object): Promise<void> => {
+		if (!target) throw new Error(`Cannot send KAIROS REST PATCH to ${prefix}: no target selected`)
+		if (!instance.rest) throw new Error('Cannot send KAIROS REST PATCH: the REST connection is unavailable')
+		await instance.rest.patch(`${prefix}${target}`, body)
 	}
 
 	const runTcp = async (description: string, command: (kairos: KairosConnection) => Promise<unknown>) =>
