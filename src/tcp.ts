@@ -4,13 +4,13 @@ import {
 	MinimalKairosConnection,
 	TerminateSubscriptionError,
 	refAudioMixerChannel,
-	refAuxName,
+	refSceneTransition,
 	refToPath,
 } from 'kairos-connection'
 import type KairosInstance from './index.js'
 import { FeedbackId } from './feedback.js'
-import { layerRef, macroPath, sceneMacroPath, sceneRef, sourceName } from './refs.js'
-import { updateFlags } from './utils.js'
+import { sceneMacroPath, sceneRef, sourceName } from './refs.js'
+import { parseMacroStatus, updateFlags } from './utils.js'
 import { updateBasicVariables } from './variables.js'
 
 // The library swallows "connection refused", so without this a mixer that is down at startup never leaves Connecting
@@ -167,7 +167,12 @@ export class TCP {
 		Promise.all(
 			scenes.map(async (scene) => {
 				const transitions = await this.connection.listSceneTransitions(sceneRef(scene.path, scene.name))
-				return transitions.map((transition) => ({ sceneName: scene.name, path: scene.path, name: transition.name }))
+				return transitions.map((transition) => ({
+					sceneName: scene.name,
+					path: scene.path,
+					name: transition.name,
+					ref: refSceneTransition(sceneRef(scene.path, scene.name), transition.transitionPath),
+				}))
 			}),
 		)
 			.then((transitions) => {
@@ -197,15 +202,15 @@ export class TCP {
 				this.instance.checkFeedbacks(FeedbackId.audioMuteChannel)
 			})
 		}
-		for (const { name: player } of state.players) {
-			wanted.set(`${player}.repeat`, (value) => {
+		for (const { name: player, ref } of state.players) {
+			wanted.set(`${refToPath(ref)}.repeat`, (value) => {
 				const entry = state.players.find((x) => x.name === player)
 				if (entry) entry.repeat = parseInt(value) === 1
 				this.instance.checkFeedbacks(FeedbackId.playerRepeat)
 			})
 		}
-		for (const { name } of state.auxes) {
-			wanted.set(`${refToPath(refAuxName(name))}.source`, (value) => {
+		for (const { name, ref } of state.auxes) {
+			wanted.set(`${refToPath(ref)}.source`, (value) => {
 				const entry = state.auxes.find((x) => x.name === name)
 				if (entry) entry.source = sourceName(value, this.inputNames())
 				this.instance.checkFeedbacks(FeedbackId.aux)
@@ -213,7 +218,7 @@ export class TCP {
 		}
 		// REST doesn't report whether a macro is running, so follow its status here
 		const macros = [
-			...state.macros.map((macro) => ({ path: macroPath(macro), feedback: FeedbackId.macroPlaying })),
+			...state.macros.map((macro) => ({ path: refToPath(macro.ref), feedback: FeedbackId.macroPlaying })),
 			...state.sceneMacros.map((macro) => ({
 				path: sceneMacroPath(macro),
 				feedback: FeedbackId.sceneMacroPlaying,
@@ -221,19 +226,24 @@ export class TCP {
 		]
 		for (const { path, feedback } of macros) {
 			wanted.set(`${path}.status`, (value) => {
-				this.instance.state.macroStatus.set(path, value)
+				const status = parseMacroStatus(value)
+				if (status === undefined) {
+					this.instance.log('debug', `Unknown status ${value} for macro ${path}`)
+					return
+				}
+				this.instance.state.macroStatus.set(path, status)
 				this.instance.checkFeedbacks(feedback)
 			})
 		}
 		// Only the A/B sources are needed: subscribeSceneLayer would subscribe to every attribute of every layer
 		for (const layer of this.instance.state.layers) {
-			const path = refToPath(layerRef(layer))
+			const path = refToPath(layer.ref)
 			// REST has no sourceB for layers without a B bus, where TCP would still report one (BLACK)
 			const buses = layer.sourceB == null ? (['sourceA'] as const) : (['sourceA', 'sourceB'] as const)
 			for (const sourceAB of buses) {
 				wanted.set(`${path}.${sourceAB}`, (value) => {
 					// REST replaces the layer list on every poll, so look the layer up again
-					const entry = this.instance.state.layers.find((x) => refToPath(layerRef(x)) === path)
+					const entry = this.instance.state.layers.find((x) => refToPath(x.ref) === path)
 					if (entry) entry[sourceAB] = sourceName(value, this.inputNames())
 					this.instance.checkFeedbacks(FeedbackId.inputSource, FeedbackId.inputMediaStill)
 				})

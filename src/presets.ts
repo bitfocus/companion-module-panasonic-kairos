@@ -1,5 +1,5 @@
 import type KairosInstance from './index.js'
-import type { KairosTypes } from './index.js'
+import type { KairosTypes, PlayerRef } from './index.js'
 import { ActionId } from './actions.js'
 import { FeedbackId } from './feedback.js'
 import { auxVariableId, inputVariableId } from './variables.js'
@@ -33,7 +33,11 @@ type Preset = CompanionSimplePresetDefinition<KairosTypes>
 type Steps = Preset['steps']
 type Feedbacks = Preset['feedbacks']
 
-const PLAYER_SECTIONS: Record<string, SectionName> = { RR: 'RAM Recorders', CP: 'Clip Players', AP: 'Audio Players' }
+const PLAYER_SECTIONS: Record<PlayerRef['realm'], SectionName> = {
+	ramRecorder: 'RAM Recorders',
+	clipPlayer: 'Clip Players',
+	'audio-player': 'Audio Players',
+}
 
 const PLAYER_CONTROLS = [
 	{ action: 'begin', id: 'begin', name: 'Go to Start', text: 'START', bgcolor: BLACK },
@@ -214,9 +218,8 @@ export function getPresets(instance: KairosInstance): {
 	}
 
 	// Players
-	for (const { name: player } of instance.state.players) {
-		const section = PLAYER_SECTIONS[player.replace(/\d+$/, '')]
-		if (!section) continue
+	for (const { name: player, ref } of instance.state.players) {
+		const section = PLAYER_SECTIONS[ref.realm]
 		for (const control of PLAYER_CONTROLS) {
 			addPreset(section, player, `${player}.${control.id}`, {
 				name: `${player} ${control.name}`,

@@ -1,4 +1,5 @@
 import { combineRgb, type CompanionInputFieldDropdown } from '@companion-module/base'
+import { MacroStatus } from 'kairos-connection'
 
 interface input {
 	index: number
@@ -32,8 +33,11 @@ export const multiviewerPresetChoices = (
 		),
 	)
 
-/** Whether a macro status reported over TCP (`Playing`, `Stopped`, `Waiting`, `Recording`) means it is running */
-export const isMacroPlaying = (status: string | undefined): boolean => status === 'Playing'
+/** A macro status reported over TCP, or undefined if it isn't one the library knows */
+export const parseMacroStatus = (value: string): MacroStatus | undefined =>
+	(Object.values(MacroStatus) as string[]).includes(value) ? (value as MacroStatus) : undefined
+
+export const isMacroPlaying = (status: MacroStatus | undefined): boolean => status === MacroStatus.Playing
 
 // Force options to have a default to prevent sending undefined values
 type EnforceDefault<T, U> = Omit<T, 'default'> & { default: U }

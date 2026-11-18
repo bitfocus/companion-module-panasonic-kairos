@@ -1,5 +1,6 @@
 import type KairosInstance from './index.js'
-import { macroPath, sceneMacroPath } from './refs.js'
+import { refToPath } from 'kairos-connection'
+import { sceneMacroPath } from './refs.js'
 import { BLUE, GREEN, RED, isMacroPlaying, mediaStillLabel, options, type SourceAB } from './utils.js'
 import type { CompanionFeedbackDefinitions } from '@companion-module/base'
 
@@ -217,7 +218,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			defaultStyle: { bgcolor: GREEN },
 			callback: (feedback): boolean => {
 				const macro = instance.state.macros.find((x) => x.uuid === feedback.options.macro)
-				return macro !== undefined && isMacroPlaying(instance.state.macroStatus.get(macroPath(macro)))
+				return macro !== undefined && isMacroPlaying(instance.state.macroStatus.get(refToPath(macro.ref)))
 			},
 		},
 		[FeedbackId.sceneMacroPlaying]: {

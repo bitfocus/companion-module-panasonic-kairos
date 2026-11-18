@@ -9,8 +9,8 @@ import {
 	type SourceAB,
 } from './utils.js'
 import type KairosInstance from './index.js'
-import type { MixerState } from './index.js'
-import { layerRef, sceneRef, sourcePath, transitionRef } from './refs.js'
+import type { MixerState, PlayerRef } from './index.js'
+import { sceneRef, sourcePath } from './refs.js'
 import { updateBasicVariables } from './variables.js'
 import { FeedbackId } from './feedback.js'
 
@@ -37,7 +37,12 @@ export enum ActionId {
 type LayerSourceOptions = { layer: string; sourceAB: SourceAB; source: string }
 type Layer = MixerState['layers'][number]
 
-const PLAYER_PREFIX = { RR: 'ramRecorder', CP: 'clipPlayer', AP: 'audioPlayer' } as const
+// The library's method names for each kind of player, e.g. ramRecorderPlay
+const PLAYER_METHOD_PREFIX = {
+	ramRecorder: 'ramRecorder',
+	clipPlayer: 'clipPlayer',
+	'audio-player': 'audioPlayer',
+} as const satisfies Record<PlayerRef['realm'], string>
 const PLAYER_TRANSPORT = {
 	begin: 'Begin',
 	rewind: 'Rewind',
@@ -50,29 +55,28 @@ const PLAYER_TRANSPORT = {
 	end: 'End',
 } as const
 type PlayerTransportMethod =
-	`${(typeof PLAYER_PREFIX)[keyof typeof PLAYER_PREFIX]}${(typeof PLAYER_TRANSPORT)[keyof typeof PLAYER_TRANSPORT]}`
+	`${(typeof PLAYER_METHOD_PREFIX)[PlayerRef['realm']]}${(typeof PLAYER_TRANSPORT)[keyof typeof PLAYER_TRANSPORT]}`
 
 /**
- * The command for a RAM recorder, clip player or audio player action (`play`, `repeat=1`, ...) on the player named
- * `RR1`, `CP1`, `AP1`...
- * @returns null when the player or action isn't one the library knows
+ * The command for a player action (`play`, `repeat=1`, ...)
+ * @returns null when the action isn't one the library knows
  */
-function playerCommand(player: string, action: string): ((kairos: KairosConnection) => Promise<void>) | null {
-	const match = /^(RR|CP|AP)(\d+)$/.exec(player)
-	if (!match) return null
-	const kind = match[1] as keyof typeof PLAYER_PREFIX
-	const index = Number(match[2])
-
+function playerCommand(ref: PlayerRef, action: string): ((kairos: KairosConnection) => Promise<void>) | null {
 	const repeat = /^repeat=([01])$/.exec(action)
 	if (repeat) {
 		const props = { repeat: repeat[1] === '1' }
-		if (kind === 'RR') return async (kairos) => kairos.updateRamRecorder(index, props)
-		if (kind === 'CP') return async (kairos) => kairos.updateClipPlayer(index, props)
-		return async (kairos) => kairos.updateAudioPlayer(index, props)
+		switch (ref.realm) {
+			case 'ramRecorder':
+				return async (kairos) => kairos.updateRamRecorder(ref, props)
+			case 'clipPlayer':
+				return async (kairos) => kairos.updateClipPlayer(ref, props)
+			case 'audio-player':
+				return async (kairos) => kairos.updateAudioPlayer(ref, props)
+		}
 	}
 	if (!(action in PLAYER_TRANSPORT)) return null
-	const method: PlayerTransportMethod = `${PLAYER_PREFIX[kind]}${PLAYER_TRANSPORT[action as keyof typeof PLAYER_TRANSPORT]}`
-	return async (kairos) => kairos[method](index)
+	const method: PlayerTransportMethod = `${PLAYER_METHOD_PREFIX[ref.realm]}${PLAYER_TRANSPORT[action as keyof typeof PLAYER_TRANSPORT]}`
+	return async (kairos) => kairos[method](ref.playerIndex)
 }
 
 export type ActionsSchema = {
@@ -143,7 +147,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 	}
 
 	const setLayerSource = (layer: Layer, sourceAB: SourceAB, source: string): void => {
-		const ref = layerRef(layer)
+		const ref = layer.ref
 		const path = sourcePath(source, instance.state.scenes)
 		runTcp(`set ${layer.sceneName}/${layer.layerName} ${sourceAB} to ${source}`, async (kairos) =>
 			// The library has sourceB as read only, which it is on current firmware, so this reports that error
@@ -384,7 +388,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				const transition = findTransition(action.options.layer)
 				if (transition)
 					runTcp(`auto transition ${transition.sceneName}/${transition.name}`, async (kairos) =>
-						kairos.sceneTransitionTransitionAuto(transitionRef(transition)),
+						kairos.sceneTransitionTransitionAuto(transition.ref),
 					)
 				else sendLegacyCommand(`SCENES.${action.options.layer}.transition_auto`)
 			},
@@ -405,7 +409,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				const transition = findTransition(action.options.layer)
 				if (transition)
 					runTcp(`cut transition ${transition.sceneName}/${transition.name}`, async (kairos) =>
-						kairos.sceneTransitionTransitionCut(transitionRef(transition)),
+						kairos.sceneTransitionTransitionCut(transition.ref),
 					)
 				else sendLegacyCommand(`SCENES.${action.options.layer}.transition_cut`)
 			},
@@ -466,7 +470,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				const entry = instance.state.players.find((x) => x.name === player)
 				const playerAction =
 					action.options.action === 'repeat=toggle' ? `repeat=${entry?.repeat ? 0 : 1}` : action.options.action
-				const command = playerCommand(player, playerAction)
+				const command = entry ? playerCommand(entry.ref, playerAction) : null
 				if (command) runTcp(`${player} ${playerAction}`, command)
 				else sendLegacyCommand(`${player}.${playerAction}`)
 

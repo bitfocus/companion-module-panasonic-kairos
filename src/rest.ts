@@ -2,7 +2,9 @@ import type KairosInstance from './index.js'
 import { InstanceStatus } from '@companion-module/base'
 import { FeedbackId } from './feedback.js'
 import type { SourceStatus } from './status.js'
+import { allPlayers, layerRef, macroRef } from './refs.js'
 import { createInputWithName, updateFlags } from './utils.js'
+import { refAuxName } from 'kairos-connection'
 
 const POLL_INTERVAL_MS = 5000
 const REQUEST_TIMEOUT_MS = 4000
@@ -56,35 +58,7 @@ export class REST {
 	 * @description Create initial requests to Kairos
 	 */
 	public readonly setupKairos = async (): Promise<void> => {
-		// Load players
-		this.instance.state.players = [
-			{ name: 'RR1', repeat: false },
-			{ name: 'RR2', repeat: false },
-			{ name: 'RR3', repeat: false },
-			{ name: 'RR4', repeat: false },
-			{ name: 'RR5', repeat: false },
-			{ name: 'RR6', repeat: false },
-			{ name: 'RR7', repeat: false },
-			{ name: 'RR8', repeat: false },
-			{ name: 'CP1', repeat: false },
-			{ name: 'CP2', repeat: false },
-			{ name: 'AP1', repeat: false },
-			{ name: 'AP2', repeat: false },
-			{ name: 'AP3', repeat: false },
-			{ name: 'AP4', repeat: false },
-			{ name: 'AP5', repeat: false },
-			{ name: 'AP6', repeat: false },
-			{ name: 'AP7', repeat: false },
-			{ name: 'AP8', repeat: false },
-			{ name: 'AP9', repeat: false },
-			{ name: 'AP10', repeat: false },
-			{ name: 'AP11', repeat: false },
-			{ name: 'AP12', repeat: false },
-			{ name: 'AP13', repeat: false },
-			{ name: 'AP14', repeat: false },
-			{ name: 'AP15', repeat: false },
-			{ name: 'AP16', repeat: false },
-		]
+		this.instance.state.players = allPlayers()
 		// Load audio channels
 		this.instance.state.audioChannels = [
 			{ name: 'Channel 1', muted: false },
@@ -110,7 +84,10 @@ export class REST {
 		const pullMacros = async () => {
 			const macroResult = await this.sendCommand('/macros')
 			if (this.destroyed) return
-			this.instance.state.macros = JSON.parse(macroResult)
+			this.instance.state.macros = JSON.parse(macroResult).map((macro: { path: string; name: string }) => ({
+				...macro,
+				ref: macroRef(macro.path, macro.name),
+			}))
 		}
 
 		const pullMultiviewers = async () => {
@@ -157,6 +134,7 @@ export class REST {
 						sourceA: layer.sourceA,
 						sourceB: layer.sourceB,
 						uuid: `/${scene.uuid}/${layer.uuid}`,
+						ref: layerRef(scene.path, scene.name, layer.name),
 					})
 					if (!layer.sources) return
 					layer.sources.forEach((source: any) => {
@@ -168,7 +146,10 @@ export class REST {
 
 			const auxResult = await this.sendCommand('/aux')
 			if (this.destroyed) return
-			this.instance.state.auxes = JSON.parse(auxResult)
+			this.instance.state.auxes = JSON.parse(auxResult).map((aux: { name: string }) => ({
+				...aux,
+				ref: refAuxName(aux.name),
+			}))
 
 			// Load inputs from aux into Kairos
 			this.instance.state.auxes.forEach((aux: any) => {

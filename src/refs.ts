@@ -1,36 +1,43 @@
 import {
 	parseAnySourceRef,
+	refAudioPlayer,
+	refClipPlayer,
 	refMacro,
 	refMatte,
 	refRamRecorder,
 	refScene,
 	refSceneLayer,
-	refSceneTransition,
 	refSourceBase,
 	refSourceInt,
 	refToPath,
+	type MacroRef,
 	type SceneLayerRef,
 	type SceneRef,
-	type SceneTransitionRef,
 } from 'kairos-connection'
-import type { MixerState } from './index.js'
+import type { MixerState, PlayerRef } from './index.js'
 
-type Layer = MixerState['layers'][number]
-type Transition = MixerState['transitions'][number]
 type SceneMacro = MixerState['sceneMacros'][number]
 
+/** Splits a REST folder path (`Folder/Sub/`) into its parts */
+const folderParts = (path: string | undefined): string[] => (path ?? '').split('/').filter((part) => part !== '')
+
 export const sceneRef = (path: string | undefined, sceneName: string): SceneRef =>
-	refScene([...(path ?? '').split('/').filter((part) => part !== ''), sceneName])
+	refScene([...folderParts(path), sceneName])
 
-export const layerRef = (layer: Layer): SceneLayerRef =>
-	refSceneLayer(sceneRef(layer.path, layer.sceneName), [layer.layerName])
+export const layerRef = (scenePath: string | undefined, sceneName: string, layerName: string): SceneLayerRef =>
+	refSceneLayer(sceneRef(scenePath, sceneName), [layerName])
 
-export const transitionRef = (transition: Transition): SceneTransitionRef =>
-	refSceneTransition(sceneRef(transition.path, transition.sceneName), [transition.name])
+/** A global macro, from its REST folder path (`Folder/`) and name */
+export const macroRef = (path: string | undefined, name: string): MacroRef => refMacro([...folderParts(path), name])
 
-/** The protocol path of a global macro, from its REST folder path (`Folder/`) and name */
-export const macroPath = (macro: { path: string; name: string }): string =>
-	refToPath(refMacro([...macro.path.split('/').filter((part) => part !== ''), macro.name]))
+const playerRange = <Ref extends PlayerRef>(count: number, ref: (index: number) => Ref): Ref[] =>
+	Array.from({ length: count }, (_, i) => ref(i + 1))
+
+/** Every RAM recorder, clip player and audio player, named as the protocol names them (`RR1`, `CP1`, `AP1`...) */
+export const allPlayers = (): MixerState['players'] =>
+	[...playerRange(8, refRamRecorder), ...playerRange(2, refClipPlayer), ...playerRange(16, refAudioPlayer)].map(
+		(ref) => ({ name: refToPath(ref), ref, repeat: false }),
+	)
 
 export const sceneMacroPath = (macro: SceneMacro): string =>
 	`${refToPath(sceneRef(macro.path, macro.sceneName))}.Macros.${macro.macroName}`

@@ -7,6 +7,16 @@ import { updateBasicVariables } from './variables.js'
 import { TCP } from './tcp.js'
 import { REST } from './rest.js'
 import { InstanceBase, type CompanionVariableValues, type SomeCompanionConfigField } from '@companion-module/base'
+import type {
+	AudioPlayerRef,
+	AuxRef,
+	ClipPlayerRef,
+	MacroRef,
+	MacroStatus,
+	RamRecorderRef,
+	SceneLayerRef,
+	SceneTransitionRef,
+} from 'kairos-connection'
 import { ConnectionStatus } from './status.js'
 import { updateFlags } from './utils.js'
 import { UpgradeScripts } from './upgrades.js'
@@ -20,6 +30,8 @@ export type KairosTypes = {
 }
 
 export { UpgradeScripts }
+
+export type PlayerRef = RamRecorderRef | ClipPlayerRef | AudioPlayerRef
 
 /**
  * Everything the module knows about the mixer, from REST and TCP
@@ -46,14 +58,16 @@ export type MixerState = {
 		sourceA: string
 		sourceB: string
 		uuid: string
+		ref: SceneLayerRef
 	}[]
-	auxes: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
+	auxes: { index: string; name: string; source: string; sources: string[]; uuid: string; ref: AuxRef }[]
 	macros: {
 		color: string
 		name: string
 		path: string
 		state: string
 		uuid: string
+		ref: MacroRef
 	}[]
 	sceneMacros: {
 		sceneName: string
@@ -67,7 +81,7 @@ export type MixerState = {
 		uuid: string
 	}[]
 	/** Macro statuses (`Playing`, `Stopped`...) reported over TCP, by protocol path */
-	macroStatus: Map<string, string>
+	macroStatus: Map<string, MacroStatus>
 	snapshots: { name: string; state: string; uuid: string; sceneName: string }[]
 	multiviewers: {
 		index: number
@@ -77,8 +91,8 @@ export type MixerState = {
 		uuid: string
 		sdp: string
 	}[]
-	players: { name: string; repeat: boolean }[]
-	transitions: { sceneName: string; path: string; name: string }[]
+	players: { name: string; ref: PlayerRef; repeat: boolean }[]
+	transitions: { sceneName: string; path: string; name: string; ref: SceneTransitionRef }[]
 	audioChannels: { name: string; muted: boolean }[]
 }
 
