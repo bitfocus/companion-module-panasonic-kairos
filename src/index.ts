@@ -76,7 +76,6 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 			sdp: string
 		}[]
 		PLAYERS: { player: string; repeat: number }[]
-		MV_PRESETS: Array<string>
 		AUDIO_CHANNELS: { channel: string; mute: number }[]
 	} = {
 		audio_master_mute: 100,
@@ -86,7 +85,6 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		AUX: [],
 		MACROS: [],
 		PLAYERS: [],
-		MV_PRESETS: [],
 		AUDIO_CHANNELS: [],
 		SCENES_MACROS: [],
 		SNAPSHOTS: [],
@@ -99,14 +97,8 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		layerName: string
 		sourceA: string
 		sourceB: string
-		preset_enabled?: number
 		uuid: string
 	}[] = []
-	public combinedTransitionsArray: Array<string> = []
-	public combinedSmacrosArray: Array<string> = []
-	public combinedSnapshotsArray: Array<string> = []
-
-	public connected = false
 
 	/**
 	 * @description triggered on instance being enabled
@@ -146,29 +138,10 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		this.log('debug', `Instance destroyed: ${this.id}`)
 	}
 
-	//  /**
-	//    * @param option string from text inputs
-	//    * @returns array of strings indexed by the button modifier delimiter
-	//    * @description first splits the string by the position of the delimiter, then parses any instance variables in each part
-	//    */
-	//   public readonly parseOption = (option: string): string[] => {
-	//     const instanceVariable = RegExp(/\$\(([^:$)]+):([^)$]+)\)/)
-
-	//     return option.split(this.config.shiftDelimiter).map((value) => {
-	//       if (instanceVariable.test(value)) {
-	//         return this.variables ? this.variables.get(value) || '' : ''
-	//       } else {
-	//         return value
-	//       }
-	//     })
-	//   }
 	/**
 	 * @description sets actions and feedbacks available for this instance
 	 */
 	public updateInstance(updateFlag: updateFlags): void {
-		// const begin = Date.now()
-		// Cast actions and feedbacks from Kairos types to Companion types
-
 		if (updateFlag === updateFlags.All) {
 			const actions = getActions(this)
 			const feedbacks = getFeedbacks(this)
@@ -185,7 +158,5 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 			const { structure, presets } = getPresets(this)
 			this.setPresetDefinitions(structure, presets)
 		}
-		// const end = Date.now()
-		// this.log('debug',`updateInstance:${updateFlag === updateFlags.onlyVariables ? 'variables' : 'all'} ${end - begin}, 'ms'`)
 	}
 }

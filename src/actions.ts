@@ -1,4 +1,4 @@
-import type { CompanionActionDefinition, CompanionActionDefinitions } from '@companion-module/base'
+import type { CompanionActionDefinitions } from '@companion-module/base'
 import { options, type SourceAB } from './utils.js'
 import type KairosInstance from './index.js'
 import { updateBasicVariables } from './variables.js'
@@ -11,7 +11,6 @@ export enum ActionId {
 	setMediaStill = 'setMediaStill',
 	programCut = 'programCut',
 	programAuto = 'programAuto',
-	//nextTransition = 'nextTransition',
 	autoTransition = 'autoTransition',
 	cutTransition = 'cutTransition',
 	setAUX = 'setAUX',
@@ -19,7 +18,6 @@ export enum ActionId {
 	macroControl = 'macroControl',
 	macroSceneControl = 'macroSceneControl',
 	mvRecall = 'mvRecall',
-	// smacroControl = 'smacroControl',
 	triggerSnapshot = 'triggerSnapshot',
 	muteMaster = 'muteMaster',
 	muteChannel = 'muteChannel',
@@ -57,10 +55,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 	 * @param action
 	 * @param _info
 	 */
-	const sendPatchCommand = (
-		action: { patchCommand: string; options: string; body: object },
-		_info?: CompanionActionDefinition | null,
-	): void => {
+	const sendPatchCommand = (action: { patchCommand: string; options: string; body: object }): void => {
 		const base64Credentials = Buffer.from(`${instance.config?.username}:${instance.config?.password}`).toString(
 			'base64',
 		)
@@ -89,10 +84,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		}
 	}
 
-	const sendSimpleProtocolCommand = (
-		action: { id: string; options: { functionID: any } },
-		_info?: CompanionActionDefinition | null,
-	): void => {
+	const sendSimpleProtocolCommand = (action: { id: string; options: { functionID: any } }): void => {
 		let functionName: string = action.id
 
 		if ('functionID' in action.options) {
@@ -346,36 +338,12 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					id: 'programAuto',
 					options: {
 						functionID: `SCENES.${action.options.scene}.auto`,
-						scene: action.options.scene,
 					},
 				}
 
 				sendSimpleProtocolCommand(programAuto)
 			},
 		},
-		//[ActionId.nextTransition]: {
-		//	name: 'Transition - NEXT for Layer',
-		//	options: [
-		//		{
-		//			type: 'dropdown',
-		//			label: 'Set next transition',
-		//			id: 'transition',
-		//			default: instance.combinedTransitionsArray[0],
-		//			choices: instance.combinedTransitionsArray.map((id) => ({ id, label: id.slice(7) })),
-		//		},
-		//	],
-		//	callback: (action) => {
-		//		const nextTransition: any = {
-		//			id: 'nextTransition',
-		//			options: {
-		//				functionID: `${action.options.transition.slice(0, 11)}.next_transition=${action.options.transition.slice(
-		//					24
-		//				)}`,
-		//			},
-		//		}
-		//		sendSimpleProtocolCommand(nextTransition)
-		//	},
-		//},
 		[ActionId.autoTransition]: {
 			name: 'Layer AUTO Transition',
 			options: [
@@ -611,7 +579,6 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				const muteMaster: any = {
 					id: 'muteMaster',
 					options: {
-						//functionID: `Mixer.AudioMixers.AudioMixer.mute=${action.options.mute}`,
 						functionID: `AUDIOMIXER.mute=${action.options.mute}`,
 					},
 				}
@@ -628,7 +595,6 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				const muteChannel: any = {
 					id: 'muteChannel',
 					options: {
-						//functionID: `Mixer.AudioMixers.AudioMixer.${action.options.channel}.mute=${action.options.mute}`,
 						functionID: `AUDIOMIXER.${action.options.channel}.mute=${action.options.mute}`,
 					},
 				}

@@ -258,19 +258,6 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		//presets[`${element.player}.stop`] = {
-		//	category: 'PLAYERS',
-		//	label: element.player + 'stop',
-		//	style: {
-		//
-		//		text: element.player + '\\nstop',
-		//		size: '14',
-		//		color: combineRgb(255, 255, 255),
-		//		bgcolor: combineRgb(0, 0, 0),
-		//	},
-		//	steps: [ { down [{ actionId 'playerControl', options: { functionID: '', player: element.player, action: 'stop' } },],up:[],},],
-		//	feedbacks: [],
-		//}
 		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.pause`, {
 			type: 'simple',
 			name: element.player + 'pause',
@@ -305,19 +292,6 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		//presets[`${element.player}.rewind`]={
-		//	category: 'PLAYERS',
-		//	label: element.player + 'rewind',
-		//	style: {
-		//
-		//		text: element.player + '\\nrewind',
-		//		size: '14',
-		//		color: combineRgb(255, 255, 255),
-		//		bgcolor: combineRgb(0, 0, 0),
-		//	},
-		//	steps: [ { down [{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'rewind' } },],up:[],},],
-		//	feedbacks: [],
-		//}
 		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.step_back`, {
 			type: 'simple',
 			name: element.player + 'step_back',
@@ -340,21 +314,6 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		//presets[`${element.player}.reverse_play`]={
-		//	category: 'PLAYERS',
-		//	label: element.player + 'reverse_play',
-		//	style: {
-		//
-		//		text: element.player + '\\nreverse',
-		//		size: '14',
-		//		color: combineRgb(255, 255, 255),
-		//		bgcolor: combineRgb(0, 0, 0),
-		//	},
-		//	steps: [ { down [
-		//		{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'reverse' } },
-		//	],
-		//	feedbacks: [],
-		//}
 		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.step_forward`, {
 			type: 'simple',
 			name: element.player + 'step_forward',
@@ -377,21 +336,6 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		//presets[`${element.player}.fast_forward`] = {
-		//	category: 'PLAYERS',
-		//	label: element.player + 'fast_forward',
-		//	style: {
-		//
-		//		text: element.player + '\\nfast_fwd',
-		//		size: '14',
-		//		color: combineRgb(255, 255, 255),
-		//		bgcolor: combineRgb(0, 0, 0),
-		//	},
-		//	steps: [ { down [
-		//		{ action: 'playerControl', options: { functionID: '', player: element.player, action: 'fast_forward' } },
-		//	],
-		//	feedbacks: [],
-		//})
 		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.end`, {
 			type: 'simple',
 			name: element.player + 'end',
@@ -480,87 +424,6 @@ export function getPresets(instance: KairosInstance): {
 			steps: [{ down: [{ actionId: ActionId.programAuto, options: { scene: SCENE.name } }], up: [] }],
 			feedbacks: [],
 		})
-
-		// SCENE.smacros.forEach((SMACRO) => {
-		// 	presets[`${SMACRO}.play`] = {
-		// 		type: 'button',
-		// 		category: 'SCENE MACROS',
-		// 		name: SMACRO,
-		// 		style: {
-		// 			text: `${SCENE.name.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nplay`,
-		// 			size: 'auto',
-		// 			color: combineRgb(255, 255, 255),
-		// 			bgcolor: combineRgb(0, 0, 0),
-		// 		},
-		// 		steps: [
-		// 			{
-		// 				down: [{ actionId: ActionId.smacroControl, options: { functionID: '', smacro: SMACRO, action: 'play' } }],
-		// 				up: [],
-		// 			},
-		// 		],
-		// 		feedbacks: [],
-		// 	}
-		// 	//presets[`${SMACRO}.pause`]={
-		// 	//	type: 'button',
-		// 	//	category: 'SCENE MACROS',
-		// 	//	name: SMACRO,
-		// 	//	style: {
-		// 	//
-		// 	//		text: `${SCENE.name.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\npause`,
-		// 	//		size: 'auto',
-		// 	//		color: combineRgb(255, 255, 255),
-		// 	//		bgcolor: combineRgb(0, 0, 0),
-		// 	//	},
-		// 	//	steps: [ { down: [{ action: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'pause' } }],up:[]}],
-		// 	//	feedbacks: [],
-		// 	//}
-		// 	presets[`${SMACRO}.stop`] = {
-		// 		type: 'button',
-		// 		category: 'SCENE MACROS',
-		// 		name: SMACRO,
-		// 		style: {
-		// 			text: `${SCENE.name.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop`,
-		// 			size: 'auto',
-		// 			color: combineRgb(255, 255, 255),
-		// 			bgcolor: combineRgb(0, 0, 0),
-		// 		},
-		// 		steps: [
-		// 			{
-		// 				down: [{ actionId: ActionId.smacroControl, options: { functionID: '', smacro: SMACRO, action: 'stop' } }],
-		// 				up: [],
-		// 			},
-		// 		],
-		// 		feedbacks: [],
-		// 	}
-		// 	//presets[`${SMACRO}.record`]={
-		// 	//	type: 'button',
-		// 	//	category: 'SCENE MACROS',
-		// 	//	name: SMACRO,
-		// 	//	style: {
-		// 	//
-		// 	//		text: `${SCENE.name.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nrecord`,
-		// 	//		size: 'auto',
-		// 	//		color: combineRgb(255, 255, 255),
-		// 	//		bgcolor: combineRgb(0, 0, 0),
-		// 	//	},
-		// 	//	steps: [ { down: [{ actionId: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'record' } }],up:[]}],
-		// 	//	feedbacks: [],
-		// 	//}
-		// 	//presets[`${SMACRO}.stop_rec`]={
-		// 	//	type: 'button',
-		// 	//	category: 'SCENE MACROS',
-		// 	//	name: SMACRO,
-		// 	//	style: {
-		// 	//
-		// 	//		text: `${SCENE.name.slice(7)}\\n${SMACRO.slice(SMACRO.search('.Macros.') + 8)}\\nstop_rec`,
-		// 	//		size: 'auto',
-		// 	//		color: combineRgb(255, 255, 255),
-		// 	//		bgcolor: combineRgb(0, 0, 0),
-		// 	//	},
-		// 	//	steps: [ { down: [{ actionId: 'smacroControl', options: { functionID: '', smacro: SMACRO, action: 'stop_record' } }],up:[]}],
-		// 	//	feedbacks: [],
-		// 	//}
-		// })
 	})
 	// SNAPSHOT
 	instance.KairosObj.SNAPSHOTS.forEach((snapshot) => {
@@ -794,55 +657,6 @@ export function getPresets(instance: KairosInstance): {
 			],
 		})
 	})
-	// TRANSITIONS
-	//	instance.combinedTransitionsArray.forEach((TRANSITION) => {
-	//	 presets[`${TRANSITION}.Next`]={
-	//	 	type: 'button',
-	//	 	category: 'TRANSITIONS',
-	//	 	name: 'Next transition',
-	//	 	style: {
-	//
-	//	 		text: `${TRANSITION.slice(7)}\\nNext transition`,
-	//	 		size: '14',
-	//	 		color: combineRgb(255, 255, 255),
-	//	 		bgcolor: combineRgb(0, 0, 0),
-	//	 	},
-	//	 	steps: [ { down: [{ actionId 'nextTransition', options: { transition: TRANSITION } }],
-	//	 	feedbacks: [],
-	//	 }
-	//		presets[`${TRANSITION}.Cut`]={
-	//			type: 'button',
-	//			category: 'TRANSITIONS',
-	//			name: 'Cut transition',
-	//			style: {
-	//
-	//				//text: `${TRANSITION.slice(7)}\\nCUT`,
-	//				text: `${TRANSITION.slice(7, TRANSITION.search('.Transitions.'))}\\n${TRANSITION.slice(
-	//					TRANSITION.search('.Transitions.') + 13)}\\nCUT`,
-	//				size: 'auto',
-	//				color: combineRgb(255, 255, 255),
-	//				bgcolor: combineRgb(255, 0, 0),
-	//			},
-	//			steps: [ { down [{ actionId 'cutTransition', options: { layer: TRANSITION } }],
-	//			feedbacks: [],
-	//		})
-	//		presets[`${TRANSITION}.Auto`]={
-	//			type: 'button',
-	//			category: 'TRANSITIONS',
-	//			name: 'Auto transition',
-	//			style: {
-	//
-	//				//text: `${TRANSITION.slice(7)}\\nAUTO`,
-	//				text: `${TRANSITION.slice(7, TRANSITION.search('.Transitions.'))}\\n${TRANSITION.slice(
-	//					TRANSITION.search('.Transitions.') + 13)}\\nAUTO`,
-	//				size: 'auto',
-	//				color: combineRgb(255, 255, 255),
-	//				bgcolor: combineRgb(0, 0, 0),
-	//			},
-	//			steps: [ { down [{ actionId 'autoTransition', options: { layer: TRANSITION } }],
-	//			feedbacks: [],
-	//		})
-	//	})
 
 	const structure = Array.from(layout, ([section, groups]): CompanionPresetSection<KairosTypes> => {
 		const ungrouped = groups.get(undefined)

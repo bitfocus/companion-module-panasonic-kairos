@@ -23,7 +23,6 @@ const layerVariableId = (sceneName: string, layerName: string): string =>
  */
 export function updateBasicVariables(instance: KairosInstance): void {
 	const audio_mute: Set<InstanceVariableDefinition> = new Set([
-		// Status
 		{ name: 'Mute Master', variableId: 'Audio.mute_master_audio' },
 		{ name: 'Mute Channel 1', variableId: 'Audio.mute_channel_1' },
 		{ name: 'Mute Channel 2', variableId: 'Audio.mute_channel_2' },
@@ -66,19 +65,11 @@ export function updateBasicVariables(instance: KairosInstance): void {
 			variableId: `${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceB`,
 		})
 	})
-	// let auxAvailable = []
-	// for (const AUX of instance.KairosObj.AUX) {
-	// 	auxAvailable.push({ name: `${AUX.name} available`, variableId: `${AUX.name}.available` })
-	// }
 	const playerRepeat: { name: string; variableId: string }[] = []
 	instance.KairosObj.PLAYERS.forEach((PLAYER) => {
 		playerRepeat.push({ name: `${PLAYER.player} in repeat mode`, variableId: `Player.${PLAYER.player}.repeat` })
 	})
 
-	//let presetEnabled = []
-	//for (const LAYER of instance.combinedLayerArray) {
-	//	presetEnabled.push({ name: `PVW bus for ${LAYER.name.slice(7)}`, variableId: `${LAYER.name}.preset_enabled` })
-	//}
 	const filteredVariables = [
 		...layerSources,
 		...inputSources,
@@ -86,10 +77,7 @@ export function updateBasicVariables(instance: KairosInstance): void {
 		...auxNames,
 		...audio_mute,
 		...playerRepeat,
-		//...auxAvailable,
-		//...presetEnabled,
 	]
-	// instance.log('debug', `filtered ${JSON.stringify(filteredVariables)}`)
 	const variableDefinitions: CompanionVariableDefinitions = {}
 	for (const variable of filteredVariables) {
 		variableDefinitions[variable.variableId] = { name: variable.name }
@@ -98,18 +86,13 @@ export function updateBasicVariables(instance: KairosInstance): void {
 
 	const newVariables: CompanionVariableValues = {}
 
-	// LIVE LAYERS
 	instance.combinedLayerArray.forEach((LAYER) => {
 		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceA`] = LAYER.sourceA
 		newVariables[`${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceB`] = LAYER.sourceB
-		//newVariables[`${LAYER.name}.preset_enabled`] = LAYER.preset_enabled === 1 ? 'enabled' : 'disabled'
 	})
-	// AUX
 	instance.KairosObj.AUX.forEach((AUX) => {
-		// newVariables[AUX.name] = instance.KairosObj.INPUTS.find((x) => x.input == AUX.live)
 		newVariables[`${auxVariableId(AUX.name)}.source`] = AUX.source
 		newVariables[auxVariableId(AUX.name)] = AUX.name
-		//newVariables[`${AUX.name}.available`] = AUX.available == 0 ? 'disabled' : 'enabled'
 	})
 	// PLAYERS
 	instance.KairosObj.PLAYERS.forEach((PLAYER) => {
