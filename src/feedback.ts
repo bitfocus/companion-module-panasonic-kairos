@@ -1,5 +1,5 @@
 import type KairosInstance from './index.js'
-import { options, type SourceAB } from './utils.js'
+import { mediaStillLabel, options, type SourceAB } from './utils.js'
 import { combineRgb, type CompanionFeedbackDefinitions } from '@companion-module/base'
 
 export enum FeedbackId {
@@ -26,8 +26,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 		// Tally
 		[FeedbackId.inputSource]: {
 			type: 'boolean',
-			name: 'Switched state',
-			description: 'Indicates if an source is in Program/Preview',
+			name: 'Layers - Source Selected',
+			description: "Shows when a source is on a layer's A or B bus",
 			options: [
 				{
 					type: 'dropdown',
@@ -36,18 +36,18 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					default: '',
 					choices: instance.combinedLayerArray.map((item) => ({
 						id: `/${item.sceneName}/${item.layerName}`,
-						label: `/${item.sceneName}/${item.layerName}`,
+						label: `${item.sceneName}/${item.layerName}`,
 					})),
 					allowInvalidValues: true,
 				},
 				{
 					type: 'dropdown',
-					label: 'SourceA/B',
+					label: 'Bus',
 					id: 'sourceAB',
 					default: 'sourceA',
 					choices: [
-						{ id: 'sourceA', label: 'sourceA' },
-						{ id: 'sourceB', label: 'sourceB' },
+						{ id: 'sourceA', label: 'Source A' },
+						{ id: 'sourceB', label: 'Source B' },
 					],
 				},
 				{
@@ -78,8 +78,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 		},
 		[FeedbackId.inputMediaStill]: {
 			type: 'boolean',
-			name: 'Switched state',
-			description: 'Indicates if an still is in Program/Preview',
+			name: 'Layers - Media Still Selected',
+			description: "Shows when a media still is on a layer's A or B bus",
 			options: [
 				{
 					type: 'dropdown',
@@ -90,18 +90,18 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 						: 'layer1',
 					choices: instance.combinedLayerArray.map((item) => ({
 						id: `/${item.sceneName}/${item.layerName}`,
-						label: `/${item.sceneName}/${item.layerName}`,
+						label: `${item.sceneName}/${item.layerName}`,
 					})),
 					allowInvalidValues: true,
 				},
 				{
 					type: 'dropdown',
-					label: 'SourceA/B',
+					label: 'Bus',
 					id: 'sourceAB',
 					default: 'sourceA',
 					choices: [
-						{ id: 'sourceA', label: 'sourceA' },
-						{ id: 'sourceB', label: 'sourceB' },
+						{ id: 'sourceA', label: 'Source A' },
+						{ id: 'sourceB', label: 'Source B' },
 					],
 				},
 				{
@@ -109,7 +109,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					label: 'Source',
 					id: 'source',
 					default: instance.KairosObj.MEDIA_STILLS[0] ? instance.KairosObj.MEDIA_STILLS[0] : '1',
-					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: id })),
+					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: mediaStillLabel(id) })),
 					allowInvalidValues: true,
 				},
 			],
@@ -132,8 +132,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 		},
 		[FeedbackId.audioMuteMaster]: {
 			type: 'boolean',
-			name: 'Mute audio master',
-			description: 'Indicates if audio mixer is muted',
+			name: 'Audio - Master Muted',
+			description: 'Shows when the audio mixer master is muted',
 			options: [],
 			defaultStyle: {
 				color: combineRgb(255, 255, 255),
@@ -146,8 +146,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 		},
 		[FeedbackId.audioMuteChannel]: {
 			type: 'boolean',
-			name: 'Mute audio channel',
-			description: 'Indicates if audio channel is muted',
+			name: 'Audio - Channel Muted',
+			description: 'Shows when an audio mixer channel is muted',
 			options: [options.channel],
 			defaultStyle: {
 				color: combineRgb(255, 255, 255),
@@ -160,8 +160,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 		},
 		[FeedbackId.aux]: {
 			type: 'boolean',
-			name: 'AUX',
-			description: 'Indicates if an source is in an AUX',
+			name: 'AUX - Source Selected',
+			description: 'Shows when a source is routed to an AUX',
 			options: [
 				{
 					type: 'dropdown',

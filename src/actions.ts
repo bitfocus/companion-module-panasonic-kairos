@@ -1,6 +1,6 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
 import { refAudioMixerChannel, refToPath, type KairosConnection } from 'kairos-connection'
-import { options, type SourceAB } from './utils.js'
+import { mediaStillLabel, options, type SourceAB } from './utils.js'
 import type KairosInstance from './index.js'
 import { layerRef, sceneRef, sourcePath, transitionRef } from './refs.js'
 import { updateBasicVariables } from './variables.js'
@@ -174,7 +174,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 	const actions: CompanionActionDefinitions<ActionsSchema> = {
 		// Layer Source Assignment
 		[ActionId.setSource]: {
-			name: 'Set Source',
+			name: 'Layers - Set Source',
+			description: 'Sets a layer source through the REST API',
 			options: [
 				{
 					type: 'dropdown',
@@ -190,12 +191,12 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 				{
 					type: 'dropdown',
-					label: 'SourceA/B',
+					label: 'Bus',
 					id: 'sourceAB',
 					default: 'sourceA',
 					choices: [
-						{ id: 'sourceA', label: 'sourceA' },
-						{ id: 'sourceB', label: 'sourceB' },
+						{ id: 'sourceA', label: 'Source A' },
+						{ id: 'sourceB', label: 'Source B' },
 					],
 				},
 				{
@@ -228,7 +229,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			},
 		},
 		[ActionId.forceSource]: {
-			name: 'Force Source',
+			name: 'Layers - Set Source (TCP)',
+			description: 'Sets a layer source through the TCP protocol',
 			options: [
 				{
 					type: 'dropdown',
@@ -244,12 +246,12 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 				{
 					type: 'dropdown',
-					label: 'SourceA/B',
+					label: 'Bus',
 					id: 'sourceAB',
 					default: 'sourceA',
 					choices: [
-						{ id: 'sourceA', label: 'sourceA' },
-						{ id: 'sourceB', label: 'sourceB' },
+						{ id: 'sourceA', label: 'Source A' },
+						{ id: 'sourceB', label: 'Source B' },
 					],
 				},
 				{
@@ -269,11 +271,11 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			},
 		},
 		[ActionId.runAction]: {
-			name: 'Run Action',
+			name: 'Scenes - Run Action',
 			options: [
 				{
 					type: 'dropdown',
-					label: 'action',
+					label: 'Action',
 					id: 'action',
 					default: '',
 					choices: actionChoices,
@@ -292,7 +294,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		},
 		// Layer Source Assignment
 		[ActionId.setMediaStill]: {
-			name: 'Set Media Still',
+			name: 'Layers - Set Media Still',
 			options: [
 				{
 					type: 'dropdown',
@@ -305,12 +307,12 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 				{
 					type: 'dropdown',
-					label: 'SourceA/B',
+					label: 'Bus',
 					id: 'sourceAB',
 					default: 'sourceA',
 					choices: [
-						{ id: 'sourceA', label: 'sourceA' },
-						{ id: 'sourceB', label: 'sourceB' },
+						{ id: 'sourceA', label: 'Source A' },
+						{ id: 'sourceB', label: 'Source B' },
 					],
 				},
 				{
@@ -318,10 +320,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					label: 'Source',
 					id: 'source',
 					default: instance.KairosObj.MEDIA_STILLS[0] ? instance.KairosObj.MEDIA_STILLS[0] : '1',
-					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({
-						id,
-						label: id.endsWith('&#46;rr') ? id.slice(0, -7) : id,
-					})),
+					choices: instance.KairosObj.MEDIA_STILLS.map((id) => ({ id, label: mediaStillLabel(id) })),
 					allowInvalidValues: true,
 				},
 			],
@@ -333,7 +332,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		},
 		// Transition
 		[ActionId.programCut]: {
-			name: 'Master CUT Transition',
+			name: 'Scenes - Cut',
 			options: [
 				{
 					type: 'dropdown',
@@ -351,7 +350,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			},
 		},
 		[ActionId.programAuto]: {
-			name: 'Master AUTO Transition',
+			name: 'Scenes - Auto Transition',
 			options: [
 				{
 					type: 'dropdown',
@@ -369,7 +368,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			},
 		},
 		[ActionId.autoTransition]: {
-			name: 'Layer AUTO Transition',
+			name: 'Transitions - Auto',
 			options: [
 				{
 					type: 'dropdown',
@@ -390,7 +389,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			},
 		},
 		[ActionId.cutTransition]: {
-			name: 'Layer CUT Transition',
+			name: 'Transitions - Cut',
 			options: [
 				{
 					type: 'dropdown',
@@ -412,7 +411,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		},
 		//AUX
 		[ActionId.setAUX]: {
-			name: 'Set AUX',
+			name: 'AUX - Set Source',
 			options: [
 				{
 					type: 'dropdown',
@@ -449,11 +448,12 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		},
 		//Control
 		[ActionId.playerControl]: {
-			name: 'RAM/Clip Player action',
+			name: 'Players - Control',
+			description: 'Controls a RAM recorder, clip player or audio player',
 			options: [
 				{
 					type: 'dropdown',
-					label: 'Player Source',
+					label: 'Player',
 					id: 'player',
 					default: instance.KairosObj.PLAYERS[0] ? instance.KairosObj.PLAYERS[0].player : '1',
 					choices: instance.KairosObj.PLAYERS.map((element) => ({ id: element.player, label: element.player })),
@@ -468,7 +468,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			},
 		},
 		[ActionId.macroControl]: {
-			name: 'Macro (global) action',
+			name: 'Macros - Control Global Macro',
 			options: [
 				{
 					type: 'dropdown',
@@ -491,11 +491,11 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			},
 		},
 		[ActionId.macroSceneControl]: {
-			name: 'Macro (scene) action',
+			name: 'Macros - Control Scene Macro',
 			options: [
 				{
 					type: 'dropdown',
-					label: 'Scene macro',
+					label: 'Scene Macro',
 					id: 'macro',
 					default: instance.KairosObj.SCENES_MACROS[0] ? instance.KairosObj.SCENES_MACROS[0].uuid : 'none exist',
 					choices: instance.KairosObj.SCENES_MACROS.map((item) => ({
@@ -518,7 +518,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		},
 		// Recall MV presets
 		[ActionId.mvRecall]: {
-			name: 'Recall Multiviewer preset',
+			name: 'Multiviewers - Recall Preset',
 			options: [
 				{
 					type: 'dropdown',
@@ -549,7 +549,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		},
 		// Snapshots
 		[ActionId.triggerSnapshot]: {
-			name: 'Trigger Snapshots',
+			name: 'Snapshots - Recall',
 			options: [
 				{
 					type: 'dropdown',
@@ -576,7 +576,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		},
 		//Audio
 		[ActionId.muteMaster]: {
-			name: 'Audio Mixer Master Mute',
+			name: 'Audio - Mute Master',
 			options: [options.mute],
 			callback: (action) => {
 				const mute = action.options.mute === 1
@@ -587,7 +587,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			},
 		},
 		[ActionId.muteChannel]: {
-			name: 'Audio Mixer Channel Mute',
+			name: 'Audio - Mute Channel',
 			options: [options.channel, options.mute],
 			callback: (action) => {
 				const channel = instance.KairosObj.AUDIO_CHANNELS.find((x) => x.channel === action.options.channel)
@@ -603,13 +603,15 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		},
 		// Custom
 		[ActionId.custom]: {
-			name: 'Send custom command',
+			name: 'Advanced - Send Custom Command',
+			description: 'Sends a raw protocol command, e.g. SCENES.Main.cut',
 			options: [
 				{
-					label: 'command',
+					label: 'Command',
 					type: 'textinput',
 					id: 'functionID',
 					default: '',
+					useVariables: true,
 				},
 			],
 			callback: (action) => {

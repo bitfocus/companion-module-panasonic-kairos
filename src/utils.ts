@@ -36,17 +36,17 @@ export const options: Options = {
 		id: 'action',
 		default: 'begin',
 		choices: [
-			{ id: 'begin', label: 'Go to Begin' },
+			{ id: 'begin', label: 'Go to Start' },
 			{ id: 'rewind', label: 'Rewind' },
-			{ id: 'step_back', label: 'Step back' },
-			{ id: 'reverse', label: 'Reverse play' },
+			{ id: 'step_back', label: 'Step Back' },
+			{ id: 'reverse', label: 'Reverse Play' },
 			{ id: 'play', label: 'Play' },
 			{ id: 'pause', label: 'Pause' },
-			{ id: 'step_forward', label: 'Step forward' },
-			{ id: 'fast_forward', label: 'Fast forward' },
+			{ id: 'step_forward', label: 'Step Forward' },
+			{ id: 'fast_forward', label: 'Fast Forward' },
 			{ id: 'end', label: 'Go to End' },
-			{ id: 'repeat=0', label: 'Repeat off' },
-			{ id: 'repeat=1', label: 'Repeat on' },
+			{ id: 'repeat=0', label: 'Repeat Off' },
+			{ id: 'repeat=1', label: 'Repeat On' },
 		],
 	},
 
@@ -59,7 +59,7 @@ export const options: Options = {
 			{ id: 'play', label: 'Play' },
 			{ id: 'stop', label: 'Stop' },
 			{ id: 'record', label: 'Record' },
-			{ id: 'stop_record', label: 'Stop record' },
+			{ id: 'stop_record', label: 'Stop Record' },
 		],
 	},
 
@@ -69,8 +69,8 @@ export const options: Options = {
 		id: 'mute',
 		default: 0,
 		choices: [
-			{ id: 0, label: 'unmute' },
-			{ id: 1, label: 'mute' },
+			{ id: 0, label: 'Unmute' },
+			{ id: 1, label: 'Mute' },
 		],
 	},
 
@@ -119,3 +119,13 @@ export const createInputWithName = (name: string): input => {
 		shortcut: name,
 	}
 }
+
+/**
+ * A readable name for a media still path, e.g. `MEDIA.stills.Logos.Intro&#46;rr` is `Logos/Intro.rr`
+ */
+export const mediaStillLabel = (path: string): string =>
+	path
+		.replace(/^MEDIA\.stills\./, '')
+		.split('.')
+		.map((part) => part.replace(/&#46;/g, '.'))
+		.join('/')

@@ -11,7 +11,7 @@ The module uses two connections to the KAIROS, and needs both:
 
 | Setting       | Default       |
 | ------------- | ------------- |
-| Target host   | 192.168.10.10 |
+| Host          | 192.168.10.10 |
 | TCP Port      | 3005          |
 | REST API Port | 1234          |
 | Username      | `Kairos`      |
@@ -23,48 +23,51 @@ The connection turns green once both are connected, and lists in the actions fil
 
 ### Actions
 
-Most actions are also available as ready-made buttons in the presets.
+Actions are named by what they control, so related ones are listed together. Most are also available as ready-made buttons in the presets.
 
-**Sources**
+**Layers**
 
-- **Set Source**: set source A or B of a layer.
-- **Force Source**: the same, sent over TCP.
-- **Set Media Still**: put a still from the media pool on a layer.
-- **Set AUX**: set the source of an AUX. Only sources assigned to that AUX can be chosen.
+- **Layers - Set Source**: set source A or B of a layer.
+- **Layers - Set Source (TCP)**: the same, sent over TCP.
+- **Layers - Set Media Still**: put a still from the media pool on a layer.
 
-**Transitions**
+**AUX**
 
-- **Master CUT / AUTO Transition**: cut or auto transition a scene.
-- **Layer CUT / AUTO Transition**: cut or auto one of a scene's transitions (BgdMix, L1…).
+- **AUX - Set Source**: set the source of an AUX. Only sources assigned to that AUX can be chosen.
 
-**Recall**
+**Scenes and transitions**
 
-- **Trigger Snapshots**: recall a scene snapshot.
-- **Recall Multiviewer preset**: recall a preset on a multiviewer.
-- **Run Action**: run one of a scene's actions.
+- **Scenes - Cut** / **Scenes - Auto Transition**: cut or auto transition a scene.
+- **Transitions - Cut** / **Transitions - Auto**: cut or auto one of a scene's transitions (BgdMix, L1…).
+- **Scenes - Run Action**: run one of a scene's actions.
+
+**Snapshots and multiviewers**
+
+- **Snapshots - Recall**: recall a scene snapshot.
+- **Multiviewers - Recall Preset**: recall a preset on a multiviewer.
 
 **Macros**
 
-- **Macro (global) action** and **Macro (scene) action**: play, stop, record or stop recording a macro.
+- **Macros - Control Global Macro** and **Macros - Control Scene Macro**: play, stop, record or stop recording a macro.
 
 **Players**
 
-- **RAM/Clip Player action**: for RAM recorders RR1–8, clip players CP1–2 and audio players AP1–16: go to begin, rewind, step back, reverse play, play, pause, step forward, fast forward, go to end, and repeat on/off.
+- **Players - Control**: for RAM recorders RR1–8, clip players CP1–2 and audio players AP1–16: go to start, rewind, step back, reverse play, play, pause, step forward, fast forward, go to end, and repeat on/off.
 
 **Audio**
 
-- **Audio Mixer Master Mute**: mute or unmute the master.
-- **Audio Mixer Channel Mute**: mute or unmute channels 1–16.
+- **Audio - Mute Master**: mute or unmute the master.
+- **Audio - Mute Channel**: mute or unmute channels 1–16.
 
-**Other**
+**Advanced**
 
-- **Send custom command**: send a raw KAIROS TCP command, for example `SCENES.Main.cut` or `SCENES.Main.Layers.Background.sourceA=IP1`.
+- **Advanced - Send Custom Command**: send a raw KAIROS TCP command, for example `SCENES.Main.cut` or `SCENES.Main.Layers.Background.sourceA=IP1`. Variables can be used in the command.
 
 ### Feedbacks
 
-- **Switched state**: a layer's source A or B is a given source, or a given media still.
-- **AUX**: an AUX shows a given source.
-- **Mute audio master** / **Mute audio channel**: the master or a channel is muted.
+- **Layers - Source Selected** / **Layers - Media Still Selected**: a layer's source A or B is a given source or media still.
+- **AUX - Source Selected**: an AUX shows a given source.
+- **Audio - Master Muted** / **Audio - Channel Muted**: the master or a channel is muted.
 
 ### Variables
 

@@ -17,7 +17,7 @@ export const getConfigFields = (): SomeCompanionConfigField[] => {
 		{
 			type: 'textinput',
 			id: 'host',
-			label: 'Target host',
+			label: 'Host',
 			width: 6,
 			default: '192.168.10.10',
 		},

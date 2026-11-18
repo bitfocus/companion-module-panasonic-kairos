@@ -3,6 +3,7 @@ import type { KairosTypes } from './index.js'
 import { ActionId } from './actions.js'
 import { FeedbackId } from './feedback.js'
 import { auxVariableId, inputVariableId } from './variables.js'
+import { mediaStillLabel } from './utils.js'
 import {
 	combineRgb,
 	type CompanionPresetDefinitions,
@@ -55,7 +56,7 @@ export function getPresets(instance: KairosInstance): {
 			if (!layer.sources) return
 			layer.sources.forEach((source) => {
 				addPreset(
-					{ section: `Scene: ${scene.name}`, group: `${layer.name} | sourceA` },
+					{ section: `Sources - ${scene.name}`, group: `${layer.name} - Source A` },
 					`${presetIdPart(scene.name)}.${presetIdPart(layer.name)}.${presetIdPart(source)}.PGM`,
 					{
 						type: 'simple',
@@ -99,7 +100,7 @@ export function getPresets(instance: KairosInstance): {
 				)
 				if (layer.sourceB) {
 					addPreset(
-						{ section: `Scene: ${scene.name}`, group: `${layer.name} | sourceB` },
+						{ section: `Sources - ${scene.name}`, group: `${layer.name} - Source B` },
 						`${presetIdPart(scene.name)}.${presetIdPart(layer.name)}.${presetIdPart(source)}.PVW`,
 						{
 							type: 'simple',
@@ -148,11 +149,11 @@ export function getPresets(instance: KairosInstance): {
 	// Transition of layers
 	instance.KairosObj.TRANSITIONS.forEach((transition) => {
 		const layerName = `${transition.sceneName}.${transition.name}`
-		addPreset({ section: 'LAYER TRANSITION' }, `${layerName}.cut`, {
+		addPreset({ section: 'Transitions' }, `${layerName}.cut`, {
 			type: 'simple',
-			name: 'transition Cut',
+			name: `${transition.sceneName}/${transition.name} Cut`,
 			style: {
-				text: `${layerName}\\nCUT`,
+				text: `${transition.sceneName}/${transition.name}\\nCUT`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(255, 0, 0),
@@ -160,11 +161,11 @@ export function getPresets(instance: KairosInstance): {
 			steps: [{ down: [{ actionId: ActionId.cutTransition, options: { layer: layerName } }], up: [] }],
 			feedbacks: [],
 		})
-		addPreset({ section: 'LAYER TRANSITION' }, `${layerName}.auto`, {
+		addPreset({ section: 'Transitions' }, `${layerName}.auto`, {
 			type: 'simple',
-			name: 'transition Auto',
+			name: `${transition.sceneName}/${transition.name} Auto`,
 			style: {
-				text: `${layerName}\\nAUTO`,
+				text: `${transition.sceneName}/${transition.name}\\nAUTO`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(255, 0, 0),
@@ -176,9 +177,9 @@ export function getPresets(instance: KairosInstance): {
 	// Actions
 	instance.KairosObj.SCENES.forEach((SCENE) => {
 		SCENE.actions.forEach((ACTION) => {
-			addPreset({ section: 'ACTIONS' }, `${ACTION.uuid}`, {
+			addPreset({ section: 'Scene Actions' }, `${ACTION.uuid}`, {
 				type: 'simple',
-				name: ACTION.uuid,
+				name: `${SCENE.name}/${ACTION.name}`,
 				style: {
 					text: `${SCENE.name}\\n${ACTION.name}`,
 					size: 'auto',
@@ -197,11 +198,11 @@ export function getPresets(instance: KairosInstance): {
 	})
 	// Media Stills
 	instance.KairosObj.MEDIA_STILLS.forEach((STILL) => {
-		addPreset({ section: 'MEDIA STILLS' }, `${STILL}.select`, {
+		addPreset({ section: 'Media Stills' }, `${STILL}.select`, {
 			type: 'simple',
-			name: STILL,
+			name: mediaStillLabel(STILL),
 			style: {
-				text: STILL.slice(13, STILL.search('&#46;rr')) + '.rr',
+				text: mediaStillLabel(STILL),
 				size: '7',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -241,11 +242,11 @@ export function getPresets(instance: KairosInstance): {
 	})
 	// Player
 	instance.KairosObj.PLAYERS.forEach((element) => {
-		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.play`, {
+		addPreset({ section: 'Players', group: element.player }, `${element.player}.play`, {
 			type: 'simple',
-			name: element.player + 'play',
+			name: `${element.player} Play`,
 			style: {
-				text: element.player + '\\nplay',
+				text: `${element.player}\\nPLAY`,
 				size: '14',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -258,11 +259,11 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.pause`, {
+		addPreset({ section: 'Players', group: element.player }, `${element.player}.pause`, {
 			type: 'simple',
-			name: element.player + 'pause',
+			name: `${element.player} Pause`,
 			style: {
-				text: element.player + '\\npause',
+				text: `${element.player}\\nPAUSE`,
 				size: '14',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -275,11 +276,11 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.begin`, {
+		addPreset({ section: 'Players', group: element.player }, `${element.player}.begin`, {
 			type: 'simple',
-			name: element.player + 'begin',
+			name: `${element.player} Go to Start`,
 			style: {
-				text: element.player + '\\nbegin',
+				text: `${element.player}\\nSTART`,
 				size: '14',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -292,11 +293,11 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.step_back`, {
+		addPreset({ section: 'Players', group: element.player }, `${element.player}.step_back`, {
 			type: 'simple',
-			name: element.player + 'step_back',
+			name: `${element.player} Step Back`,
 			style: {
-				text: element.player + '\\nstep_back',
+				text: `${element.player}\\nSTEP BACK`,
 				size: '14',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -314,11 +315,11 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.step_forward`, {
+		addPreset({ section: 'Players', group: element.player }, `${element.player}.step_forward`, {
 			type: 'simple',
-			name: element.player + 'step_forward',
+			name: `${element.player} Step Forward`,
 			style: {
-				text: element.player + '\\nstep_fwd',
+				text: `${element.player}\\nSTEP FWD`,
 				size: '14',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -336,11 +337,11 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.end`, {
+		addPreset({ section: 'Players', group: element.player }, `${element.player}.end`, {
 			type: 'simple',
-			name: element.player + 'end',
+			name: `${element.player} Go to End`,
 			style: {
-				text: element.player + '\\nend',
+				text: `${element.player}\\nEND`,
 				size: '14',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -353,11 +354,11 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.repeat_off`, {
+		addPreset({ section: 'Players', group: element.player }, `${element.player}.repeat_off`, {
 			type: 'simple',
-			name: element.player + 'repeat',
+			name: `${element.player} Repeat Off`,
 			style: {
-				text: element.player + '\\nrepeat:off',
+				text: `${element.player}\\nREPEAT OFF`,
 				size: '14',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -375,11 +376,11 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		addPreset({ section: 'PLAYERS', group: element.player }, `${element.player}.repeat_on`, {
+		addPreset({ section: 'Players', group: element.player }, `${element.player}.repeat_on`, {
 			type: 'simple',
-			name: element.player + 'repeat',
+			name: `${element.player} Repeat On`,
 			style: {
-				text: element.player + '\\nrepeat:on',
+				text: `${element.player}\\nREPEAT ON`,
 				size: '14',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -400,9 +401,9 @@ export function getPresets(instance: KairosInstance): {
 	})
 	// Snapshots & scene transitions
 	instance.KairosObj.SCENES.forEach((SCENE) => {
-		addPreset({ section: 'SCENE TRANSITION' }, `${SCENE.name}.cut`, {
+		addPreset({ section: 'Scenes' }, `${SCENE.name}.cut`, {
 			type: 'simple',
-			name: `${SCENE.name}CUT`,
+			name: `${SCENE.name} Cut`,
 			style: {
 				text: `${SCENE.name}\\nCUT`,
 				size: 'auto',
@@ -412,9 +413,9 @@ export function getPresets(instance: KairosInstance): {
 			steps: [{ down: [{ actionId: ActionId.programCut, options: { scene: SCENE.name } }], up: [] }],
 			feedbacks: [],
 		})
-		addPreset({ section: 'SCENE TRANSITION' }, `${SCENE.name}.auto`, {
+		addPreset({ section: 'Scenes' }, `${SCENE.name}.auto`, {
 			type: 'simple',
-			name: `${SCENE.name}AUTO`,
+			name: `${SCENE.name} Auto`,
 			style: {
 				text: `${SCENE.name}\\nAUTO`,
 				size: 'auto',
@@ -427,7 +428,7 @@ export function getPresets(instance: KairosInstance): {
 	})
 	// SNAPSHOT
 	instance.KairosObj.SNAPSHOTS.forEach((snapshot) => {
-		addPreset({ section: 'SNAPSHOTS' }, `${snapshot.uuid}.recall`, {
+		addPreset({ section: 'Snapshots' }, `${snapshot.uuid}.recall`, {
 			type: 'simple',
 			name: `${snapshot.scene}/${snapshot.name}`,
 			style: {
@@ -456,7 +457,7 @@ export function getPresets(instance: KairosInstance): {
 		aux.sources.forEach((source) => {
 			addPreset({ section: 'AUX', group: aux.name }, `${aux.name}.${source}.setAux`, {
 				type: 'simple',
-				name: aux.name,
+				name: `${aux.name} - ${source}`,
 				style: {
 					text: `$(kairos:${auxVariableId(aux.name)}):\\n$(kairos:${inputVariableId(source)})`,
 					size: 'auto',
@@ -487,11 +488,11 @@ export function getPresets(instance: KairosInstance): {
 	})
 	// MACRO
 	instance.KairosObj.MACROS.forEach((MACRO) => {
-		addPreset({ section: 'MACROS', group: 'Global' }, `${MACRO.uuid}.play`, {
+		addPreset({ section: 'Macros', group: 'Global' }, `${MACRO.uuid}.play`, {
 			type: 'simple',
-			name: 'Macros',
+			name: `${MACRO.path}${MACRO.name} Play`,
 			style: {
-				text: `GLOBAL:\n${MACRO.path}${MACRO.name}\\nplay`,
+				text: `${MACRO.path}${MACRO.name}\\nPLAY`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -504,11 +505,11 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		addPreset({ section: 'MACROS', group: 'Global' }, `${MACRO.uuid}.stop`, {
+		addPreset({ section: 'Macros', group: 'Global' }, `${MACRO.uuid}.stop`, {
 			type: 'simple',
-			name: 'Macros',
+			name: `${MACRO.path}${MACRO.name} Stop`,
 			style: {
-				text: `GLOBAL:\n${MACRO.path}${MACRO.name}\\nstop`,
+				text: `${MACRO.path}${MACRO.name}\\nSTOP`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -524,11 +525,11 @@ export function getPresets(instance: KairosInstance): {
 	})
 	// MACRO FOR SCENES
 	instance.KairosObj.SCENES_MACROS.forEach((MACRO) => {
-		addPreset({ section: 'MACROS', group: 'Scene' }, `${MACRO.uuid}.play`, {
+		addPreset({ section: 'Macros', group: 'Scene' }, `${MACRO.uuid}.play`, {
 			type: 'simple',
-			name: 'Macros',
+			name: `${MACRO.name} Play`,
 			style: {
-				text: `SCENE:\n${MACRO.name}\\nplay`,
+				text: `${MACRO.name}\\nPLAY`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -546,11 +547,11 @@ export function getPresets(instance: KairosInstance): {
 			],
 			feedbacks: [],
 		})
-		addPreset({ section: 'MACROS', group: 'Scene' }, `${MACRO.uuid}.stop`, {
+		addPreset({ section: 'Macros', group: 'Scene' }, `${MACRO.uuid}.stop`, {
 			type: 'simple',
-			name: 'Macros',
+			name: `${MACRO.name} Stop`,
 			style: {
-				text: `SCENE:\n${MACRO.name}\\nstop`,
+				text: `${MACRO.name}\\nSTOP`,
 				size: 'auto',
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(0, 0, 0),
@@ -573,11 +574,11 @@ export function getPresets(instance: KairosInstance): {
 	instance.KairosObj.MULTIVIEWERS.forEach((multiviewer) => {
 		multiviewer.presets.forEach((preset) => {
 			if (!preset) return
-			addPreset({ section: 'MULTIVIEWER PRESETS', group: multiviewer.name }, `${multiviewer.uuid}${preset.id}`, {
+			addPreset({ section: 'Multiviewers', group: multiviewer.name }, `${multiviewer.uuid}${preset.id}`, {
 				type: 'simple',
-				name: `${multiviewer.name}Presets`,
+				name: `${multiviewer.name} - ${preset.name}`,
 				style: {
-					text: `${multiviewer.name} Preset ${preset.name}`,
+					text: `${multiviewer.name}\\n${preset.name}`,
 					size: 'auto',
 					color: combineRgb(255, 255, 255),
 					bgcolor: combineRgb(0, 0, 0),
@@ -593,9 +594,9 @@ export function getPresets(instance: KairosInstance): {
 		})
 	})
 	// AUDIO
-	addPreset({ section: 'AUDIO MUTE' }, `Audio_mute`, {
+	addPreset({ section: 'Audio' }, `Audio_mute`, {
 		type: 'simple',
-		name: 'MUTE',
+		name: 'Master Mute',
 		style: {
 			text: 'MASTER\\nMUTE',
 			size: '14',
@@ -624,9 +625,9 @@ export function getPresets(instance: KairosInstance): {
 		],
 	})
 	instance.KairosObj.AUDIO_CHANNELS.forEach((CHANNEL) => {
-		addPreset({ section: 'AUDIO MUTE' }, `${CHANNEL.channel}.Audio_mute`, {
+		addPreset({ section: 'Audio' }, `${CHANNEL.channel}.Audio_mute`, {
 			type: 'simple',
-			name: 'MUTE',
+			name: `${CHANNEL.channel} Mute`,
 			style: {
 				text: `${CHANNEL.channel}\\nMUTE`,
 				size: '14',

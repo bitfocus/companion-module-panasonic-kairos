@@ -23,51 +23,51 @@ const layerVariableId = (sceneName: string, layerName: string): string =>
  */
 export function updateBasicVariables(instance: KairosInstance): void {
 	const audio_mute: Set<InstanceVariableDefinition> = new Set([
-		{ name: 'Mute Master', variableId: 'Audio.mute_master_audio' },
-		{ name: 'Mute Channel 1', variableId: 'Audio.mute_channel_1' },
-		{ name: 'Mute Channel 2', variableId: 'Audio.mute_channel_2' },
-		{ name: 'Mute Channel 3', variableId: 'Audio.mute_channel_3' },
-		{ name: 'Mute Channel 4', variableId: 'Audio.mute_channel_4' },
-		{ name: 'Mute Channel 5', variableId: 'Audio.mute_channel_5' },
-		{ name: 'Mute Channel 6', variableId: 'Audio.mute_channel_6' },
-		{ name: 'Mute Channel 7', variableId: 'Audio.mute_channel_7' },
-		{ name: 'Mute Channel 8', variableId: 'Audio.mute_channel_8' },
-		{ name: 'Mute Channel 9', variableId: 'Audio.mute_channel_9' },
-		{ name: 'Mute Channel 10', variableId: 'Audio.mute_channel_10' },
-		{ name: 'Mute Channel 11', variableId: 'Audio.mute_channel_11' },
-		{ name: 'Mute Channel 12', variableId: 'Audio.mute_channel_12' },
-		{ name: 'Mute Channel 13', variableId: 'Audio.mute_channel_13' },
-		{ name: 'Mute Channel 14', variableId: 'Audio.mute_channel_14' },
-		{ name: 'Mute Channel 15', variableId: 'Audio.mute_channel_15' },
-		{ name: 'Mute Channel 16', variableId: 'Audio.mute_channel_16' },
+		{ name: 'Audio Master - Mute', variableId: 'Audio.mute_master_audio' },
+		{ name: 'Audio Channel 1 - Mute', variableId: 'Audio.mute_channel_1' },
+		{ name: 'Audio Channel 2 - Mute', variableId: 'Audio.mute_channel_2' },
+		{ name: 'Audio Channel 3 - Mute', variableId: 'Audio.mute_channel_3' },
+		{ name: 'Audio Channel 4 - Mute', variableId: 'Audio.mute_channel_4' },
+		{ name: 'Audio Channel 5 - Mute', variableId: 'Audio.mute_channel_5' },
+		{ name: 'Audio Channel 6 - Mute', variableId: 'Audio.mute_channel_6' },
+		{ name: 'Audio Channel 7 - Mute', variableId: 'Audio.mute_channel_7' },
+		{ name: 'Audio Channel 8 - Mute', variableId: 'Audio.mute_channel_8' },
+		{ name: 'Audio Channel 9 - Mute', variableId: 'Audio.mute_channel_9' },
+		{ name: 'Audio Channel 10 - Mute', variableId: 'Audio.mute_channel_10' },
+		{ name: 'Audio Channel 11 - Mute', variableId: 'Audio.mute_channel_11' },
+		{ name: 'Audio Channel 12 - Mute', variableId: 'Audio.mute_channel_12' },
+		{ name: 'Audio Channel 13 - Mute', variableId: 'Audio.mute_channel_13' },
+		{ name: 'Audio Channel 14 - Mute', variableId: 'Audio.mute_channel_14' },
+		{ name: 'Audio Channel 15 - Mute', variableId: 'Audio.mute_channel_15' },
+		{ name: 'Audio Channel 16 - Mute', variableId: 'Audio.mute_channel_16' },
 	])
 
 	const inputSources: { name: string; variableId: string }[] = []
 	instance.KairosObj.INPUTS.forEach((INPUT) => {
-		inputSources.push({ name: `Source ${INPUT.name} name`, variableId: inputVariableId(INPUT.name) })
+		inputSources.push({ name: `Input ${INPUT.name} - Name`, variableId: inputVariableId(INPUT.name) })
 	})
 
 	const auxSources: { name: string; variableId: string }[] = []
 	const auxNames: { name: string; variableId: string }[] = []
 	instance.KairosObj.AUX.forEach((AUX) => {
-		auxSources.push({ name: `Source in ${AUX.name}`, variableId: `${auxVariableId(AUX.name)}.source` })
-		auxNames.push({ name: `AUX ${AUX.name} name`, variableId: auxVariableId(AUX.name) })
+		auxSources.push({ name: `AUX ${AUX.name} - Source`, variableId: `${auxVariableId(AUX.name)}.source` })
+		auxNames.push({ name: `AUX ${AUX.name} - Name`, variableId: auxVariableId(AUX.name) })
 	})
 
 	const layerSources: { name: string; variableId: string }[] = []
 	instance.combinedLayerArray.forEach((LAYER) => {
 		layerSources.push({
-			name: `SourceA in ${LAYER.sceneName}.${LAYER.layerName}`,
+			name: `Layer ${LAYER.sceneName}/${LAYER.layerName} - Source A`,
 			variableId: `${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceA`,
 		})
 		layerSources.push({
-			name: `SourceB in ${LAYER.sceneName}.${LAYER.layerName}`,
+			name: `Layer ${LAYER.sceneName}/${LAYER.layerName} - Source B`,
 			variableId: `${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceB`,
 		})
 	})
 	const playerRepeat: { name: string; variableId: string }[] = []
 	instance.KairosObj.PLAYERS.forEach((PLAYER) => {
-		playerRepeat.push({ name: `${PLAYER.player} in repeat mode`, variableId: `Player.${PLAYER.player}.repeat` })
+		playerRepeat.push({ name: `Player ${PLAYER.player} - Repeat`, variableId: `Player.${PLAYER.player}.repeat` })
 	})
 
 	const filteredVariables = [
