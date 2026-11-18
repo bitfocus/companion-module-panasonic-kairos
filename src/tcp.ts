@@ -60,7 +60,6 @@ export class TCP {
 		this.sockets.main = new TCPHelper(this.tcpHost, this.tcpPort)
 
 		this.sockets.main.on('status_change', (status: InstanceStatus, message: string | undefined) => {
-			this.instance.log('debug', 'status change ' + status)
 			this.instance.connectionStatus.set('tcp', status, message ?? null)
 			if (status !== InstanceStatus.Ok) this.stopKeepAlive()
 		})

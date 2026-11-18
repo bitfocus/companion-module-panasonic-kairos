@@ -28,7 +28,10 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	config: config | undefined
 	rest: REST | undefined
 	tcp: TCP | undefined
-	readonly connectionStatus = new ConnectionStatus((status, message) => this.updateStatus(status, message))
+	readonly connectionStatus = new ConnectionStatus(
+		(status, message) => this.updateStatus(status, message),
+		(message) => this.log('info', message),
+	)
 	constructor(internal: unknown) {
 		super(internal)
 	}
@@ -108,9 +111,6 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	 * @description triggered on instance being enabled
 	 */
 	async init(config: config): Promise<void> {
-		// New Module warning
-		this.log('info', `Welcome, Panasonic module is loading`)
-
 		await this.configUpdated(config)
 		updateBasicVariables(this)
 	}

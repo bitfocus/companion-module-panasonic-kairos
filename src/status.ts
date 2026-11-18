@@ -30,11 +30,14 @@ export function combineStatus(sources: Record<ConnectionSource, SourceStatus>): 
  */
 export class ConnectionStatus {
 	private readonly report: (status: InstanceStatus, message: string | null) => void
+	private readonly logInfo: (message: string) => void
 	private sources: Record<ConnectionSource, SourceStatus> = ConnectionStatus.initialSources()
 	private last: SourceStatus | null = null
+	private hasFailed = false
 
-	constructor(report: (status: InstanceStatus, message: string | null) => void) {
+	constructor(report: (status: InstanceStatus, message: string | null) => void, logInfo: (message: string) => void) {
 		this.report = report
+		this.logInfo = logInfo
 	}
 
 	private static initialSources(): Record<ConnectionSource, SourceStatus> {
@@ -46,6 +49,7 @@ export class ConnectionStatus {
 
 	public reset(): void {
 		this.sources = ConnectionStatus.initialSources()
+		this.hasFailed = false
 		this.publish()
 	}
 
@@ -68,5 +72,12 @@ export class ConnectionStatus {
 		if (this.last?.status === combined.status && this.last.message === combined.message) return
 		this.last = combined
 		this.report(combined.status, combined.message)
+
+		if (combined.status === InstanceStatus.Ok) {
+			this.logInfo(this.hasFailed ? 'Connection to Kairos restored' : 'Connected to Kairos')
+			this.hasFailed = false
+		} else if (combined.status !== InstanceStatus.Connecting) {
+			this.hasFailed = true
+		}
 	}
 }

@@ -252,12 +252,10 @@ export class REST {
 	private readonly setStatus = (status: InstanceStatus, message: string | null): void => {
 		if (this.destroyed) return
 		if (status === this.lastStatus?.status && message === this.lastStatus.message) return
-		const recovered = status === InstanceStatus.Ok && this.lastStatus !== null
 		this.lastStatus = { status, message }
 
-		const target = `${this.host}:${this.restPort}`
-		if (status !== InstanceStatus.Ok) this.instance.log('error', `REST API at ${target} unavailable: ${message}`)
-		else if (recovered) this.instance.log('info', `REST API at ${target} available again`)
+		if (status !== InstanceStatus.Ok)
+			this.instance.log('error', `REST API at ${this.host}:${this.restPort} unavailable: ${message}`)
 		this.instance.connectionStatus.set('rest', status, message)
 	}
 
