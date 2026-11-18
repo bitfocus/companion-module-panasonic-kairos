@@ -2,7 +2,7 @@ import type { CompanionActionDefinitions } from '@companion-module/base'
 import { refAudioMixerChannel, refToPath, type KairosConnection } from 'kairos-connection'
 import { options, type SourceAB } from './utils.js'
 import type KairosInstance from './index.js'
-import { layerRef, sceneRef, sourcePath, transitionRef } from './tcp.js'
+import { layerRef, sceneRef, sourcePath, transitionRef } from './refs.js'
 import { updateBasicVariables } from './variables.js'
 import { FeedbackId } from './feedback.js'
 
