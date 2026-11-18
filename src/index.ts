@@ -102,6 +102,9 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		uuid: string
 	}[] = []
 
+	private readonly sentDefinitions = new Map<string, string>()
+	private sentVariableValues: CompanionVariableValues = {}
+
 	/**
 	 * @description triggered on instance being enabled
 	 */
@@ -147,19 +150,49 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 		if (updateFlag === updateFlags.All) {
 			const actions = getActions(this)
 			const feedbacks = getFeedbacks(this)
-			const { structure, presets } = getPresets(this)
 
-			this.setActionDefinitions(actions)
-			this.setFeedbackDefinitions(feedbacks)
-			this.setPresetDefinitions(structure, presets)
+			if (this.definitionsChanged('actions', actions)) this.setActionDefinitions(actions)
+			if (this.definitionsChanged('feedbacks', feedbacks)) this.setFeedbackDefinitions(feedbacks)
+			this.updatePresets()
 
 			updateBasicVariables(this)
 			this.tcp?.sync()
 		} else if (updateFlag === updateFlags.onlyVariables) {
 			updateBasicVariables(this)
 		} else if (updateFlag === updateFlags.presets) {
-			const { structure, presets } = getPresets(this)
-			this.setPresetDefinitions(structure, presets)
+			this.updatePresets()
 		}
+	}
+
+	private updatePresets(): void {
+		const { structure, presets } = getPresets(this)
+		if (this.definitionsChanged('presets', { structure, presets })) this.setPresetDefinitions(structure, presets)
+	}
+
+	/**
+	 * REST rebuilds every definition on each poll, and Companion reprocesses (and logs) each one it is sent, so only
+	 * send them when they differ from the last ones sent. The callbacks look everything up when they run, so
+	 * definitions with the same options behave the same.
+	 */
+	public definitionsChanged(kind: 'actions' | 'feedbacks' | 'presets' | 'variables', definitions: unknown): boolean {
+		const serialized = JSON.stringify(definitions)
+		if (this.sentDefinitions.get(kind) === serialized) return false
+		this.sentDefinitions.set(kind, serialized)
+		return true
+	}
+
+	/**
+	 * Sends the variable values that differ from the last ones sent
+	 * @param resend send them all, as after the variable definitions changed
+	 */
+	public setChangedVariableValues(values: CompanionVariableValues, resend: boolean): void {
+		if (resend) this.sentVariableValues = {}
+		const changed: CompanionVariableValues = {}
+		for (const [id, value] of Object.entries(values)) {
+			if (id in this.sentVariableValues && this.sentVariableValues[id] === value) continue
+			changed[id] = value
+			this.sentVariableValues[id] = value
+		}
+		if (Object.keys(changed).length > 0) this.setVariableValues(changed)
 	}
 }

@@ -82,7 +82,8 @@ export function updateBasicVariables(instance: KairosInstance): void {
 	for (const variable of filteredVariables) {
 		variableDefinitions[variable.variableId] = { name: variable.name }
 	}
-	instance.setVariableDefinitions(variableDefinitions)
+	const definitionsChanged = instance.definitionsChanged('variables', variableDefinitions)
+	if (definitionsChanged) instance.setVariableDefinitions(variableDefinitions)
 
 	const newVariables: CompanionVariableValues = {}
 
@@ -109,5 +110,6 @@ export function updateBasicVariables(instance: KairosInstance): void {
 		newVariables[`Audio.mute_channel_${index + 1}`] =
 			instance.KairosObj.AUDIO_CHANNELS[index].mute == 0 ? 'unmuted' : 'muted'
 	}
-	instance.setVariableValues(newVariables)
+	// Companion drops the values of removed variables, so after a definition change send every value again
+	instance.setChangedVariableValues(newVariables, definitionsChanged)
 }

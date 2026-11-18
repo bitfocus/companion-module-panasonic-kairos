@@ -268,7 +268,9 @@ export class TCP {
 		// Only the A/B sources are needed: subscribeSceneLayer would subscribe to every attribute of every layer
 		for (const layer of this.instance.combinedLayerArray) {
 			const path = refToPath(layerRef(layer))
-			for (const sourceAB of ['sourceA', 'sourceB'] as const) {
+			// REST has no sourceB for layers without a B bus, where TCP would still report one (BLACK)
+			const buses = layer.sourceB == null ? (['sourceA'] as const) : (['sourceA', 'sourceB'] as const)
+			for (const sourceAB of buses) {
 				wanted.set(`${path}.${sourceAB}`, (value) => {
 					// REST replaces the layer list on every poll, so look the layer up again
 					const entry = this.instance.combinedLayerArray.find((x) => refToPath(layerRef(x)) === path)
