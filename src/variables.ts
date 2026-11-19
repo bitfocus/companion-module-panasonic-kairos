@@ -1,6 +1,6 @@
 import type { CompanionVariableDefinitions, CompanionVariableValues } from '@companion-module/base'
 import type KairosInstance from './index.js'
-import { auxSource, booleanValue, layerSource } from './state.js'
+import { auxKind, auxSource, booleanValue, layerSource } from './state.js'
 import { audioMutePath, masterMutePath, playerRepeatPath } from './refs.js'
 
 interface InstanceVariableDefinition {
@@ -17,6 +17,11 @@ const sanitizeVariableIdPart = (name: string): string => name.replace(/[^a-zA-Z0
 export const inputVariableId = (inputName: string): string =>
 	`INPUT.${sanitizeVariableIdPart(inputName.replace(/ /g, '_'))}`
 export const auxVariableId = (auxName: string): string => `AUX.${sanitizeVariableIdPart(auxName.replace(/ /g, '_'))}`
+/**
+ * Every AUX with its UUID, kind, the sources it accepts and the id of its source variable, for routing tools. The id has no '.' after "AUX", so it
+ * can't collide with the variable of an AUX named "list".
+ */
+export const AUX_LIST_VARIABLE_ID = 'AUX_list'
 const layerVariableId = (sceneName: string, layerName: string): string =>
 	`Scene.${sanitizeVariableIdPart(sceneName)}.${sanitizeVariableIdPart(layerName)}`
 
@@ -80,6 +85,7 @@ export function updateBasicVariables(instance: KairosInstance): void {
 		...inputSources,
 		...auxSources,
 		...auxNames,
+		{ name: 'AUXes - List', variableId: AUX_LIST_VARIABLE_ID },
 		...audio_mute,
 		...playerRepeat,
 	]
@@ -107,6 +113,16 @@ export function updateBasicVariables(instance: KairosInstance): void {
 			legacyLayerValues[`Scene.${legacyName}.sourceB`] = sourceB
 		}
 	}
+	// A JSON string, as Companion and Buttons flatten a list value to its items' text.
+	newVariables[AUX_LIST_VARIABLE_ID] = JSON.stringify(
+		instance.state.auxes.map((aux) => ({
+			uuid: aux.uuid,
+			name: aux.name,
+			kind: auxKind(aux),
+			sources: aux.sources ?? [],
+			sourceVariable: `${auxVariableId(aux.name)}.source`,
+		})),
+	)
 	instance.state.auxes.forEach((AUX) => {
 		newVariables[`${auxVariableId(AUX.name)}.source`] = auxSource(instance.state, AUX)
 		newVariables[auxVariableId(AUX.name)] = AUX.name

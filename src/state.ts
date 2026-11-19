@@ -123,6 +123,11 @@ export function auxSource(state: MixerState, aux: MixerState['auxes'][number]): 
 	return liveSource(state, `${refToPath(aux.ref)}.source`, aux.uuid) ?? aux.source
 }
 
+/** Kairos only offers its audio mixer as a source on audio AUXes, so that is what marks one. */
+export function auxKind(aux: MixerState['auxes'][number]): 'audio' | 'video' {
+	return aux.sources?.includes('AudioMixer') ? 'audio' : 'video'
+}
+
 export function macroStatus(state: MixerState, path: string, uuid: string): ReturnType<typeof parseMacroStatus> {
 	const value = liveValue(state, `${path}.status`, uuid)
 	return value === undefined ? undefined : parseMacroStatus(value)

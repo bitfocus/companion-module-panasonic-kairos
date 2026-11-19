@@ -314,6 +314,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					default: '',
 					choices: instance.state.auxes.map((item) => ({ id: item.name, label: item.name })),
 					allowInvalidValues: true,
+					tooltip: "An AUX's UUID also works here, and keeps working if the AUX is renamed",
 				},
 				{
 					type: 'dropdown',
