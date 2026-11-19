@@ -109,6 +109,8 @@ export class REST {
 			}
 			const error = result.reason instanceof Error ? result.reason : new Error(String(result.reason))
 			errors.push(error)
+			// An unreachable API fails every list, and the connection status reports that once.
+			if (error instanceof RestConnectionError) continue
 			if (error.message !== this.pullErrors.get(name)) {
 				this.instance.log('warn', `Unable to read KAIROS REST ${name}: ${error.message}`)
 				this.pullErrors.set(name, error.message)
@@ -164,8 +166,6 @@ export class REST {
 	private setStatus(status: InstanceStatus, message: string | null): void {
 		if (status === this.lastStatus?.status && message === this.lastStatus.message) return
 		this.lastStatus = { status, message }
-		if (status !== InstanceStatus.Ok)
-			this.instance.log('error', `REST API at ${this.host}:${this.restPort} unavailable: ${message}`)
 		this.instance.connectionStatus.set('rest', status, message)
 	}
 

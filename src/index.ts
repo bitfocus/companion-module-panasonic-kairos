@@ -29,7 +29,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 	tcp: TCP | undefined
 	readonly connectionStatus = new ConnectionStatus(
 		(status, message) => this.updateStatus(status, message),
-		(message) => this.log('info', message),
+		(level, message) => this.log(level, message),
 	)
 	constructor(internal: unknown) {
 		super(internal)

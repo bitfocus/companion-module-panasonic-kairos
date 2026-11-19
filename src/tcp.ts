@@ -30,8 +30,8 @@ export class TCP {
 
 	constructor(
 		private readonly instance: KairosInstance,
-		private readonly host: string,
-		private readonly port: number,
+		host: string,
+		port: number,
 	) {
 		this.connection = new KairosConnection({ host, port, autoConnect: false })
 		this.connection.on('connect', this.onConnect)
@@ -43,7 +43,6 @@ export class TCP {
 		})
 
 		this.connectTimer = setTimeout(() => {
-			this.instance.log('error', `TCP connection to ${this.host}:${this.port} failed`)
 			this.instance.connectionStatus.set('tcp', InstanceStatus.ConnectionFailure, 'Unable to connect')
 		}, CONNECT_TIMEOUT_MS)
 		this.connection.connect()
@@ -130,8 +129,8 @@ export class TCP {
 	private readonly onDisconnect = (): void => {
 		if (this.destroyed) return
 		this.invalidate()
-		this.instance.log('error', `TCP connection to ${this.host}:${this.port} lost`)
-		this.instance.connectionStatus.set('tcp', InstanceStatus.ConnectionFailure, 'Disconnected')
+		// The connection status logs the loss, with the socket error that caused it.
+		this.instance.connectionStatus.set('tcp', InstanceStatus.ConnectionFailure, this.lastErrorMessage ?? 'Disconnected')
 		this.instance.updateInstance(updateFlags.All)
 		this.checkLiveFeedbacks()
 	}
@@ -187,10 +186,11 @@ export class TCP {
 		this.instance.updateInstance(updateFlags.All)
 	}
 
+	// Socket errors come with a disconnect or a failed reconnect, which the connection status reports.
 	private readonly logError = (error: Error): void => {
 		if (this.destroyed || error.message === this.lastErrorMessage) return
 		this.lastErrorMessage = error.message
-		this.instance.log('error', `TCP connection error: ${error.message}`)
+		this.instance.log('debug', `TCP connection error: ${error.message}`)
 	}
 
 	private syncTransitions(): void {
