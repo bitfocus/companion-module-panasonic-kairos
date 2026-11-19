@@ -1,224 +1,215 @@
-import KairosInstance from '.'
+import type KairosInstance from './index.js'
+import { INTERNAL_SOURCES, type MixerState } from './state.js'
 import { InstanceStatus } from '@companion-module/base'
-import { FeedbackId } from './feedback'
-import { createInputWithName, updateFlags } from './utils'
-const isReachable = require('is-reachable')
+import { FeedbackId } from './feedback.js'
+import type { SourceStatus } from './status.js'
+import { layerRef, macroRef } from './refs.js'
+import { createInputWithName, updateFlags } from './utils.js'
+import { refAuxName } from 'kairos-connection'
+
+const POLL_INTERVAL_MS = 5000
+const REQUEST_TIMEOUT_MS = 4000
+
+class RestConnectionError extends Error {
+	constructor(error: unknown) {
+		const cause = (error as { cause?: { code?: string; message?: string } } | null)?.cause
+		const message = error instanceof Error ? error.message : String(error)
+		super(cause?.code ?? cause?.message ?? message)
+	}
+}
+
+class RestHttpError extends Error {
+	constructor(
+		readonly status: number,
+		statusText: string,
+		detail: string,
+	) {
+		super(`HTTP ${status} ${statusText}${detail ? ` (${detail})` : ''}`)
+	}
+}
 
 export class REST {
-	private readonly instance: KairosInstance
-	private pullerInterval: NodeJS.Timer | undefined
-	host: string
-	restPort: number
-	username: string
-	password: string
+	private pollTimer: NodeJS.Timeout | undefined
+	private readonly lifetime = new AbortController()
+	private lastStatus: SourceStatus | null = null
+	private readonly pullErrors = new Map<string, string>()
+	private readonly headers: Headers
 
-	constructor(instance: KairosInstance, host: string, restPort: number, username: string, password: string) {
-		this.instance = instance
-		this.host = host
-		this.restPort = restPort
-		this.username = username
-		this.password = password
-
-		this.setupKairos()
+	constructor(
+		private readonly instance: KairosInstance,
+		private readonly host: string,
+		private readonly restPort: number,
+		username: string,
+		password: string,
+	) {
+		this.headers = new Headers({ Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}` })
+		void this.poll()
 	}
 
-	/**
-	 * @description Create initial requests to Kairos
-	 */
-	public readonly setupKairos = async (): Promise<void> => {
-		// Load players
-		this.instance.KairosObj.PLAYERS = [
-			{ player: 'RR1', repeat: 0 },
-			{ player: 'RR2', repeat: 0 },
-			{ player: 'RR3', repeat: 0 },
-			{ player: 'RR4', repeat: 0 },
-			{ player: 'RR5', repeat: 0 },
-			{ player: 'RR6', repeat: 0 },
-			{ player: 'RR7', repeat: 0 },
-			{ player: 'RR8', repeat: 0 },
-			{ player: 'CP1', repeat: 0 },
-			{ player: 'CP2', repeat: 0 },
-			{ player: 'AP1', repeat: 0 },
-			{ player: 'AP2', repeat: 0 },
-			{ player: 'AP3', repeat: 0 },
-			{ player: 'AP4', repeat: 0 },
-			{ player: 'AP5', repeat: 0 },
-			{ player: 'AP6', repeat: 0 },
-			{ player: 'AP7', repeat: 0 },
-			{ player: 'AP8', repeat: 0 },
-			{ player: 'AP9', repeat: 0 },
-			{ player: 'AP10', repeat: 0 },
-			{ player: 'AP11', repeat: 0 },
-			{ player: 'AP12', repeat: 0 },
-			{ player: 'AP13', repeat: 0 },
-			{ player: 'AP14', repeat: 0 },
-			{ player: 'AP15', repeat: 0 },
-			{ player: 'AP16', repeat: 0 },
-		]
-		// Load audio channels
-		this.instance.KairosObj.AUDIO_CHANNELS = [
-			{ channel: 'Channel 1', mute: 0 },
-			{ channel: 'Channel 2', mute: 0 },
-			{ channel: 'Channel 3', mute: 0 },
-			{ channel: 'Channel 4', mute: 0 },
-			{ channel: 'Channel 5', mute: 0 },
-			{ channel: 'Channel 6', mute: 0 },
-			{ channel: 'Channel 7', mute: 0 },
-			{ channel: 'Channel 8', mute: 0 },
-			{ channel: 'Channel 9', mute: 0 },
-			{ channel: 'Channel 10', mute: 0 },
-			{ channel: 'Channel 11', mute: 0 },
-			{ channel: 'Channel 12', mute: 0 },
-			{ channel: 'Channel 13', mute: 0 },
-			{ channel: 'Channel 14', mute: 0 },
-			{ channel: 'Channel 15', mute: 0 },
-			{ channel: 'Channel 16', mute: 0 },
-		]
-		/**
-		 * Pulls the current state of the switcher
-		 */
-		let pullScenes = async () => {
-			try {
-				/**
-				 * Pulls the macro's
-				 */
-				let pullMacros = async () => {
-					try {
-						let macroResult = await this.sendCommand('/macros')
-						let convertedMacros = JSON.parse(macroResult)
-						this.instance.KairosObj.MACROS = convertedMacros
-					} catch (error: any) {
-						this.instance.log('error', 'Error pulling macros : ' + error.message)
-					}
-				}
-				pullMacros()
-
-				let pullMultiviewers = async () => {
-					try {
-						let multiviewerResult = await this.sendCommand('/multiviewers')
-						let convertedMultiviewers = JSON.parse(multiviewerResult)
-						this.instance.KairosObj.MULTIVIEWERS = convertedMultiviewers
-					} catch (error: any) {
-						this.instance.log('error', 'Error pulling multiviewers : ' + error.message)
-					}
-				}
-				pullMultiviewers()
-
-				let sceneResult = await this.sendCommand('/scenes')
-				let convertedScenes = JSON.parse(sceneResult)
-				this.instance.KairosObj.SCENES = convertedScenes
-
-				// clear arrays
-				this.instance.combinedLayerArray = []
-				this.instance.KairosObj.SCENES_MACROS = []
-				this.instance.KairosObj.SNAPSHOTS = []
-
-				// Load inputs, macros and snapshots from scenes into Kairos
-				this.instance.KairosObj.SCENES.forEach((scene: any) => {
-					if (scene.macros) {
-						if (scene.macros.lenght != this.instance.KairosObj.SCENES_MACROS.length) {
-							scene.macros.forEach(
-								(macro: { color: string; name: string; state: string; uuid: string; scene: string; path: string }) => {
-									macro.name = scene.path ? `${scene.path}${scene.name}-${macro.name}` : `${scene.name}-${macro.name}`
-									// macro.scene = scene.path ? scene.path + scene.name : scene.name
-									macro.scene = scene.name
-									this.instance.KairosObj.SCENES_MACROS.push(macro)
-								}
-							)
-						}
-					}
-					if (scene.snapshots) {
-						scene.snapshots.forEach((snapshot: any) => {
-							snapshot.scene = scene.name
-							this.instance.KairosObj.SNAPSHOTS.push(snapshot)
-						})
-					}
-					if (!scene.layers) return
-					scene.layers.forEach((layer: any) => {
-						this.instance.combinedLayerArray.push({
-							path: scene.path,
-							sceneName: scene.name,
-							layerName: layer.name,
-							sourceA: layer.sourceA,
-							sourceB: layer.sourceB,
-							uuid: `/${scene.uuid}/${layer.uuid}`,
-						})
-						if (!layer.sources) return
-						layer.sources.forEach((source: any) => {
-							if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
-								this.instance.KairosObj.INPUTS.push(createInputWithName(source))
-						})
-					})
-				})
-
-				let auxResult = await this.sendCommand('/aux')
-				let convertedAux = JSON.parse(auxResult)
-				this.instance.KairosObj.AUX = convertedAux
-
-				// Load inputs from aux into Kairos
-				this.instance.KairosObj.AUX.forEach((aux: any) => {
-					if (!aux.sources) return
-					aux.sources.forEach((source: any) => {
-						if (this.instance.KairosObj.INPUTS.findIndex((x) => x.name == source) == -1)
-							this.instance.KairosObj.INPUTS.push(createInputWithName(source))
-					})
-				})
-
-				this.instance.checkFeedbacks(FeedbackId.aux)
-				this.instance.checkFeedbacks(FeedbackId.inputSource)
-				this.instance.updateInstance(updateFlags.All as number)
-			} catch (error: any) {
-				this.instance.log('error', 'Error pulling auxes and scenes : ' + error.message)
-			}
-		}
-
-		const addInternalSources = () => {
-			this.instance.KairosObj.INPUTS.push(createInputWithName('Black'))
-			this.instance.KairosObj.INPUTS.push(createInputWithName('White'))
-			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorBar'))
-			this.instance.KairosObj.INPUTS.push(createInputWithName('ColorCircle'))
-		}
-		//check server
-		await isReachable(this.host).then((reachable: boolean) => {
-			if (!reachable) {
-				this.instance.updateStatus(InstanceStatus.ConnectionFailure, 'Server not reachable')
-			} else {
-				this.instance.updateStatus(InstanceStatus.Ok, 'Server reachable')
-				pullScenes()
-				this.pullerInterval = setInterval(pullScenes, 5000) //Change pulling Time?
-			}
-		})
-		addInternalSources()
-		this.instance.updateInstance(updateFlags.All as number)
-	}
-
-	/**
-	 * @description Close connection on instance disable/removal
-	 */
-	public readonly destroy = (): void => {
-		if (this.pullerInterval != undefined) clearInterval(this.pullerInterval)
-	}
-	/**
-	 * Send rest command to Kairos
-	 * @param command
-	 * @returns string response
-	 */
-	public readonly sendCommand = async (command: string): Promise<string> => {
-		const formattedRestRequest = `http://${this.host}:${this.restPort}${command}`
-		const base64Credentials = Buffer.from(`${this.username}:${this.password}`).toString('base64')
-		const headers = new Headers({
-			Authorization: `Basic ${base64Credentials}`,
-		})
-		if (command !== '/scenes' && command !== '/aux' && command !== '/macros' && command !== '/multiviewers')
-			this.instance.log('debug', `Sending command: ${formattedRestRequest}`)
+	private readonly poll = async (): Promise<void> => {
+		this.pollTimer = undefined
 		try {
-			const response = await fetch(formattedRestRequest, { headers })
-			const result = await response.text()
-			this.instance.updateStatus(InstanceStatus.Ok)
-			return result
+			await this.pullState()
 		} catch (error) {
-			this.instance.updateStatus(InstanceStatus.UnknownError, 'Error sending command')
-			return (error as Error).message
+			if (!this.lifetime.signal.aborted)
+				this.setStatus(InstanceStatus.UnknownError, error instanceof Error ? error.message : String(error))
+		} finally {
+			if (!this.lifetime.signal.aborted) this.pollTimer = setTimeout(() => void this.poll(), POLL_INTERVAL_MS)
 		}
+	}
+
+	private async pullState(): Promise<void> {
+		const [scenes, auxes, macros, multiviewers] = await Promise.allSettled([
+			this.readScenes(),
+			this.readList<Omit<MixerState['auxes'][number], 'ref'>>('/aux').then((list) =>
+				list.map((aux) => ({ ...aux, ref: refAuxName(aux.name) })),
+			),
+			this.readList<Omit<MixerState['macros'][number], 'ref'>>('/macros').then((list) =>
+				list.map((macro) => ({ ...macro, ref: macroRef(macro.path, macro.name) })),
+			),
+			this.readList<MixerState['multiviewers'][number]>('/multiviewers'),
+		])
+		if (this.lifetime.signal.aborted) return
+
+		const state = this.instance.state
+		if (scenes.status === 'fulfilled') Object.assign(state, scenes.value)
+		if (auxes.status === 'fulfilled') state.auxes = auxes.value
+		if (macros.status === 'fulfilled') state.macros = macros.value
+		if (multiviewers.status === 'fulfilled') state.multiviewers = multiviewers.value
+
+		const pulls = { scenes, auxes, macros, multiviewers }
+		if (Object.values(pulls).some((result) => result.status === 'fulfilled')) {
+			// Source choices describe the current catalog. Keep the existing input objects for names that still exist.
+			const inputsByName = new Map(state.inputs.map((input) => [input.name, input]))
+			const names = new Set<string>(INTERNAL_SOURCES)
+			for (const scene of state.scenes) {
+				for (const layer of scene.layers ?? []) {
+					for (const source of layer.sources ?? []) names.add(source)
+				}
+			}
+			for (const aux of state.auxes) {
+				for (const source of aux.sources ?? []) names.add(source)
+			}
+			state.inputs = Array.from(names, (name) => inputsByName.get(name) ?? createInputWithName(name))
+			this.instance.updateInstance(updateFlags.All)
+			this.instance.checkFeedbacks(
+				FeedbackId.aux,
+				FeedbackId.inputSource,
+				FeedbackId.inputMediaStill,
+				FeedbackId.macroPlaying,
+				FeedbackId.sceneMacroPlaying,
+			)
+		}
+
+		const errors: Error[] = []
+		for (const [name, result] of Object.entries(pulls)) {
+			if (result.status === 'fulfilled') {
+				this.pullErrors.delete(name)
+				continue
+			}
+			const error = result.reason instanceof Error ? result.reason : new Error(String(result.reason))
+			errors.push(error)
+			if (error.message !== this.pullErrors.get(name)) {
+				this.instance.log('warn', `Unable to read KAIROS REST ${name}: ${error.message}`)
+				this.pullErrors.set(name, error.message)
+			}
+		}
+		const connectionError = errors.find((error) => error instanceof RestConnectionError)
+		const authError = errors.find(
+			(error) => error instanceof RestHttpError && (error.status === 401 || error.status === 403),
+		)
+		if (connectionError) this.setStatus(InstanceStatus.ConnectionFailure, connectionError.message)
+		else if (authError)
+			this.setStatus(InstanceStatus.BadConfig, 'Authentication failed, check the username and password')
+		else if (errors.length === Object.keys(pulls).length) this.setStatus(InstanceStatus.UnknownError, errors[0].message)
+		else this.setStatus(InstanceStatus.Ok, null)
+	}
+
+	private async readScenes(): Promise<Pick<MixerState, 'scenes' | 'layers' | 'sceneMacros' | 'snapshots'>> {
+		const data = await this.readList<MixerState['scenes'][number]>('/scenes')
+		const scenes = data.map((scene) => ({ ...scene, actions: scene.actions ?? [] }))
+		const layers = scenes.flatMap((scene) =>
+			(scene.layers ?? []).map((layer) => ({
+				path: scene.path,
+				sceneName: scene.name,
+				layerName: layer.name,
+				sourceA: layer.sourceA,
+				sourceB: layer.sourceB,
+				uuid: `/${scene.uuid}/${layer.uuid}`,
+				ref: layerRef(scene.path, scene.name, layer.name),
+			})),
+		)
+		const sceneMacros = scenes.flatMap((scene) =>
+			(scene.macros ?? []).map((macro) => ({
+				...macro,
+				name: `${scene.path ?? ''}${scene.name}-${macro.name}`,
+				macroName: macro.name,
+				sceneName: scene.name,
+				path: scene.path ?? '',
+			})),
+		)
+		const snapshots = scenes.flatMap((scene) =>
+			(scene.snapshots ?? []).map((snapshot) => ({ ...snapshot, sceneName: scene.name })),
+		)
+		return { scenes, layers, sceneMacros, snapshots }
+	}
+
+	private async readList<T>(path: string): Promise<T[]> {
+		const data: unknown = JSON.parse(await this.request(path))
+		if (!Array.isArray(data) || data.some((item) => typeof item?.name !== 'string'))
+			throw new Error(`Expected an array of named objects from ${path}`)
+		return data as T[]
+	}
+
+	private setStatus(status: InstanceStatus, message: string | null): void {
+		if (status === this.lastStatus?.status && message === this.lastStatus.message) return
+		this.lastStatus = { status, message }
+		if (status !== InstanceStatus.Ok)
+			this.instance.log('error', `REST API at ${this.host}:${this.restPort} unavailable: ${message}`)
+		this.instance.connectionStatus.set('rest', status, message)
+	}
+
+	public destroy(): void {
+		this.lifetime.abort()
+		clearTimeout(this.pollTimer)
+	}
+
+	public async patch(path: string, body: object): Promise<void> {
+		if (this.lifetime.signal.aborted) throw new Error(`Cannot send KAIROS REST PATCH ${path}: connection was closed`)
+		this.instance.log('debug', `Sending KAIROS REST PATCH ${path}`)
+		try {
+			await this.request(path, body)
+		} catch (error) {
+			const message = this.lifetime.signal.aborted
+				? 'connection was closed'
+				: error instanceof Error
+					? error.message
+					: String(error)
+			throw new Error(`KAIROS REST PATCH ${path} failed: ${message}`, { cause: error })
+		}
+	}
+
+	private async request(path: string, patchBody?: object): Promise<string> {
+		const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+		const signal = AbortSignal.any([this.lifetime.signal, timeout])
+		const headers = new Headers(this.headers)
+		if (patchBody) headers.set('Content-Type', 'application/merge-patch+json')
+
+		let response: Response
+		let body: string
+		try {
+			response = await fetch(`http://${this.host}:${this.restPort}${path}`, {
+				method: patchBody ? 'PATCH' : 'GET',
+				body: patchBody ? JSON.stringify(patchBody) : undefined,
+				headers,
+				signal,
+			})
+			body = await response.text()
+		} catch (error) {
+			if (timeout.aborted) throw new RestConnectionError(new Error('Timed out'))
+			throw new RestConnectionError(error)
+		}
+		if (!response.ok) throw new RestHttpError(response.status, response.statusText, body.trim().slice(0, 300))
+		return body
 	}
 }

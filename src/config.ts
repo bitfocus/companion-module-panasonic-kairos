@@ -1,37 +1,23 @@
-import { InstanceBase, SomeCompanionConfigField } from "@companion-module/base"
+import type { SomeCompanionConfigField } from '@companion-module/base'
 
-export interface config {
+export type config = {
 	label: string
 	host: string
 	tcpPort: number
 	restPort: number
 	username: string
-	password: string
 }
 
-export interface InstanceBaseExt<TConfig> extends InstanceBase<TConfig> {
-	[x: string]: any
-	tcp: any
-	config: TConfig
-	UpdateVariablesValues(): void
-	InitVariables(): void
+export type secrets = {
+	password: string
 }
 
 export const getConfigFields = (): SomeCompanionConfigField[] => {
 	return [
 		{
-			type: 'static-text',
-			id: 'info',
-			width: 12,
-			label: 'Startup warning',
-			value:
-				'First startup of this module can take up to a minute to process all data. <br />' +
-				'Please be patient for all commands to be finished, the status will turn OK/Green when ready',
-		},
-		{
 			type: 'textinput',
 			id: 'host',
-			label: 'Target host',
+			label: 'Host',
 			width: 6,
 			default: '192.168.10.10',
 		},
@@ -63,7 +49,7 @@ export const getConfigFields = (): SomeCompanionConfigField[] => {
 			default: 'Kairos',
 		},
 		{
-			type: 'textinput',
+			type: 'secret-text',
 			id: 'password',
 			label: 'Password',
 			width: 6,

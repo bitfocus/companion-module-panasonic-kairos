@@ -1,73 +1,86 @@
-## Panasonic Kairos
+## Panasonic KAIROS
 
-This module is for the Panasonic Kairos switcher.
->> To connect make sure Kairos RestAPI mode is set to Basic
->> Although it is pretty common, don't use special characters in your naming. This could result in errors or not being able to use such source/destination
+Controls a Panasonic KAIROS live production platform.
 
-**Available commands in this module**
+### Setup
+
+The module uses two connections to the KAIROS, and needs both:
+
+- **TCP** (default port 3005) for transitions, players, audio and live state.
+- **REST API** (default port 1234) to read the scenes, layers, AUXes, macros, snapshots and multiviewers, and for the actions that use them. In KAIROS Creator, set the REST API mode to **Basic** and enter the same username and password here.
+
+| Setting       | Default       |
+| ------------- | ------------- |
+| Host          | 192.168.10.10 |
+| TCP Port      | 3005          |
+| REST API Port | 1234          |
+| Username      | `Kairos`      |
+| Password      | (empty)       |
+
+The connection turns green once both are connected, and lists in the actions fill in a few seconds later. Changes made on the KAIROS (new scenes, layers, macros…) appear within a few seconds.
+
+> Avoid special characters in the names of scenes, layers and sources: some can't be used in actions or variables.
 
 ### Actions
-* All actions are present, you can find it in the presets
 
-### Transition control
-* execute auto transition for selected SCENE or LAYER
-* execute cut transition for selected SCENE or LAYER
+Actions are named by what they control, so related ones are listed together. Most are also available as ready-made buttons in the presets.
 
-### Layer source/media still assignment
-* set sourceA (PGM) for LAYER of SCENE
-* set sourceB (PVW) for LAYER of SCENE (if avaliable)
+**Layers**
 
-### Snapshot control
-* trigger snapshot
+- **Layers - Set Source**: set source A or B of a layer.
+- **Layers - Set Media Still**: put a still from the media pool on a layer.
 
-### AUX source assignment
-* set source for selected AUX, only possible when sources assigned to an AUX
+**AUX**
 
-### RAM players/Clip players
-* go to begin
-* rewind
-* step back
-* reverse play
-* play
-* pause
-* stop
-* step forward
-* fast forward
-* go to end
-* set replay mode
+- **AUX - Set Source**: set the source of an AUX. Only sources assigned to that AUX can be chosen.
 
-### Macro control
-* play
-* pause
-* stop
-* record start
-* record stop
+**Scenes and transitions**
 
-> At this point there is a limitation to Macro's , in the presets you'll only find root macro's
+- **Scenes - Cut** / **Scenes - Auto Transition**: cut or auto transition a scene.
+- **Transitions - Cut** / **Transitions - Auto**: cut or auto one of a scene's transitions (BgdMix, L1…).
+- **Scenes - Run Action**: run one of a scene's actions.
 
-### Multiview control
-* recall preset to MV1
-* recall preset to MV2
+**Snapshots and multiviewers**
 
-### Audio mixer control
-* Set mute/unmute for master
-* Set mute/unmute for 16 audio busses
+- **Snapshots - Recall**: recall a scene snapshot.
+- **Multiviewers - Recall Preset**: recall a preset on a multiviewer.
 
-**Available feedback in this module**
+**Macros**
 
-* SourceA for each layer (PGM)
-* SourceB for each layer (PVW)
-* AUX sources
-* Audio master mute
-* Audio 16-channels mute
+- **Macros - Control Global Macro** and **Macros - Control Scene Macro**: play, stop, record or stop recording a macro.
 
-**Available variables in this module**
+**Players**
 
-* SourceA for each layer (PGM)
-* Presets enabled or not (PVW bus on a layer)
-* Next transition
-* Input names
-* AUX with sources
-* MUTE master
-* MUTE channel 1 t/m 16
-* PLAYER repeat modus
+- **Players - Control** supports RAM recorders RR1–8, clip players CP1–2, and audio players AP1–16. It includes playback and repeat controls, plus options to go to the first, previous, next, or last playlist item.
+
+**Audio**
+
+- **Audio - Mute Master**: mute, unmute or toggle the master.
+- **Audio - Mute Channel**: mute, unmute or toggle channels 1–16.
+
+**Advanced**
+
+- **Advanced - Send Custom Command**: send a raw KAIROS TCP command, for example `SCENES.Main.cut` or `SCENES.Main.Layers.Background.sourceA=IP1`. Variables can be used in the command.
+
+### Feedbacks
+
+- **Layers - Source Selected** / **Layers - Media Still Selected**: a layer's source A or B is a given source or media still.
+- **AUX - Source Selected**: an AUX shows a given source.
+- **Audio - Master Muted** / **Audio - Channel Muted**: the master or a channel is muted.
+- **Players - Repeat On**: a player is in repeat mode.
+- **Macros - Global Macro Playing** / **Macros - Scene Macro Playing**: a macro is playing.
+
+### Variables
+
+| Variable                        | Value                      |
+| ------------------------------- | -------------------------- |
+| `Scene.<scene>.<layer>.sourceA` | Source A of the layer      |
+| `Scene.<scene>.<layer>.sourceB` | Source B of the layer      |
+| `AUX.<aux>.source`              | Source shown on the AUX    |
+| `AUX.<aux>`                     | Name of the AUX            |
+| `INPUT.<source>`                | Name of the source         |
+| `Audio.mute_master_audio`       | `muted` / `unmuted`        |
+| `Audio.mute_channel_1` … `_16`  | `muted` / `unmuted`        |
+| `Player.<player>.repeat`        | `repeat on` / `repeat off` |
+
+In source and AUX names, spaces become `_`. Any other character a variable name can't contain is left out, including spaces in scene and layer names.

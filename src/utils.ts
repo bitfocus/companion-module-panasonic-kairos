@@ -1,9 +1,5 @@
-import {
-	CompanionInputFieldColor,
-	CompanionInputFieldDropdown,
-	CompanionInputFieldNumber,
-	CompanionInputFieldTextInput,
-} from '@companion-module/base'
+import { combineRgb, type CompanionInputFieldDropdown } from '@companion-module/base'
+import { MacroStatus } from 'kairos-connection'
 
 interface input {
 	index: number
@@ -14,88 +10,76 @@ interface input {
 }
 
 export enum updateFlags {
-	None = 0,
 	onlyVariables = 1,
 	All = 2,
 	presets = 3,
 }
 
-type TimeFormat = 'hh:mm:ss' | 'hh:mm:ss.ms' | 'mm:ss' | 'mm:ss.ms'
+export type SourceAB = 'sourceA' | 'sourceB'
 
-// interface NumericDropdownChoice {
-//   id: number
-//   label: string
-// }
+/** 0 unmutes, 1 mutes, and 'toggle' does the opposite of the current state */
+export type MuteValue = number | 'toggle'
 
-// interface NumericInputFieldDropown extends Exclude<CompanionInputFieldDropdown, 'choices'> {
-//   choices: NumericDropdownChoice[]
-// }
+/** Whether to mute, given the mute option and whether it is muted now */
+/**
+ * The multiviewer presets, for a dropdown. Preset ids are per multiviewer, and every multiviewer has the same ones, so
+ * each id is listed once; the multiviewer is chosen in its own option.
+ */
+export const multiviewerPresetChoices = (
+	multiviewers: { presets?: ({ id: string | number; name: string } | null)[] }[],
+): { id: string | number; label: string }[] => {
+	const names = new Map<string | number, Set<string>>()
+	for (const preset of multiviewers.flatMap((multiviewer) => multiviewer.presets ?? [])) {
+		if (!preset) continue
+		const presetNames = names.get(preset.id) ?? new Set()
+		presetNames.add(preset.name)
+		names.set(preset.id, presetNames)
+	}
+	return Array.from(names, ([id, presetNames]) => ({ id, label: Array.from(presetNames).join(' / ') }))
+}
+
+/** A macro status reported over TCP, or undefined if it isn't one the library knows */
+export const parseMacroStatus = (value: string): MacroStatus | undefined =>
+	(Object.values(MacroStatus) as string[]).includes(value) ? (value as MacroStatus) : undefined
+
+export const isMacroPlaying = (status: MacroStatus | undefined): boolean => status === MacroStatus.Playing
 
 // Force options to have a default to prevent sending undefined values
 type EnforceDefault<T, U> = Omit<T, 'default'> & { default: U }
 
 export interface Options {
-	input: EnforceDefault<CompanionInputFieldTextInput, string>
-	playerControl: EnforceDefault<CompanionInputFieldDropdown, string>
-	macroStateControl: EnforceDefault<CompanionInputFieldDropdown, string>
-	mvRecall: EnforceDefault<CompanionInputFieldDropdown, string>
-	mute: EnforceDefault<CompanionInputFieldDropdown, number>
-	channel: EnforceDefault<CompanionInputFieldDropdown, string>
-	layerSelect: EnforceDefault<CompanionInputFieldDropdown, string>
-	sourceSelect: EnforceDefault<CompanionInputFieldDropdown, string>
-	foregroundColor: EnforceDefault<CompanionInputFieldColor, number>
-	foregroundColorBlack: EnforceDefault<CompanionInputFieldColor, number>
-	backgroundColorPreview: EnforceDefault<CompanionInputFieldColor, number>
-	backgroundColorProgram: EnforceDefault<CompanionInputFieldColor, number>
-	backgroundColorYellow: EnforceDefault<CompanionInputFieldColor, number>
-	selectedIndex: EnforceDefault<CompanionInputFieldNumber, number>
-	comparison: EnforceDefault<CompanionInputFieldDropdown, string>
-}
-
-// Static Variables
-export const TRANSITIONS = ['cut', 'auto'] as const
-export const SOURCES = ['IP1', 'IP2', 'IP3'] as const
-
-/**
- * @param red 0-255
- * @param green 0-255
- * @param blue 0-255
- * @returns RGB value encoded for Companion Bank styling
- */
-export const combineRgb = (red: number, green: number, blue: number): number => {
-	return ((red & 0xff) << 16) | ((green & 0xff) << 8) | (blue & 0xff)
+	playerControl: EnforceDefault<CompanionInputFieldDropdown<'action', string>, string>
+	macroStateControl: EnforceDefault<CompanionInputFieldDropdown<'action', string>, string>
+	mute: EnforceDefault<CompanionInputFieldDropdown<'mute', MuteValue>, MuteValue>
+	channel: EnforceDefault<CompanionInputFieldDropdown<'channel', string>, string>
 }
 
 /**
  * @description Common Action and Feedback options
  */
 export const options: Options = {
-	input: {
-		type: 'textinput',
-		label: 'Input',
-		id: 'input',
-		default: '1',
-		tooltip: 'Number, Name, or GUID',
-	},
-
 	playerControl: {
 		type: 'dropdown',
 		label: 'Action',
 		id: 'action',
 		default: 'begin',
 		choices: [
-			{ id: 'begin', label: 'Go to Begin' },
+			{ id: 'begin', label: 'Go to Start' },
 			{ id: 'rewind', label: 'Rewind' },
-			{ id: 'step_back', label: 'Step back' },
-			{ id: 'reverse', label: 'Reverse play' },
+			{ id: 'step_back', label: 'Step Back' },
+			{ id: 'reverse', label: 'Reverse Play' },
 			{ id: 'play', label: 'Play' },
 			{ id: 'pause', label: 'Pause' },
-			//{ id: 'stop', label: 'Stop' },
-			{ id: 'step_forward', label: 'Step forward' },
-			{ id: 'fast_forward', label: 'Fast forward' },
+			{ id: 'step_forward', label: 'Step Forward' },
+			{ id: 'fast_forward', label: 'Fast Forward' },
 			{ id: 'end', label: 'Go to End' },
-			{ id: 'repeat=0', label: 'Repeat off' },
-			{ id: 'repeat=1', label: 'Repeat on' },
+			{ id: 'repeat=0', label: 'Repeat Off' },
+			{ id: 'repeat=1', label: 'Repeat On' },
+			{ id: 'repeat=toggle', label: 'Repeat Toggle' },
+			{ id: 'playlist_begin', label: 'Playlist - Go to First Item' },
+			{ id: 'playlist_back', label: 'Playlist - Previous Item' },
+			{ id: 'playlist_next', label: 'Playlist - Next Item' },
+			{ id: 'playlist_end', label: 'Playlist - Go to Last Item' },
 		],
 	},
 
@@ -106,21 +90,9 @@ export const options: Options = {
 		default: 'play',
 		choices: [
 			{ id: 'play', label: 'Play' },
-			//{ id: 'pause', label: 'Pause' },
 			{ id: 'stop', label: 'Stop' },
 			{ id: 'record', label: 'Record' },
-			{ id: 'stop_record', label: 'Stop record' },
-		],
-	},
-
-	mvRecall: {
-		type: 'dropdown',
-		label: 'Multiviewer',
-		id: 'mv',
-		default: 'recall_mv1',
-		choices: [
-			{ id: 'recall_mv1', label: 'Multiviewer 1' },
-			{ id: 'recall_mv2', label: 'Multiviewer 2' },
+			{ id: 'stop_record', label: 'Stop Record' },
 		],
 	},
 
@@ -130,8 +102,9 @@ export const options: Options = {
 		id: 'mute',
 		default: 0,
 		choices: [
-			{ id: 0, label: 'unmute' },
-			{ id: 1, label: 'mute' },
+			{ id: 0, label: 'Unmute' },
+			{ id: 1, label: 'Mute' },
+			{ id: 'toggle', label: 'Toggle' },
 		],
 	},
 
@@ -139,7 +112,7 @@ export const options: Options = {
 		type: 'dropdown',
 		label: 'Channel',
 		id: 'channel',
-		default: 'Channel1',
+		default: 'Channel 1',
 		choices: [
 			{ id: 'Channel 1', label: 'Channel 1' },
 			{ id: 'Channel 2', label: 'Channel 2' },
@@ -159,116 +132,18 @@ export const options: Options = {
 			{ id: 'Channel 16', label: 'Channel 16' },
 		],
 	},
-
-	layerSelect: {
-		type: 'dropdown',
-		label: 'Layer',
-		id: 'layer',
-		default: 'Background',
-		choices: [
-			{ id: 'Background', label: 'Background' },
-			{ id: 'Layer-1', label: 'Layer-1' },
-			{ id: 'Layer-2', label: 'Layer-2' },
-		],
-	},
-
-	sourceSelect: {
-		type: 'dropdown',
-		label: 'Source',
-		id: 'source',
-		default: 'SDI1',
-		choices: SOURCES.map((id) => ({ id, label: id })),
-	},
-
-	foregroundColor: {
-		type: 'colorpicker',
-		label: 'Foreground color',
-		id: 'color',
-		default: combineRgb(255, 255, 255),
-	},
-
-	foregroundColorBlack: {
-		type: 'colorpicker',
-		label: 'Foreground color',
-		id: 'color',
-		default: combineRgb(0, 0, 0),
-	},
-
-	backgroundColorPreview: {
-		type: 'colorpicker',
-		label: 'Background color when in preview',
-		id: 'bgcolor',
-		default: combineRgb(0, 255, 0),
-	},
-
-	backgroundColorProgram: {
-		type: 'colorpicker',
-		label: 'Background color when in grogram',
-		id: 'bgcolor',
-		default: combineRgb(255, 0, 0),
-	},
-
-	backgroundColorYellow: {
-		type: 'colorpicker',
-		label: 'Background color',
-		id: 'bgcolor',
-		default: combineRgb(255, 255, 0),
-	},
-
-	selectedIndex: {
-		type: 'number',
-		label: 'Selected Index',
-		id: 'selectedIndex',
-		default: 1,
-		min: 1,
-		max: 9999,
-	},
-
-	comparison: {
-		type: 'dropdown',
-		label: 'Comparison',
-		id: 'comparison',
-		default: 'eq',
-		choices: [
-			{ id: 'eq', label: '=' },
-			{ id: 'lt', label: '<' },
-			{ id: 'lte', label: '<=' },
-			{ id: 'gt', label: '>' },
-			{ id: 'gte', label: '>=' },
-		],
-	},
-}
-
-/**
- * @param time Time in miliseconds or seconds
- * @param interval Interval of the time value - 'ms' or 's'
- * @param format String formatting - 'hh:mm:ss', 'hh:mm:ss.ms', 'mm:ss', or 'mm:ss.ms'
- * @returns Formated time string
- */
-export const formatTime = (time: number, interval: 'ms' | 's', format: TimeFormat): string => {
-	const timeMS = time * (interval === 'ms' ? 1 : 1000)
-	const padding = (value: number): string => (value < 10 ? '0' + value : value.toString())
-
-	const hh = padding(Math.floor(timeMS / 360000))
-	const mm = padding(Math.floor(timeMS / 60000) % 60)
-	const ss = padding(Math.floor(timeMS / 1000) % 60)
-	const ms = (timeMS % 1000) / 100
-
-	const result = `${format.includes('hh') ? `${hh}:` : ''}${mm}:${ss}${format.includes('ms') ? `.${ms}` : ''}`
-	return result
 }
 
 export const createUUID = (): string => {
 	let dt: number = new Date().getTime()
-	let uuid: string = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-		const r: number = (dt + Math.random() * 16) % 16 | 0
+	const uuid: string = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+		const r: number = ((dt + Math.random() * 16) % 16) | 0
 		dt = Math.floor(dt / 16)
 		return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
 	})
 	return uuid
 }
 
-// Helpers
 export const createInputWithName = (name: string): input => {
 	return {
 		index: 999,
@@ -278,3 +153,21 @@ export const createInputWithName = (name: string): input => {
 		shortcut: name,
 	}
 }
+
+/**
+ * A readable name for a media still path, e.g. `MEDIA.stills.Logos.Intro&#46;rr` is `Logos/Intro.rr`
+ */
+export const mediaStillLabel = (path: string): string =>
+	path
+		.replace(/^MEDIA\.stills\./, '')
+		.split('.')
+		.map((part) => part.replace(/&#46;/g, '.'))
+		.join('/')
+
+export const WHITE = combineRgb(255, 255, 255)
+export const BLACK = combineRgb(0, 0, 0)
+export const RED = combineRgb(200, 0, 0)
+export const GREEN = combineRgb(0, 200, 0)
+export const YELLOW = combineRgb(200, 200, 0)
+export const BLUE = combineRgb(0, 0, 200)
+export const PURPLE = combineRgb(200, 0, 200)

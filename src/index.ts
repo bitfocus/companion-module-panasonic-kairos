@@ -1,106 +1,52 @@
-import { config } from './config'
-import { getActions } from './actions'
-import { getConfigFields } from './config'
-import { getFeedbacks } from './feedback'
-import { getPresets } from './presets'
-import { updateBasicVariables } from './variables'
-import { TCP } from './tcp'
-import { REST } from './rest'
-import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from '@companion-module/base'
-import { updateFlags } from './utils'
+import type { config, secrets } from './config.js'
+import { getActions, type ActionsSchema } from './actions.js'
+import { getConfigFields } from './config.js'
+import { FeedbackId, getFeedbacks, type FeedbacksSchema } from './feedback.js'
+import { getPresets } from './presets.js'
+import { updateBasicVariables } from './variables.js'
+import { TCP } from './tcp.js'
+import { REST } from './rest.js'
+import { InstanceBase, type CompanionVariableValues, type SomeCompanionConfigField } from '@companion-module/base'
+import { ConnectionStatus } from './status.js'
+import { updateFlags } from './utils.js'
+import { emptyMixerState, type MixerState } from './state.js'
+import { UpgradeScripts } from './upgrades.js'
 
-/**
- * Companion instance class for Panasonic Kairos
- */
-class KairosInstance extends InstanceBase<config> {
+export type KairosTypes = {
+	config: config
+	secrets: secrets
+	actions: ActionsSchema
+	feedbacks: FeedbacksSchema
+	variables: CompanionVariableValues
+}
+
+export { UpgradeScripts }
+
+export default class KairosInstance extends InstanceBase<KairosTypes> {
 	config: config | undefined
+	secrets: secrets | undefined
 	rest: REST | undefined
-	tcp: any
+	tcp: TCP | undefined
+	readonly connectionStatus = new ConnectionStatus(
+		(status, message) => this.updateStatus(status, message),
+		(message) => this.log('info', message),
+	)
 	constructor(internal: unknown) {
 		super(internal)
+		// Keep old variable references working without listing the legacy IDs.
+		this.instanceOptions.disableVariableValidation = true
 	}
 
-	public KairosObj: {
-		audio_master_mute: number
-		INPUTS: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
-		MEDIA_STILLS: Array<string>
-		SCENES: {
-			layers: { name: string; sourceA: string; sourceB?: string; sources: string[]; uuid: string }[]
-			name: string
-			tally: string
-			uuid: string
-			path: string
-			macros: { color: string; name: string; state: string; uuid: string }[]
-			SNAPSHOTS: { name: string; state: string; uuid: string }[]
-			actions: { name: string; state: string; uuid: string }[]
-		}[]
-		AUX: { index: string; name: string; source: string; sources: string[]; uuid: string }[]
-		MACROS: {
-			color: string,
-			name: string,
-			path: string,
-			state: string,
-			uuid: string}[]
-		SCENES_MACROS: {
-			scene: string
-			color: string
-			name: string
-			state: string
-			path: string
-			uuid: string
-		}[]
-		SNAPSHOTS: { name: string; state: string; uuid: string; scene: string }[]
-		MULTIVIEWERS: {
-			index: number
-			name: string
-			preset: string
-			presets: { id: string; name: string; usr: string }[]
-			uuid: string
-			sdp: string
-		}[]
-		PLAYERS: { player: string; repeat: number }[]
-		MV_PRESETS: Array<string>
-		AUDIO_CHANNELS: { channel: string; mute: number }[]
-	} = {
-		audio_master_mute: 100,
-		INPUTS: [],
-		MEDIA_STILLS: [],
-		SCENES: [],
-		AUX: [],
-		MACROS: [],
-		PLAYERS: [],
-		MV_PRESETS: [],
-		AUDIO_CHANNELS: [],
-		SCENES_MACROS: [],
-		SNAPSHOTS: [],
-		MULTIVIEWERS: [],
-	}
+	public state: MixerState = emptyMixerState()
 
-	public combinedLayerArray: {
-		path: string
-		sceneName: string
-		layerName: string
-		sourceA: string
-		sourceB: string
-		preset_enabled?: number
-		uuid: string
-	}[] = []
-	public combinedTransitionsArray: Array<string> = []
-	public combinedSmacrosArray: Array<string> = []
-	public combinedSnapshotsArray: Array<string> = []
-
-	public connected = false
+	private readonly sentDefinitions = new Map<string, string>()
+	private sentVariableValues: CompanionVariableValues = {}
 
 	/**
 	 * @description triggered on instance being enabled
 	 */
-	async init(config: config): Promise<void> {
-		// New Module warning
-		this.log('info', `Welcome, Panasonic module is loading`)
-		this.updateStatus(InstanceStatus.Connecting, 'Connecting')
-
-		await this.configUpdated(config)
-		updateBasicVariables(this)
+	async init(config: config, _isFirstInit: boolean, secrets: secrets): Promise<void> {
+		await this.configUpdated(config, secrets)
 	}
 
 	/**
@@ -112,15 +58,30 @@ class KairosInstance extends InstanceBase<config> {
 
 	/**
 	 * @param config new configuration data
+	 * @param secrets new secrets, stored apart from the config
 	 * @description triggered every time the config for this instance is saved
 	 */
-	public configUpdated(config: config): Promise<void> {
+	public async configUpdated(config: config, secrets: secrets): Promise<void> {
 		this.config = config
+		this.secrets = secrets
 		this.tcp?.destroy()
-		this.tcp = new TCP(this, this.config.host, this.config.tcpPort)
-		this.rest = new REST(this, this.config.host, this.config.restPort, this.config.username, this.config.password)
+		this.rest?.destroy()
+		// Forget what the previous connection found, which may have been a different mixer
+		this.state = emptyMixerState()
+		this.connectionStatus.reset()
+		this.tcp = new TCP(this, config.host, config.tcpPort)
+		this.rest = new REST(this, config.host, config.restPort, config.username, secrets?.password ?? '')
 		this.updateInstance(updateFlags.All)
-		return Promise.resolve()
+		this.checkFeedbacks(
+			FeedbackId.aux,
+			FeedbackId.inputSource,
+			FeedbackId.inputMediaStill,
+			FeedbackId.audioMuteMaster,
+			FeedbackId.audioMuteChannel,
+			FeedbackId.playerRepeat,
+			FeedbackId.macroPlaying,
+			FeedbackId.sceneMacroPlaying,
+		)
 	}
 
 	/**
@@ -129,53 +90,68 @@ class KairosInstance extends InstanceBase<config> {
 	public async destroy(): Promise<void> {
 		this.tcp?.destroy()
 		this.rest?.destroy()
+		this.tcp = undefined
+		this.rest = undefined
 		this.log('debug', `Instance destroyed: ${this.id}`)
 	}
 
-	//  /**
-	//    * @param option string from text inputs
-	//    * @returns array of strings indexed by the button modifier delimiter
-	//    * @description first splits the string by the position of the delimiter, then parses any instance variables in each part
-	//    */
-	//   public readonly parseOption = (option: string): string[] => {
-	//     const instanceVariable = RegExp(/\$\(([^:$)]+):([^)$]+)\)/)
-
-	//     return option.split(this.config.shiftDelimiter).map((value) => {
-	//       if (instanceVariable.test(value)) {
-	//         return this.variables ? this.variables.get(value) || '' : ''
-	//       } else {
-	//         return value
-	//       }
-	//     })
-	//   }
 	/**
 	 * @description sets actions and feedbacks available for this instance
 	 */
 	public updateInstance(updateFlag: updateFlags): void {
-		// const begin = Date.now()
-		// Cast actions and feedbacks from Kairos types to Companion types
-
 		if (updateFlag === updateFlags.All) {
+			this.tcp?.sync()
 			const actions = getActions(this)
 			const feedbacks = getFeedbacks(this)
-			const presets = getPresets(this)
 
-			this.setActionDefinitions(actions)
-			this.setFeedbackDefinitions(feedbacks)
-			this.setPresetDefinitions(presets)
-
+			if (this.definitionsChanged('actions', actions)) this.setActionDefinitions(actions)
+			if (this.definitionsChanged('feedbacks', feedbacks)) this.setFeedbackDefinitions(feedbacks)
+			this.updatePresets()
 			updateBasicVariables(this)
 		} else if (updateFlag === updateFlags.onlyVariables) {
 			updateBasicVariables(this)
 		} else if (updateFlag === updateFlags.presets) {
-			const presets = getPresets(this)
-			this.setPresetDefinitions(presets)
+			this.updatePresets()
 		}
-		// const end = Date.now()
-		// this.log('debug',`updateInstance:${updateFlag === updateFlags.onlyVariables ? 'variables' : 'all'} ${end - begin}, 'ms'`)
+	}
+
+	private updatePresets(): void {
+		const { structure, presets } = getPresets(this)
+		if (this.definitionsChanged('presets', { structure, presets })) this.setPresetDefinitions(structure, presets)
+	}
+
+	/**
+	 * REST rebuilds every definition on each poll, and Companion reprocesses (and logs) each one it is sent, so only
+	 * send them when they differ from the last ones sent. The callbacks look everything up when they run, so
+	 * definitions with the same options behave the same.
+	 */
+	public definitionsChanged(kind: 'actions' | 'feedbacks' | 'presets' | 'variables', definitions: unknown): boolean {
+		const serialized = JSON.stringify(definitions)
+		if (this.sentDefinitions.get(kind) === serialized) return false
+		this.sentDefinitions.set(kind, serialized)
+		return true
+	}
+
+	/**
+	 * Sends the variable values that differ from the last ones sent
+	 * @param resend send them all, as after the variable definitions changed
+	 */
+	public setChangedVariableValues(values: CompanionVariableValues, resend: boolean): void {
+		const changed: CompanionVariableValues = {}
+		// Undefined values clear IDs that disappeared, including aliases without definitions.
+		for (const id of Object.keys(this.sentVariableValues)) {
+			if (!Object.hasOwn(values, id)) {
+				changed[id] = undefined
+				delete this.sentVariableValues[id]
+			}
+		}
+		for (const [id, value] of Object.entries(values)) {
+			const publishedValue = value ?? ''
+			if (!resend && Object.hasOwn(this.sentVariableValues, id) && this.sentVariableValues[id] === publishedValue)
+				continue
+			changed[id] = publishedValue
+			this.sentVariableValues[id] = publishedValue
+		}
+		if (Object.keys(changed).length > 0) this.setVariableValues(changed)
 	}
 }
-
-runEntrypoint(KairosInstance, [])
-
-export = KairosInstance

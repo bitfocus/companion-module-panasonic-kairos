@@ -1,440 +1,311 @@
-import { InstanceStatus, TCPHelper } from '@companion-module/base'
-import KairosInstance from '.'
-import { updateFlags } from './utils'
-import { updateBasicVariables } from './variables'
+import { InstanceStatus } from '@companion-module/base'
+import { KairosConnection, TerminateSubscriptionError, refSceneTransition, refToPath } from 'kairos-connection'
+import type KairosInstance from './index.js'
+import { parseBoolean } from './state.js'
+import { FeedbackId } from './feedback.js'
+import { masterMutePath, audioMutePath, playerRepeatPath, sceneMacroPath, sceneRef } from './refs.js'
+import { updateFlags } from './utils.js'
+import { updateBasicVariables } from './variables.js'
 
-interface TCPSockets {
-	main: TCPHelper | null
-}
+// The library suppresses connection-refused errors and retries in the background.
+const CONNECT_TIMEOUT_MS = 10000
+const SUBSCRIPTION_RETRY_MS = 5000
+
+type ExpectedResponse = Parameters<KairosConnection['executeCommand']>[1]
+type SubscriptionTarget = { feedbacks: [FeedbackId, ...FeedbackId[]]; uuid?: string }
+type Subscription = SubscriptionTarget & { controller: AbortController }
 
 export class TCP {
-	private readonly instance: KairosInstance
-	private sockets: TCPSockets = {
-		main: null,
+	private readonly connection: KairosConnection
+	private readonly subscriptions = new Map<string, Subscription>()
+	private readonly failedSubscriptions = new Set<string>()
+	private readonly booleanWrites = new Map<string, Promise<void>>()
+	private connectTimer: NodeJS.Timeout | undefined
+	private retryTimer: NodeJS.Timeout | undefined
+	private transitionRequest: { key: string } | undefined
+	private lastErrorMessage: string | null = null
+	private destroyed = false
+	private generation = 0
+	private variablesPending = false
+
+	constructor(
+		private readonly instance: KairosInstance,
+		private readonly host: string,
+		private readonly port: number,
+	) {
+		this.connection = new KairosConnection({ host, port, autoConnect: false })
+		this.connection.on('connect', this.onConnect)
+		this.connection.on('disconnect', this.onDisconnect)
+		this.connection.on('reset', this.onReset)
+		this.connection.on('error', this.logError)
+		this.connection.on('warn', (error) => {
+			if (!this.destroyed) this.instance.log('debug', `Kairos: ${error.message}`)
+		})
+
+		this.connectTimer = setTimeout(() => {
+			this.instance.log('error', `TCP connection to ${this.host}:${this.port} failed`)
+			this.instance.connectionStatus.set('tcp', InstanceStatus.ConnectionFailure, 'Unable to connect')
+		}, CONNECT_TIMEOUT_MS)
+		this.connection.connect()
 	}
-	private tcpHost: string
-	private tcpPort: number
-	private keepAliveInterval: NodeJS.Timer | undefined
-	private recvRemain = ''
-	private listQueue: string[] = [] // queue of outstanding command of list or info
-	private nCommand = 0 // number of outstanding command
-	private processCallback: ((data: Array<string>, cmd: string) => void) | null = null
-	private waitListCallback: (() => void) | null = null
-	private waitCommandCallback: (() => void) | null = null
 
-	constructor(instance: KairosInstance, host: string, tcpPort: number) {
-		this.instance = instance
-		this.tcpHost = host
-		this.tcpPort = tcpPort
-
-		this.init()
+	private get connected(): boolean {
+		return !this.destroyed && this.connection.connected
 	}
 
-	/**
-	 * @description Close connection on instance disable/removal
-	 */
 	public readonly destroy = (): void => {
-		if (this.sockets.main) this.sockets.main.destroy()
-		if (this.keepAliveInterval != undefined) clearInterval(this.keepAliveInterval)
+		if (this.destroyed) return
+		this.destroyed = true
+		clearTimeout(this.connectTimer)
+		this.connection.disconnect()
+		this.connection.discard()
+		this.invalidate()
 	}
 
-	/**
-	 * @description Create a TCP connection to Kairos
-	 */
-	public readonly init = (): void => {
-		if (this.tcpHost === undefined || this.tcpPort === undefined) {
-			this.instance.log(
-				'warn',
-				`Unable to connect to Kairos, please configure a host and port in the instance configuration`
-			)
+	public readonly run = async (
+		description: string,
+		command: (kairos: KairosConnection) => Promise<unknown>,
+	): Promise<void> => {
+		if (!this.connected) {
+			if (!this.destroyed) this.instance.log('error', `Cannot ${description}: TCP is disconnected`)
 			return
 		}
-
-		this.sockets.main = new TCPHelper(this.tcpHost, this.tcpPort)
-
-		this.sockets.main.on('status_change', (status: InstanceStatus) => {
-			this.instance.log('debug', 'status change ' + status)
-			this.instance.updateStatus(status)
-		})
-
-		this.sockets.main.on('error', (err: Error) => {
-			this.instance.updateStatus(InstanceStatus.UnknownError, err.message)
-		})
-
-		const fetchStills = () => {
-			this.instance.KairosObj.MEDIA_STILLS.length = 0
-			this.sendCommand('list:MEDIA.stills')
-		}
-
-		// const fetchFxinputs = () => {
-		// 	this.sendCommand('list:FXINPUTS')
-		// 	this.processCallback = (data: Array<string>, cmd: string) => {
-		// 		if (cmd === 'FXINPUTS') {
-		// 			for (const returningData of data) {
-		// 				if (returningData !== 'OK') {
-		// 					this.instance.KairosObj.INPUTS.push(createInputWithName(returningData))
-		// 				}
-		// 			}
-		// 		}
-		// 		this.instance.updateInstance(updateFlags.All as number)
-		// 	}
-		// }
-
-		// const fetchFixedItems = () => {
-		// this.sendCommand('list:RAMRECORDERS')
-		// this.sendCommand('list:PLAYERS')
-		//this.sendCommand('list:AUDIOPLAYERS')
-		// this.sendCommand('list:GFXCHANNELS')
-		//this.sendCommand('list:FXINPUTS')
-		// this.sendCommand('list:MATTES')
-		//this.sendCommand('list:MEDIA.stills')
-		// }
-
-		const subscribeToData = () => {
-			//this.sendCommand('subscribe:Mixer.AudioMixers.AudioMixer.mute')
-			this.sendCommand('subscribe:AUDIOMIXER.mute')
-			// Get all transitions together
-			// for (const SCENE of this.instance.KairosObj.SCENES) {
-			// 	this.instance.combinedTransitionsArray = this.instance.combinedTransitionsArray.concat(SCENE.transitions)
-			// }
-			// // Get all Scene Macros together
-			// for (const SCENE of this.instance.KairosObj.SCENES) {
-			// 	this.instance.combinedSmacrosArray = this.instance.combinedSmacrosArray.concat(SCENE.smacros)
-			// }
-			// // Get all Snapshots together
-			// for (const SCENE of this.instance.KairosObj.SCENES) {
-			// 	this.instance.combinedSnapshotsArray = this.instance.combinedSnapshotsArray.concat(SCENE.snapshots)
-			// }
-
-			this.instance.KairosObj.PLAYERS.forEach((element) => {
-				this.sendCommand(`subscribe:${element.player}.repeat`)
-			})
-			this.instance.KairosObj.AUDIO_CHANNELS.forEach((element) => {
-				//this.sendCommand(`subscribe:Mixer.AudioMixers.AudioMixer.${element.channel}.mute`)
-				this.sendCommand(`subscribe:AUDIOMIXER.${element.channel}.mute`)
-			})
-			// this.instance.KairosObj.AUX.forEach((element) => {
-			// 	this.sendCommand(`subscribe:${element.name}.source`)
-			// 	this.sendCommand(`subscribe:${element.name}.name`)
-			// })
-			// this.instance.KairosObj.INPUTS.forEach((element) => {
-			// 	this.sendCommand(`subscribe:${element.shortcut}.name`)
-			// })
-
-			// for (const LAYER of this.instance.combinedLayerArray) {
-			// 	this.sendCommand(`subscribe:${LAYER.name}.sourceA`)
-			// }
-
-			// for (const LAYER of this.instance.combinedLayerArray) {
-			// 	this.sendCommand(`subscribe:${LAYER.name}.sourceB`)
-			// }
-		}
-		this.sockets.main.on('connect', async () => {
-			this.instance.log('debug', 'Connected to mixer')
-			this.instance.updateStatus(InstanceStatus.Ok, 'Connected')
-			this.keepAliveInterval = setInterval(keepAlive, 4500) //session expires at 5 seconds
-			fetchStills()
-			await subscribeToData()
-			this.instance.updateInstance(updateFlags.All as number)
-		})
-
-		let keepAlive = () => {
-			this.sendCommand('')
-			// this.instance.log('debug', 'Keepalive sent')
-		}
-
-		/**
-		 * Processing here
-		 */
-
-		const processData = (data: Array<string>, cmd: string): number => {
-			let whatTodo = updateFlags.All
-			if (this.processCallback) {
-				this.processCallback(data, cmd)
-			} else if (data.find((element) => element === 'APPLICATION:NEW')) {
-				//Complete refresh of all data
-				this.instance.log('debug', 'Complete refresh of all data')
-				// SEND UPDATE ALL??????
-				subscribeToData()
-				this.instance.updateInstance(updateFlags.All as number)
-			} else {
-				whatTodo = updateFlags.onlyVariables
-				// Do a switch block to go fast through the rest of the data
-				for (const returningData of data) {
-					switch (true) {
-						case /^$/i.test(returningData):
-							break
-						case /^OK$/i.test(returningData):
-							// this.instance.log('debug', 'Command succeeded')
-							break
-						case /^Error$/i.test(returningData):
-							// this.instance.log('debug', 'Command failed')
-							break
-						case /\.sourceA/i.test(returningData):
-							{
-								let index = this.instance.combinedLayerArray.findIndex(
-									(x) => x.layerName === returningData.split('=')[0].slice(0, -8)
-								)
-								if (index != -1) this.instance.combinedLayerArray[index].sourceA = returningData.split('=')[1]
-								this.instance.checkFeedbacks('inputSource')
-							}
-							break
-						case /\.sourceB/i.test(returningData):
-							{
-								let index = this.instance.combinedLayerArray.findIndex(
-									(x) => x.layerName === returningData.split('=')[0].slice(0, -8)
-								)
-								if (index != -1) this.instance.combinedLayerArray[index].sourceB = returningData.split('=')[1]
-								this.instance.checkFeedbacks('inputSource')
-							}
-							break
-						//case /^Mixer\.AudioMixers\.AudioMixer\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
-						case /^AUDIOMIXER\.mute/i.test(returningData): // This is an Audio Master Mixer stuff
-							{
-								this.instance.KairosObj.audio_master_mute = parseInt(returningData.split('=')[1])
-								this.instance.checkFeedbacks('audioMuteMaster')
-							}
-							break
-						//case /^Mixer\.AudioMixers\.AudioMixer\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
-						case /^AUDIOMIXER\.Channel/i.test(returningData): // This is an Audio channel Mixer stuff
-							{
-								let index = parseInt(returningData.slice(returningData.search('.Channel') + 9, -7)) - 1
-								this.instance.KairosObj.AUDIO_CHANNELS[index].mute = parseInt(returningData.split('=')[1])
-								this.instance.checkFeedbacks('audioMuteChannel')
-							}
-							break
-						case /\.source=/i.test(returningData): // This is an AUX source
-							{
-								let index = this.instance.KairosObj.AUX.findIndex(
-									(x) => x.name === returningData.split('=')[0].slice(0, returningData.split('=')[0].search('.source'))
-								)
-								if (index != -1) this.instance.KairosObj.AUX[index].source = returningData.split('=')[1]
-								this.instance.checkFeedbacks('aux')
-							}
-							break
-						// case /^MACROS\./i.test(returningData): // This is an MACRO
-						// 	{
-						// 		// console.log(returningData)
-						// 		this.instance.KairosObj.MACROS.push(returningData)
-						// 		// const macro = (element: string) => element === returningData;
-						// 		// let index = this.instance.KairosObj.MACROS.findIndex(macro)
-						// 		// if (index != -1) {
-						// 		// 	this.instance.KairosObj.MACROS.push(returningData)
-						// 		// } else {
-						// 		// 	console.log('Macro already exists getting new list')
-						// 		// 	this.sendCommand(`list:${returningData}`)
-						// 		// }
-						// 	}
-						// 	break
-						//case /\.available=/i.test(returningData): // This is an AUX available check
-						//	{
-						//		let index = this.instance.KairosObj.AUX.findIndex(
-						//			(x) => x.aux === returningData.split('=')[0].slice(0, -10)
-						//		)
-						//		if (index != -1) this.instance.KairosObj.AUX[index].available = parseInt(returningData.split('=')[1])
-						//		updateBasicVariables(this.instance)
-						//	}
-						//	break
-						case /\.repeat=/i.test(returningData): // //This is an PLAYER repeat check
-							{
-								let index = this.instance.KairosObj.PLAYERS.findIndex(
-									(x) => x.player === returningData.split('=')[0].slice(0, -7)
-								)
-								if (index != -1) this.instance.KairosObj.PLAYERS[index].repeat = parseInt(returningData.split('=')[1])
-								updateBasicVariables(this.instance)
-							}
-							break
-						case /^MVPRESETS\./i.test(returningData): // This is an MV Preset list
-							this.instance.KairosObj.MV_PRESETS.push(returningData)
-							break
-						case /\.sourceOptions=/i.test(returningData): // This is scene source options list
-							//per scene source options
-							// this.instance.kairosObj.SCENES.SOURCE_OPTIONS.push(returningData)
-							break
-						// case /\.Macros\./i.test(returningData): // This is a Scene Macro
-						// 	{
-						// 		let sceneName = data[0].slice(0, data[0].search('.Macros.')) // SCENES.Main.Macros.M-1
-						// 		let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
-						// 		if (index != -1) this.instance.KairosObj.SCENES[index].smacros.push(returningData)
-						// 	}
-						// 	break
-						// case /\.Snapshots\./i.test(returningData): // This is a Snapshot
-						// 	{
-						// 		let sceneName = data[0].slice(0, data[0].search('.Snapshots.')) // SCENES.Main.Snapshots.SNP1
-						// 		let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
-						// 		if (index != -1) this.instance.KairosObj.SCENES[index].snapshots.push(returningData)
-						// 	}
-						// 	break
-						case /\.preset_enabled/i.test(returningData): //This is an response to SCENES.Main.Layers.Background.preset_enabled=1
-							{
-								let layer = returningData.split('=')[0].slice(0, returningData.split('=')[0].search('.preset_enabled'))
-								let index = this.instance.combinedLayerArray.findIndex((s) => s.layerName === layer)
-								if (index != -1)
-									this.instance.combinedLayerArray[index].preset_enabled = parseInt(returningData.split('=')[1])
-							}
-							break
-						// case /\.Layers\./i.test(returningData): // This is a Layer list
-						// 	{
-						// 		this.instance.combinedLayerArray.push({
-						// 			name: returningData,
-						// 			sourceA: '',
-						// 			sourceB: '',
-						// 			preset_enabled: 0,
-						// 		})
-						// 		let sceneName = returningData.slice(0, returningData.search('.Layers.'))
-						// 		let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
-						// 		if (index != -1)
-						// 			this.instance.KairosObj.SCENES[index].layers.push({ layer: returningData, sourceA: '', sourceB: '' })
-						// 	}
-						// 	break
-						// case /\.Transitions\./i.test(returningData): // This is an Transition list, SCENES.Main.Transitions.BgdMix
-						// 	{
-						// 		let sceneName = returningData.slice(0, returningData.search('.Transitions.'))
-						// 		let index = this.instance.KairosObj.SCENES.findIndex((s) => s.scene === sceneName)
-						// 		if (index != -1) this.instance.KairosObj.SCENES[index].transitions.push(returningData)
-						// 	}
-						// 	break
-						case /\.name=/i.test(returningData): // This is an name for an Input or AUX (BE AWARE THIS CAN CHANGE IN THE FUTURE)
-							{
-								let source = returningData.split('=')[0].slice(0, -5)
-								let name = returningData.split('=')[1]
-								let index_i = this.instance.KairosObj.INPUTS.findIndex((x) => x.shortcut === source)
-								let index_a = this.instance.KairosObj.AUX.findIndex((x) => x.name === source)
-								if (index_i != -1) this.instance.KairosObj.INPUTS[index_i].name = name
-								else if (index_a != -1) this.instance.KairosObj.AUX[index_a].name = name
-							}
-							break
-						case /^MATTES\./i.test(returningData):
-							// this.instance.KairosObj.INPUTS.push({
-							// 	shortcut: returningData,
-							// 	name: returningData,
-							// })
-							break
-						case /^MEDIA\.stills\./i.test(returningData):
-							// A folder could be returned here
-							if (returningData.search('&#46;rr') !== -1) {
-								this.instance.KairosObj.MEDIA_STILLS.push(returningData)
-							} else {
-								this.sendCommand(`list:${returningData}`)
-							}
-							break
-
-						default:
-							this.instance.log('error', 'No Case provided for: ' + returningData)
-					}
-				}
-			}
-			return whatTodo
-		}
-
-		// ToDo: It should operate call back function with each transitions
-		this.sockets.main.on('data', async (data: Buffer) => {
-			let str = this.recvRemain + data.toString()
-			// this.instance.log('debug', 'Received: ' + str)
-			this.recvRemain = ''
-			if (str.endsWith('\r\n') === false) {
-				// store uncompleted line
-				const end = str.lastIndexOf('\r\n')
-				if (end < 0) {
-					this.recvRemain = str
-					return
-				}
-				this.recvRemain = str.substring(end + 2)
-				str = str.substring(0, end + 2)
-			}
-			while (this.listQueue.length > 0) {
-				if (str.startsWith('\r\n')) {
-					// empty list
-					str = str.substring(2)
-					this.instance.updateInstance(processData([], this.listQueue[0]))
-				} else if (str.startsWith('Error\r\n')) {
-					// error return
-					str = str.substring(7)
-				} else {
-					let end = str.indexOf('\r\n\r\n')
-					if (end < 0) {
-						this.recvRemain = str + this.recvRemain
-						return
-					}
-					const message = str.substring(0, end).split('\r\n')
-					this.instance.updateInstance(processData(message, this.listQueue[0]))
-					str = str.substring(end + 4)
-				}
-				this.listQueue.shift()
-				if (this.listQueue.length === 0 && this.waitListCallback) {
-					const callback = this.waitListCallback
-					this.waitListCallback = null
-					callback()
-				}
-			}
-			if (str !== '') {
-				const message = str.split('\r\n')
-				this.instance.updateInstance(processData(message, ''))
-				if (this.nCommand > 0) {
-					this.nCommand -= message.length - 1
-					if (this.nCommand <= 0) {
-						this.nCommand = 0
-						if (this.waitCommandCallback) {
-							const callback = this.waitCommandCallback
-							this.waitCommandCallback = null
-							callback()
-						}
-					}
-				}
-			}
-		})
-	}
-
-	/**
-	 * @param command function and any params
-	 * @description Check TCP connection status and format command to send to Kairos
-	 * @todo It should provide callback or promise of each transaction
-	 */
-	public readonly sendCommand = (command: string): void => {
-		if (this.sockets.main) {
-			if (command.startsWith('list:') || command.startsWith('info:')) {
-				this.listQueue.push(command.replace(/^(list|info):/, ''))
-			} else if (command !== '') {
-				this.nCommand++
-			}
-			const message = `${command}\r\n`
-
-			this.sockets.main.send(message).catch((err) => {
-				if (err) this.instance.log('debug', err.message)
-			})
-			if (message != '\r\n') this.instance.log('debug', `Sending command: ${message}`)
+		this.instance.log('debug', `Sending KAIROS TCP command to ${description}`)
+		try {
+			await command(this.connection)
+		} catch (error) {
+			if (!this.destroyed)
+				this.instance.log(
+					'error',
+					`KAIROS TCP failed to ${description}: ${error instanceof Error ? error.message : String(error)}`,
+				)
 		}
 	}
 
-	/**
-	 * @description Check for config changes and start new connections/polling if needed
-	 */
-	public readonly update = (): void => {
-		if (this.instance.config === undefined) return
-		const hostCheck = this.instance.config.host !== this.tcpHost || this.instance.config.tcpPort !== this.tcpPort
+	public readonly sendCommand = async (command: string): Promise<void> =>
+		this.run(`send ${command}`, async (kairos) => kairos.executeCommand(command, 'OK' as ExpectedResponse, null))
 
-		if (hostCheck) {
-			this.tcpHost = this.instance.config.host
-			this.tcpPort = this.instance.config.tcpPort
-			if (this.keepAliveInterval != undefined) clearInterval(this.keepAliveInterval)
-
-			let ready = true
-
-			const destroySocket = (type: 'main') => {
-				const socket = this.sockets[type] as any
-				if (socket && (socket.connected || socket.socket.connecting)) {
-					socket.destroy()
-				} else {
-					if (socket !== null) {
-						this.instance.log('debug', `socket error: Cannot update connections while they're initializing`)
-						ready = false
-					}
-				}
+	// Read the mixer before toggling. Serialize writes to the same property so two presses each toggle once.
+	public async setBoolean(path: string, value: boolean | 'toggle', description: string): Promise<void> {
+		const generation = this.generation
+		const previous = this.booleanWrites.get(path)
+		const write = this.run(description, async (kairos) => {
+			if (previous) await previous
+			if (generation !== this.generation) throw new Error('Connection changed before the write')
+			let next = value
+			if (next === 'toggle') {
+				const current = parseBoolean(await kairos.getAttribute(path))
+				if (current === undefined) throw new Error(`Unexpected value for ${path}`)
+				if (generation !== this.generation) throw new Error('Connection changed before the write')
+				next = !current
 			}
+			await kairos.setAttribute(path, next ? '1' : '0')
+		})
+		this.booleanWrites.set(path, write)
+		await write
+		if (this.booleanWrites.get(path) === write) this.booleanWrites.delete(path)
+	}
 
-			if (this.sockets.main) destroySocket('main')
+	public readonly sync = (): void => {
+		if (!this.connected) return
+		this.syncSubscriptions()
+		this.syncTransitions()
+	}
 
-			if (ready) this.init()
+	private readonly onConnect = (): void => {
+		if (!this.connected) return
+		clearTimeout(this.connectTimer)
+		this.lastErrorMessage = null
+		this.instance.connectionStatus.set('tcp', InstanceStatus.Ok, null)
+		const generation = this.generation
+		void this.connection
+			.getSystemInfo()
+			.then((info) => {
+				if (generation === this.generation) this.instance.log('debug', `Kairos release ${info.releaseVersion}`)
+			})
+			.catch(() => undefined)
+		this.refresh()
+	}
+
+	private readonly onDisconnect = (): void => {
+		if (this.destroyed) return
+		this.invalidate()
+		this.instance.log('error', `TCP connection to ${this.host}:${this.port} lost`)
+		this.instance.connectionStatus.set('tcp', InstanceStatus.ConnectionFailure, 'Disconnected')
+		this.instance.updateInstance(updateFlags.All)
+		this.checkLiveFeedbacks()
+	}
+
+	private readonly onReset = (): void => {
+		if (this.destroyed) return
+		this.instance.log('debug', 'Kairos was reset, refreshing all data')
+		this.invalidate()
+		this.refresh()
+		this.checkLiveFeedbacks()
+	}
+
+	private invalidate(): void {
+		this.generation++
+		clearTimeout(this.retryTimer)
+		this.retryTimer = undefined
+		this.failedSubscriptions.clear()
+		const subscriptions = [...this.subscriptions.values()]
+		this.subscriptions.clear()
+		this.instance.state.live.clear()
+		for (const { controller } of subscriptions) controller.abort()
+		this.booleanWrites.clear()
+		this.transitionRequest = undefined
+		this.instance.state.transitions = []
+		this.instance.state.mediaStills = []
+	}
+
+	private checkLiveFeedbacks(): void {
+		this.instance.checkFeedbacks(
+			FeedbackId.aux,
+			FeedbackId.inputSource,
+			FeedbackId.inputMediaStill,
+			FeedbackId.audioMuteMaster,
+			FeedbackId.audioMuteChannel,
+			FeedbackId.playerRepeat,
+			FeedbackId.macroPlaying,
+			FeedbackId.sceneMacroPlaying,
+		)
+	}
+
+	private refresh(): void {
+		const generation = this.generation
+		void this.connection
+			.listMediaStills(undefined, true)
+			.then((stills) => {
+				if (generation !== this.generation) return
+				this.instance.state.mediaStills = stills.map((still) => refToPath(still))
+				this.instance.updateInstance(updateFlags.All)
+			})
+			.catch((error: Error) => {
+				if (generation === this.generation) this.instance.log('debug', `Unable to list media stills: ${error.message}`)
+			})
+		this.instance.updateInstance(updateFlags.All)
+	}
+
+	private readonly logError = (error: Error): void => {
+		if (this.destroyed || error.message === this.lastErrorMessage) return
+		this.lastErrorMessage = error.message
+		this.instance.log('error', `TCP connection error: ${error.message}`)
+	}
+
+	private syncTransitions(): void {
+		const scenes = this.instance.state.scenes
+		const key = JSON.stringify(scenes.map(({ uuid, path, name }) => [uuid, path, name]))
+		if (key === this.transitionRequest?.key) return
+		const request = { key }
+		this.transitionRequest = request
+		this.instance.state.transitions = []
+		if (scenes.length === 0) return
+
+		void Promise.all(
+			scenes.map(async (scene) => {
+				const ref = sceneRef(scene.path, scene.name)
+				const transitions = await this.connection.listSceneTransitions(ref)
+				return transitions.map((transition) => ({
+					sceneName: scene.name,
+					path: scene.path,
+					name: transition.name,
+					ref: refSceneTransition(ref, transition.transitionPath),
+				}))
+			}),
+		)
+			.then((transitions) => {
+				if (request !== this.transitionRequest) return
+				this.instance.state.transitions = transitions.flat()
+				this.instance.updateInstance(updateFlags.All)
+			})
+			.catch((error: Error) => {
+				if (request !== this.transitionRequest) return
+				this.transitionRequest = undefined
+				this.instance.log('debug', `Unable to list scene transitions: ${error.message}`)
+			})
+	}
+
+	private syncSubscriptions(): void {
+		const state = this.instance.state
+		const wanted = new Map<string, SubscriptionTarget>()
+		wanted.set(masterMutePath, { feedbacks: [FeedbackId.audioMuteMaster] })
+		for (const { name } of state.audioChannels)
+			wanted.set(audioMutePath(name), { feedbacks: [FeedbackId.audioMuteChannel] })
+		for (const { ref } of state.players) wanted.set(playerRepeatPath(ref), { feedbacks: [FeedbackId.playerRepeat] })
+		for (const { ref, uuid } of state.auxes)
+			wanted.set(`${refToPath(ref)}.source`, { uuid, feedbacks: [FeedbackId.aux] })
+		for (const macro of state.macros)
+			wanted.set(`${refToPath(macro.ref)}.status`, { uuid: macro.uuid, feedbacks: [FeedbackId.macroPlaying] })
+		for (const macro of state.sceneMacros)
+			wanted.set(`${sceneMacroPath(macro)}.status`, { uuid: macro.uuid, feedbacks: [FeedbackId.sceneMacroPlaying] })
+
+		for (const layer of state.layers) {
+			const path = refToPath(layer.ref)
+			const target: SubscriptionTarget = {
+				uuid: layer.uuid,
+				feedbacks: [FeedbackId.inputSource, FeedbackId.inputMediaStill],
+			}
+			wanted.set(`${path}.sourceA`, target)
+			// TCP can report BLACK for a B bus that doesn't exist on this layer.
+			if (layer.sourceB != null) wanted.set(`${path}.sourceB`, target)
 		}
+
+		for (const [path, subscription] of this.subscriptions) {
+			if (wanted.has(path) && wanted.get(path)?.uuid === subscription.uuid) continue
+			this.subscriptions.delete(path)
+			state.live.delete(path)
+			subscription.controller.abort()
+		}
+		for (const [path, target] of wanted) {
+			if (!this.subscriptions.has(path) && !this.failedSubscriptions.has(path)) this.subscribe(path, target)
+		}
+	}
+
+	private subscribe(path: string, target: SubscriptionTarget): void {
+		const subscription: Subscription = { ...target, controller: new AbortController() }
+		this.subscriptions.set(path, subscription)
+		try {
+			this.connection.subscribeValue(path, subscription.controller.signal, (_path, error, value) => {
+				if (this.destroyed || this.subscriptions.get(path) !== subscription) return
+				if (error) {
+					// A global termination is followed by the disconnect or reset event, which invalidates everything.
+					if (!(error instanceof TerminateSubscriptionError)) this.retrySubscription(path, subscription, error)
+				} else if (value !== null) {
+					this.instance.state.live.set(path, { value, uuid: target.uuid })
+					this.instance.checkFeedbacks(...target.feedbacks)
+					this.scheduleVariables()
+				}
+			})
+		} catch (error) {
+			this.retrySubscription(path, subscription, error)
+		}
+	}
+
+	private retrySubscription(path: string, subscription: Subscription, error: unknown): void {
+		this.subscriptions.delete(path)
+		this.instance.state.live.delete(path)
+		subscription.controller.abort()
+		this.failedSubscriptions.add(path)
+		this.instance.log(
+			'debug',
+			`KAIROS TCP subscription to ${path} failed: ${error instanceof Error ? error.message : String(error)}`,
+		)
+		this.instance.checkFeedbacks(...subscription.feedbacks)
+		this.scheduleVariables()
+		this.retryTimer ??= setTimeout(() => {
+			this.retryTimer = undefined
+			this.failedSubscriptions.clear()
+			this.sync()
+		}, SUBSCRIPTION_RETRY_MS)
+	}
+
+	private scheduleVariables(): void {
+		if (this.variablesPending) return
+		this.variablesPending = true
+		setImmediate(() => {
+			this.variablesPending = false
+			if (!this.destroyed) updateBasicVariables(this.instance)
+		})
 	}
 }

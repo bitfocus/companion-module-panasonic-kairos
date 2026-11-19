@@ -1,117 +1,133 @@
-import KairosInstance from './'
+import type { CompanionVariableDefinitions, CompanionVariableValues } from '@companion-module/base'
+import type KairosInstance from './index.js'
+import { auxSource, booleanValue, layerSource } from './state.js'
+import { audioMutePath, masterMutePath, playerRepeatPath } from './refs.js'
 
 interface InstanceVariableDefinition {
 	name: string
 	variableId: string
-	type?: string
 }
 
-interface InstanceVariableValue {
-	[key: string]: string | number | undefined
-}
+/**
+ * Variable ids may only contain letters, numbers, '-', '_', '.' and '!', and Companion drops definitions with any
+ * other character. These names come from the mixer, so strip anything else (ids that were already valid are unchanged).
+ */
+const sanitizeVariableIdPart = (name: string): string => name.replace(/[^a-zA-Z0-9\-_.!]/g, '')
+
+export const inputVariableId = (inputName: string): string =>
+	`INPUT.${sanitizeVariableIdPart(inputName.replace(/ /g, '_'))}`
+export const auxVariableId = (auxName: string): string => `AUX.${sanitizeVariableIdPart(auxName.replace(/ /g, '_'))}`
+const layerVariableId = (sceneName: string, layerName: string): string =>
+	`Scene.${sanitizeVariableIdPart(sceneName)}.${sanitizeVariableIdPart(layerName)}`
+
+const muteLabel = (muted: boolean | undefined): string | undefined =>
+	muted === undefined ? undefined : muted ? 'muted' : 'unmuted'
 
 /**
  * @description Sets variable definitions
  */
-export function updateBasicVariables(instance: KairosInstance) {
+export function updateBasicVariables(instance: KairosInstance): void {
 	const audio_mute: Set<InstanceVariableDefinition> = new Set([
-		// Status
-		{ name: 'Mute Master', variableId: 'Audio.mute_master_audio' },
-		{ name: 'Mute Channel 1', variableId: 'Audio.mute_channel_1' },
-		{ name: 'Mute Channel 2', variableId: 'Audio.mute_channel_2' },
-		{ name: 'Mute Channel 3', variableId: 'Audio.mute_channel_3' },
-		{ name: 'Mute Channel 4', variableId: 'Audio.mute_channel_4' },
-		{ name: 'Mute Channel 5', variableId: 'Audio.mute_channel_5' },
-		{ name: 'Mute Channel 6', variableId: 'Audio.mute_channel_6' },
-		{ name: 'Mute Channel 7', variableId: 'Audio.mute_channel_7' },
-		{ name: 'Mute Channel 8', variableId: 'Audio.mute_channel_8' },
-		{ name: 'Mute Channel 9', variableId: 'Audio.mute_channel_9' },
-		{ name: 'Mute Channel 10', variableId: 'Audio.mute_channel_10' },
-		{ name: 'Mute Channel 11', variableId: 'Audio.mute_channel_11' },
-		{ name: 'Mute Channel 12', variableId: 'Audio.mute_channel_12' },
-		{ name: 'Mute Channel 13', variableId: 'Audio.mute_channel_13' },
-		{ name: 'Mute Channel 14', variableId: 'Audio.mute_channel_14' },
-		{ name: 'Mute Channel 15', variableId: 'Audio.mute_channel_15' },
-		{ name: 'Mute Channel 16', variableId: 'Audio.mute_channel_16' },
+		{ name: 'Audio Master - Mute', variableId: 'Audio.mute_master_audio' },
+		{ name: 'Audio Channel 1 - Mute', variableId: 'Audio.mute_channel_1' },
+		{ name: 'Audio Channel 2 - Mute', variableId: 'Audio.mute_channel_2' },
+		{ name: 'Audio Channel 3 - Mute', variableId: 'Audio.mute_channel_3' },
+		{ name: 'Audio Channel 4 - Mute', variableId: 'Audio.mute_channel_4' },
+		{ name: 'Audio Channel 5 - Mute', variableId: 'Audio.mute_channel_5' },
+		{ name: 'Audio Channel 6 - Mute', variableId: 'Audio.mute_channel_6' },
+		{ name: 'Audio Channel 7 - Mute', variableId: 'Audio.mute_channel_7' },
+		{ name: 'Audio Channel 8 - Mute', variableId: 'Audio.mute_channel_8' },
+		{ name: 'Audio Channel 9 - Mute', variableId: 'Audio.mute_channel_9' },
+		{ name: 'Audio Channel 10 - Mute', variableId: 'Audio.mute_channel_10' },
+		{ name: 'Audio Channel 11 - Mute', variableId: 'Audio.mute_channel_11' },
+		{ name: 'Audio Channel 12 - Mute', variableId: 'Audio.mute_channel_12' },
+		{ name: 'Audio Channel 13 - Mute', variableId: 'Audio.mute_channel_13' },
+		{ name: 'Audio Channel 14 - Mute', variableId: 'Audio.mute_channel_14' },
+		{ name: 'Audio Channel 15 - Mute', variableId: 'Audio.mute_channel_15' },
+		{ name: 'Audio Channel 16 - Mute', variableId: 'Audio.mute_channel_16' },
 	])
 
-	let inputSources: { name: string; variableId: string }[] = []
-	instance.KairosObj.INPUTS.forEach((INPUT) => {
-		inputSources.push({ name: `Source ${INPUT.name} name`, variableId: `INPUT.${INPUT.name.replace(/ /g, '_')}` })
+	const inputSources: { name: string; variableId: string }[] = []
+	instance.state.inputs.forEach((INPUT) => {
+		inputSources.push({ name: `Input ${INPUT.name} - Name`, variableId: inputVariableId(INPUT.name) })
 	})
 
-	let auxSources: { name: string; variableId: string }[] = []
-	let auxNames: { name: string; variableId: string }[] = []
-	instance.KairosObj.AUX.forEach((AUX) => {
-		auxSources.push({ name: `Source in ${AUX.name}`, variableId: `AUX.${AUX.name.replace(/ /g, '_')}.source` })
-		auxNames.push({ name: `AUX ${AUX.name} name`, variableId: `AUX.${AUX.name.replace(/ /g, '_')}` })
+	const auxSources: { name: string; variableId: string }[] = []
+	const auxNames: { name: string; variableId: string }[] = []
+	instance.state.auxes.forEach((AUX) => {
+		auxSources.push({ name: `AUX ${AUX.name} - Source`, variableId: `${auxVariableId(AUX.name)}.source` })
+		auxNames.push({ name: `AUX ${AUX.name} - Name`, variableId: auxVariableId(AUX.name) })
 	})
 
-	let layerSources: { name: string; variableId: string }[] = []
-	instance.combinedLayerArray.forEach((LAYER) => {
+	const layerSources: { name: string; variableId: string }[] = []
+	instance.state.layers.forEach((LAYER) => {
 		layerSources.push({
-			name: `SourceA in ${LAYER.sceneName}.${LAYER.layerName}`,
-			variableId: `Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceA`,
+			name: `Layer ${LAYER.sceneName}/${LAYER.layerName} - Source A`,
+			variableId: `${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceA`,
 		})
 		layerSources.push({
-			name: `SourceB in ${LAYER.sceneName}.${LAYER.layerName}`,
-			variableId: `Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceB`,
+			name: `Layer ${LAYER.sceneName}/${LAYER.layerName} - Source B`,
+			variableId: `${layerVariableId(LAYER.sceneName, LAYER.layerName)}.sourceB`,
 		})
 	})
-	// let auxAvailable = []
-	// for (const AUX of instance.KairosObj.AUX) {
-	// 	auxAvailable.push({ name: `${AUX.name} available`, variableId: `${AUX.name}.available` })
-	// }
-	let playerRepeat: { name: string; variableId: string }[] = []
-	instance.KairosObj.PLAYERS.forEach((PLAYER) => {
-		playerRepeat.push({ name: `${PLAYER.player} in repeat mode`, variableId: `Player.${PLAYER.player}.repeat` })
+	const playerRepeat: { name: string; variableId: string }[] = []
+	instance.state.players.forEach((PLAYER) => {
+		playerRepeat.push({ name: `Player ${PLAYER.name} - Repeat`, variableId: `Player.${PLAYER.name}.repeat` })
 	})
 
-	//let presetEnabled = []
-	//for (const LAYER of instance.combinedLayerArray) {
-	//	presetEnabled.push({ name: `PVW bus for ${LAYER.name.slice(7)}`, variableId: `${LAYER.name}.preset_enabled` })
-	//}
-	let filteredVariables = [
+	const filteredVariables = [
 		...layerSources,
 		...inputSources,
 		...auxSources,
 		...auxNames,
 		...audio_mute,
 		...playerRepeat,
-		//...auxAvailable,
-		//...presetEnabled,
 	]
-	// instance.log('debug', `filtered ${JSON.stringify(filteredVariables)}`)
-	instance.setVariableDefinitions(filteredVariables)
+	const variableDefinitions: CompanionVariableDefinitions = {}
+	for (const variable of filteredVariables) {
+		variableDefinitions[variable.variableId] = { name: variable.name }
+	}
+	const definitionsChanged = instance.definitionsChanged('variables', variableDefinitions)
+	if (definitionsChanged) instance.setVariableDefinitions(variableDefinitions)
 
-	const newVariables: InstanceVariableValue = {}
+	const newVariables: CompanionVariableValues = {}
+	const legacyLayerValues: CompanionVariableValues = {}
 
-	// LIVE LAYERS
-	instance.combinedLayerArray.forEach((LAYER) => {
-		newVariables[`Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceA`] = LAYER.sourceA
-		newVariables[`Scene.${LAYER.sceneName.replace(/[\/ ()]/g, '')}.${LAYER.layerName.replace(/[\/ ()]/g, '')}.sourceB`] = LAYER.sourceB
-		//newVariables[`${LAYER.name}.preset_enabled`] = LAYER.preset_enabled === 1 ? 'enabled' : 'disabled'
-	})
-	// AUX
-	instance.KairosObj.AUX.forEach((AUX) => {
-		// newVariables[AUX.name] = instance.KairosObj.INPUTS.find((x) => x.input == AUX.live)
-		newVariables[`AUX.${AUX.name.replace(/ /g, '_')}.source`] = AUX.source
-		newVariables[`AUX.${AUX.name.replace(/ /g, '_')}`] = AUX.name
-		//newVariables[`${AUX.name}.available`] = AUX.available == 0 ? 'disabled' : 'enabled'
+	for (const layer of instance.state.layers) {
+		const id = layerVariableId(layer.sceneName, layer.layerName)
+		const sourceA = layerSource(instance.state, layer, 'sourceA')
+		const sourceB = layerSource(instance.state, layer, 'sourceB')
+		newVariables[`${id}.sourceA`] = sourceA
+		newVariables[`${id}.sourceB`] = sourceB
+
+		// v4.2.2 removed the slash between the scene and layer names.
+		const legacyName = `${layer.sceneName}${layer.layerName}`.replace(/[/ ()]/g, '')
+		if (sanitizeVariableIdPart(legacyName) === legacyName) {
+			legacyLayerValues[`Scene.${legacyName}.sourceA`] = sourceA
+			legacyLayerValues[`Scene.${legacyName}.sourceB`] = sourceB
+		}
+	}
+	instance.state.auxes.forEach((AUX) => {
+		newVariables[`${auxVariableId(AUX.name)}.source`] = auxSource(instance.state, AUX)
+		newVariables[auxVariableId(AUX.name)] = AUX.name
 	})
 	// PLAYERS
-	instance.KairosObj.PLAYERS.forEach((PLAYER) => {
-		newVariables[`Player.${PLAYER.player}.repeat`] = PLAYER.repeat == 0 ? 'repeat off' : 'repeat on'
+	instance.state.players.forEach((PLAYER) => {
+		const repeat = booleanValue(instance.state, playerRepeatPath(PLAYER.ref))
+		newVariables[`Player.${PLAYER.name}.repeat`] =
+			repeat === undefined ? undefined : repeat ? 'repeat on' : 'repeat off'
 	})
 	// INPUTS
-	instance.KairosObj.INPUTS.forEach((INPUT) => {
-		newVariables[`INPUT.${INPUT.name.replace(/ /g, '_')}`] = INPUT.name
+	instance.state.inputs.forEach((INPUT) => {
+		newVariables[inputVariableId(INPUT.name)] = INPUT.name
 	})
 	// AUDIO
-	newVariables['Audio.mute_master_audio'] = instance.KairosObj.audio_master_mute == 0 ? 'unmuted' : 'muted'
-	for (let index = 0; index < 16; index++) {
-		if (instance.KairosObj.AUDIO_CHANNELS[index] == undefined) continue
-		newVariables[`Audio.mute_channel_${index + 1}`] = instance.KairosObj.AUDIO_CHANNELS[index].mute == 0 ? 'unmuted' : 'muted'
+	newVariables['Audio.mute_master_audio'] = muteLabel(booleanValue(instance.state, masterMutePath))
+	for (const [index, channel] of instance.state.audioChannels.entries()) {
+		newVariables[`Audio.mute_channel_${index + 1}`] = muteLabel(
+			booleanValue(instance.state, audioMutePath(channel.name)),
+		)
 	}
-	instance.setVariableValues(newVariables)
+	// Current IDs take precedence if a legacy alias happens to match one.
+	instance.setChangedVariableValues({ ...legacyLayerValues, ...newVariables }, definitionsChanged)
 }
