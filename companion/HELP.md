@@ -32,7 +32,7 @@ Actions are named by what they control, so related ones are listed together. Mos
 
 **AUX**
 
-- **AUX - Set Source**: set the source of an AUX. Only sources assigned to that AUX can be chosen.
+- **AUX - Set Source**: set the source of an AUX. The source list includes every AUX's sources, but each AUX only accepts its own (see `AUX_list`), and the mixer refuses any other. The AUX can also be given by its UUID (from `AUX_list`), which keeps working if the AUX is renamed.
 
 **Scenes and transitions**
 
@@ -72,15 +72,16 @@ Actions are named by what they control, so related ones are listed together. Mos
 
 ### Variables
 
-| Variable                        | Value                      |
-| ------------------------------- | -------------------------- |
-| `Scene.<scene>.<layer>.sourceA` | Source A of the layer      |
-| `Scene.<scene>.<layer>.sourceB` | Source B of the layer      |
-| `AUX.<aux>.source`              | Source shown on the AUX    |
-| `AUX.<aux>`                     | Name of the AUX            |
-| `INPUT.<source>`                | Name of the source         |
-| `Audio.mute_master_audio`       | `muted` / `unmuted`        |
-| `Audio.mute_channel_1` … `_16`  | `muted` / `unmuted`        |
-| `Player.<player>.repeat`        | `repeat on` / `repeat off` |
+| Variable                        | Value                                                                                                                                                                                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Scene.<scene>.<layer>.sourceA` | Source A of the layer                                                                                                                                                                                                                       |
+| `Scene.<scene>.<layer>.sourceB` | Source B of the layer                                                                                                                                                                                                                       |
+| `AUX.<aux>.source`              | Source shown on the AUX                                                                                                                                                                                                                     |
+| `AUX.<aux>`                     | Name of the AUX                                                                                                                                                                                                                             |
+| `AUX_list`                      | Every AUX, as JSON: a list of `{ uuid, name, kind, sources, sourceVariable }`: `kind` is `video` or `audio`, `sources` the sources it accepts, `sourceVariable` the id of its source variable, and `uuid` stays the same when it is renamed |
+| `INPUT.<source>`                | Name of the source                                                                                                                                                                                                                          |
+| `Audio.mute_master_audio`       | `muted` / `unmuted`                                                                                                                                                                                                                         |
+| `Audio.mute_channel_1` … `_16`  | `muted` / `unmuted`                                                                                                                                                                                                                         |
+| `Player.<player>.repeat`        | `repeat on` / `repeat off`                                                                                                                                                                                                                  |
 
 In source and AUX names, spaces become `_`. Any other character a variable name can't contain is left out, including spaces in scene and layer names.

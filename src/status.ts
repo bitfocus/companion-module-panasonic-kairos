@@ -26,18 +26,23 @@ export function combineStatus(sources: Record<ConnectionSource, SourceStatus>): 
 }
 
 /**
- * Tracks the TCP and REST connections separately and reports a single status when it changes
+ * Tracks the TCP and REST connections separately and reports a single status when it changes. It logs once when the
+ * connection is lost and once when it is back, so one outage of both connections doesn't log every failure.
  */
 export class ConnectionStatus {
 	private readonly report: (status: InstanceStatus, message: string | null) => void
-	private readonly logInfo: (message: string) => void
+	private readonly log: (level: 'info' | 'error', message: string) => void
 	private sources: Record<ConnectionSource, SourceStatus> = ConnectionStatus.initialSources()
 	private last: SourceStatus | null = null
 	private hasFailed = false
+	private hasConnected = false
 
-	constructor(report: (status: InstanceStatus, message: string | null) => void, logInfo: (message: string) => void) {
+	constructor(
+		report: (status: InstanceStatus, message: string | null) => void,
+		log: (level: 'info' | 'error', message: string) => void,
+	) {
 		this.report = report
-		this.logInfo = logInfo
+		this.log = log
 	}
 
 	private static initialSources(): Record<ConnectionSource, SourceStatus> {
@@ -50,6 +55,7 @@ export class ConnectionStatus {
 	public reset(): void {
 		this.sources = ConnectionStatus.initialSources()
 		this.hasFailed = false
+		this.hasConnected = false
 		this.publish()
 	}
 
@@ -74,9 +80,14 @@ export class ConnectionStatus {
 		this.report(combined.status, combined.message)
 
 		if (combined.status === InstanceStatus.Ok) {
-			this.logInfo(this.hasFailed ? 'Connection to Kairos restored' : 'Connected to Kairos')
+			this.log('info', this.hasFailed ? 'Connection to Kairos restored' : 'Connected to Kairos')
 			this.hasFailed = false
-		} else if (combined.status !== InstanceStatus.Connecting) {
+			this.hasConnected = true
+		} else if (combined.status !== InstanceStatus.Connecting && !this.hasFailed) {
+			this.log(
+				'error',
+				`${this.hasConnected ? 'Connection to Kairos lost' : 'Unable to connect to Kairos'} (${combined.message})`,
+			)
 			this.hasFailed = true
 		}
 	}
