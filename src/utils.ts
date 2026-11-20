@@ -163,7 +163,7 @@ export const mediaStillLabel = (path: string): string =>
 	path
 		.replace(/^MEDIA\.stills\./, '')
 		.split('.')
-		.map((part) => part.replace(/&#46;/g, '.'))
+		.map((part) => part.replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code))))
 		.join('/')
 
 /**

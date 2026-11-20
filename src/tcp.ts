@@ -12,7 +12,12 @@ const CONNECT_TIMEOUT_MS = 10000
 const SUBSCRIPTION_RETRY_MS = 5000
 
 type ExpectedResponse = Parameters<KairosConnection['executeCommand']>[1]
-type SubscriptionTarget = { feedbacks: [FeedbackId, ...FeedbackId[]]; uuid?: string }
+type SubscriptionTarget = {
+	feedbacks: [FeedbackId, ...FeedbackId[]]
+	uuid?: string
+	/** Called with each value instead of storing it in the live readings */
+	onValue?: (value: string) => void
+}
 type Subscription = SubscriptionTarget & { controller: AbortController }
 
 export class TCP {
@@ -27,6 +32,7 @@ export class TCP {
 	private destroyed = false
 	private generation = 0
 	private variablesPending = false
+	private definitionsPending = false
 	private sharedMacroPaths = ''
 
 	constructor(
@@ -259,6 +265,17 @@ export class TCP {
 			)
 		this.sharedMacroPaths = sharedMacroPaths
 
+		// An input's name is how the lists, presets and variables show it, so a rename rebuilds them
+		for (const input of state.inputPaths)
+			wanted.set(`${input}.name`, {
+				feedbacks: [FeedbackId.inputSource, FeedbackId.aux],
+				onValue: (name) => {
+					if (this.instance.state.inputNames.get(input) === name) return
+					this.instance.state.inputNames = new Map(this.instance.state.inputNames).set(input, name)
+					this.scheduleDefinitions()
+				},
+			})
+
 		for (const layer of state.layers) {
 			const path = refToPath(layer.ref)
 			const target: SubscriptionTarget = {
@@ -291,7 +308,8 @@ export class TCP {
 					// A global termination is followed by the disconnect or reset event, which invalidates everything.
 					if (!(error instanceof TerminateSubscriptionError)) this.retrySubscription(path, subscription, error)
 				} else if (value !== null) {
-					this.instance.state.live.set(path, { value, uuid: target.uuid })
+					if (target.onValue) target.onValue(value)
+					else this.instance.state.live.set(path, { value, uuid: target.uuid })
 					this.instance.checkFeedbacks(...target.feedbacks)
 					this.scheduleVariables()
 				}
@@ -317,6 +335,15 @@ export class TCP {
 			this.failedSubscriptions.clear()
 			this.sync()
 		}, SUBSCRIPTION_RETRY_MS)
+	}
+
+	private scheduleDefinitions(): void {
+		if (this.definitionsPending) return
+		this.definitionsPending = true
+		setImmediate(() => {
+			this.definitionsPending = false
+			if (!this.destroyed) this.instance.updateInstance(updateFlags.All)
+		})
 	}
 
 	private scheduleVariables(): void {

@@ -1,4 +1,5 @@
 import {
+	isAnyInputRef,
 	parseAnySourceRef,
 	protocolEncodeStr,
 	refAudioPlayer,
@@ -31,9 +32,8 @@ const folderParts = (path: string | undefined): string[] => (path ?? '').split('
  */
 export const sceneFullName = (path: string | undefined, sceneName: string): string => `${path ?? ''}${sceneName}`
 
-/** The id the layer feedbacks use for a layer, e.g. `/Templates/2Box/Background` */
-export const layerFeedbackId = (layer: Layer): string =>
-	`/${sceneFullName(layer.path, layer.sceneName)}/${layer.layerName}`
+/** A layer's full name, with its scene's folder, e.g. `Templates/2Box/Background` */
+export const layerPath = (layer: Layer): string => `${sceneFullName(layer.path, layer.sceneName)}/${layer.layerName}`
 
 export const sceneRef = (path: string | undefined, sceneName: string): SceneRef =>
 	refScene([...folderParts(path), sceneName])
@@ -78,6 +78,16 @@ export function sourceName(value: string, knownNames: string[]): string {
 	if (ramRecorder) return `RAM${ramRecorder[1]}`
 	const last = protocolDecode(value.split('.').at(-1) ?? value)
 	return knownNames.find((name) => name.toLowerCase() === last.toLowerCase()) ?? last
+}
+
+/** An input's fixed name (`IP1`, `NDI1`, `STREAM1`) from the name REST lists it by, or undefined if it isn't an input */
+export function inputPath(name: string): string | undefined {
+	try {
+		const ref = parseAnySourceRef(sourcePath(name, []))
+		return isAnyInputRef(ref) ? refToPath(ref) : undefined
+	} catch {
+		return undefined
+	}
 }
 
 /**

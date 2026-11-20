@@ -3,7 +3,7 @@ import { INTERNAL_SOURCES, type MixerState } from './state.js'
 import { InstanceStatus } from '@companion-module/base'
 import { FeedbackId } from './feedback.js'
 import type { SourceStatus } from './status.js'
-import { layerRef, macroRef } from './refs.js'
+import { inputPath, layerRef, macroRef } from './refs.js'
 import { createInputWithName, updateFlags } from './utils.js'
 import { refAuxName } from 'kairos-connection'
 
@@ -59,7 +59,7 @@ export class REST {
 	}
 
 	private async pullState(): Promise<void> {
-		const [scenes, auxes, macros, multiviewers] = await Promise.allSettled([
+		const [scenes, auxes, macros, multiviewers, inputs] = await Promise.allSettled([
 			this.readScenes(),
 			this.readList<Omit<MixerState['auxes'][number], 'ref'>>('/aux').then((list) =>
 				list.map((aux) => ({ ...aux, ref: refAuxName(aux.name) })),
@@ -68,6 +68,7 @@ export class REST {
 				list.map((macro) => ({ ...macro, ref: macroRef(macro.path, macro.name) })),
 			),
 			this.readList<MixerState['multiviewers'][number]>('/multiviewers'),
+			this.readList<{ name: string }>('/inputs').then((list) => list.flatMap(({ name }) => inputPath(name) ?? [])),
 		])
 		if (this.lifetime.signal.aborted) return
 
@@ -76,8 +77,10 @@ export class REST {
 		if (auxes.status === 'fulfilled') state.auxes = auxes.value
 		if (macros.status === 'fulfilled') state.macros = macros.value
 		if (multiviewers.status === 'fulfilled') state.multiviewers = multiviewers.value
+		if (inputs.status === 'fulfilled' && inputs.value.join() !== state.inputPaths.join())
+			state.inputPaths = inputs.value
 
-		const pulls = { scenes, auxes, macros, multiviewers }
+		const pulls = { scenes, auxes, macros, multiviewers, inputs }
 		if (Object.values(pulls).some((result) => result.status === 'fulfilled')) {
 			// Source choices describe the current catalog. Keep the existing input objects for names that still exist.
 			const inputsByName = new Map(state.inputs.map((input) => [input.name, input]))

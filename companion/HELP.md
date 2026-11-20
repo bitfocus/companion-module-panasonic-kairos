@@ -62,24 +62,33 @@ Actions are named by what they control, so related ones are listed together. Mos
 
 - **Advanced - Send Custom Command**: send a raw KAIROS TCP command, for example `SCENES.Main.cut` or `SCENES.Main.Layers.Background.sourceA=IP1`. Variables can be used in the command.
 
+**Using more than one KAIROS**
+
+Actions and feedbacks save inputs and multiviewers by their fixed name (`IP1`, `NDI1`, `MV1`), and scenes, layers, macros, snapshots and the rest by name, not by the KAIROS's internal ids, so buttons work on any KAIROS running the same show, e.g. a main and a backup: change the connection's address and they carry on. Renaming an input or multiviewer changes nothing, as its fixed name stays the same; renaming anything else breaks the buttons that use it, until it is chosen again.
+
+Buttons made with versions before 5.0 saved internal ids, which are different on each KAIROS. When upgrading, those options are switched to expressions holding the old id (e.g. `"87e882b3be-b406-826f-52b8-7ba17f64c4"`), so they keep working on the KAIROS they were made on. To make one work on any KAIROS, switch the option back to the list and choose the item again.
+
 **Using expressions**
 
-Any option of an action or feedback can be switched to an expression, for example to choose a source from a variable. Type the names as the lists show them:
+Any option of an action or feedback can be switched to an expression, for example to choose a source from a variable. The expression must give exactly what the list saves:
 
-| Option                         | Give it as                                  |
-| ------------------------------ | ------------------------------------------- |
-| Scene, source, AUX, transition | its name, e.g. `Main`, `IP1`, `Main/BgdMix` |
-| Layer                          | `Scene/Layer`, e.g. `Main/Background`       |
-| Scene action                   | `Scene/action name`, e.g. `Main/show_logo`  |
-| Global macro                   | its name, e.g. `Intro`                      |
-| Scene macro, snapshot          | `Scene/name`, e.g. `Main/Wipe`              |
-| Multiviewer                    | its name                                    |
-| Player                         | `RR1`–`RR8`, `CP1`–`CP2`, `AP1`–`AP16`      |
-| Audio channel                  | its number, e.g. `3`                        |
+| Option                              | Give it as                                                              |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| Source                              | an input's fixed name, e.g. `IP1`, `NDI1`; any other source by its name |
+| Scene                               | `Folder/Scene`, e.g. `Main`, `Templates/2Box`                           |
+| Layer                               | `Scene/Layer`, e.g. `Templates/2Box/Background`                         |
+| Transition                          | `Scene/Transition`, e.g. `Main/BgdMix`, `Templates/2Box/BgdMix`         |
+| Media still                         | `Folder/name`, e.g. `Logos/Intro.rr`                                    |
+| Scene action, scene macro, snapshot | `Scene/name`, e.g. `Main/show_logo`, `Main/Wipe`                        |
+| Global macro                        | `Folder/name`, e.g. `Show/Intro`, or `Intro` outside a folder           |
+| AUX                                 | its name                                                                |
+| Multiviewer                         | its fixed name, `MV1`–`MV4`                                             |
+| Player                              | `RR1`–`RR8`, `CP1`–`CP2`, `AP1`–`AP16`                                  |
+| Audio channel                       | `Channel 1`–`Channel 16`                                                |
 
-Scenes in folders include the folder, e.g. `Templates/2Box/Background`, and macros include theirs, e.g. `Show/Intro`. The folder can be left out when the name is unique; if a name could mean more than one thing (two macros called `test` in different folders), the action does nothing and the log lists the full names to use.
+Names are matched exactly, including the case. The lists show a renamed input as e.g. `Camera 1 (NDI1)`; its variable is `INPUT.NDI1`, which holds the name it is shown with.
 
-> KAIROS allows two macros with the same name in the same folder. The lists show the start of each one's UUID to tell them apart, and in an expression they can only be given by UUID (the log lists them). Their **Playing** feedbacks stay off, as the mixer reports a single status for all macros of that name: give them different names to use those feedbacks.
+> KAIROS allows two macros with the same name in the same folder. The lists show the start of each one's UUID to tell them apart, and they are saved by UUID, so they only work on that KAIROS. Their **Playing** feedbacks stay off, as the mixer reports a single status for all macros of that name: give them different names to use those feedbacks.
 
 ### Feedbacks
 
@@ -98,7 +107,7 @@ Scenes in folders include the folder, e.g. `Templates/2Box/Background`, and macr
 | `AUX.<aux>.source`              | Source shown on the AUX                                                                                                                                                                                                                     |
 | `AUX.<aux>`                     | Name of the AUX                                                                                                                                                                                                                             |
 | `AUX_list`                      | Every AUX, as JSON: a list of `{ uuid, name, kind, sources, sourceVariable }`: `kind` is `video` or `audio`, `sources` the sources it accepts, `sourceVariable` the id of its source variable, and `uuid` stays the same when it is renamed |
-| `INPUT.<source>`                | Name of the source                                                                                                                                                                                                                          |
+| `INPUT.<source>`                | The name a source is shown with. Inputs use their fixed name (`INPUT.NDI1`), so the variable stays the same when one is renamed                                                                                                             |
 | `Audio.mute_master_audio`       | `muted` / `unmuted`                                                                                                                                                                                                                         |
 | `Audio.mute_channel_1` … `_16`  | `muted` / `unmuted`                                                                                                                                                                                                                         |
 | `Player.<player>.repeat`        | `repeat on` / `repeat off`                                                                                                                                                                                                                  |

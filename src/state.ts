@@ -18,7 +18,12 @@ export const INTERNAL_SOURCES = ['Black', 'White', 'ColorBar', 'ColorCircle'] as
 export type MixerState = {
 	/** Current TCP readings by protocol path. REST source readings remain in the catalog below. */
 	live: Map<string, { value: string; uuid?: string }>
+	/** Every source the layers and AUXes list, by the name they show it with */
 	inputs: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
+	/** The inputs' fixed names (`IP1`, `NDI1`), which stay the same when they are renamed */
+	inputPaths: string[]
+	/** The name each input is shown with, by its fixed name, from TCP. Replaced, not changed, when one is renamed. */
+	inputNames: ReadonlyMap<string, string>
 	mediaStills: Array<string>
 	scenes: {
 		layers: { name: string; sourceA?: string; sourceB?: string; sources: string[]; uuid: string }[]
@@ -84,6 +89,8 @@ export type MixerState = {
 export const emptyMixerState = (): MixerState => ({
 	live: new Map(),
 	inputs: INTERNAL_SOURCES.map(createInputWithName),
+	inputPaths: [],
+	inputNames: new Map(),
 	mediaStills: [],
 	scenes: [],
 	layers: [],
