@@ -6,13 +6,9 @@ import {
 	refAudioMixerChannel,
 	refClipPlayer,
 	refMacro,
-	refMatte,
 	refRamRecorder,
 	refScene,
 	refSceneLayer,
-	refSourceBase,
-	refSourceInt,
-	refStreamInput,
 	refToPath,
 	type MacroRef,
 	type SceneLayerRef,
@@ -63,54 +59,35 @@ export const sceneMacroPath = (macro: SceneMacro): string =>
 const protocolDecode = (value: string): string =>
 	value.replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))
 
-// REST names the RAM recorders RAM1..8, TCP RR1..8
-const REST_RAM_RECORDER = /^RAM(\d+)$/
-const TCP_RAM_RECORDER = /^RR(\d+)$/
-const REST_STREAM_INPUT = /^Stream([1-8])$/i
+/** Whether a source's protocol path is an input's (`IP1`, `NDI1`, `STREAM1`…) */
+export function isInputPath(path: string): boolean {
+	try {
+		return isAnyInputRef(parseAnySourceRef(path))
+	} catch {
+		return false
+	}
+}
+
+/** Sources stored by the name REST gave them, which differs from their protocol path */
+const NAMED_SOURCES: Record<string, string> = {
+	BLACK: 'Black',
+	WHITE: 'White',
+	AUDIOMIXER: 'AudioMixer',
+	AUDIOMONITOR: 'MonitorOut',
+}
 
 /**
- * TCP reports a source by its protocol path (`BLACK`, `MATTES.ColA`, `SCENES.Templates.2Box`) where REST, and so the
- * feedbacks and action options, use its name (`Black`, `ColA`, `2Box`)
+ * What the Source options store for a source TCP lists by its protocol path. Inputs keep their fixed name (`NDI1`);
+ * other sources the name they were stored by before (`BLACK` is `Black`, `RR1` is `RAM1`, `MATTES.ColA` is `ColA`),
+ * except scenes, which get their full name (`SCENES.Templates.2Box` is `Templates/2Box`).
  */
-export function sourceName(value: string, knownNames: string[]): string {
-	if (value.startsWith('MEDIA.')) return value
-	const ramRecorder = TCP_RAM_RECORDER.exec(value)
+export function sourceId(path: string): string {
+	if (isInputPath(path) || path.startsWith('MEDIA.')) return path
+	const named = NAMED_SOURCES[path]
+	if (named) return named
+	const ramRecorder = /^RR(\d+)$/.exec(path)
 	if (ramRecorder) return `RAM${ramRecorder[1]}`
-	const last = protocolDecode(value.split('.').at(-1) ?? value)
-	return knownNames.find((name) => name.toLowerCase() === last.toLowerCase()) ?? last
-}
-
-/** An input's fixed name (`IP1`, `NDI1`, `STREAM1`) from the name REST lists it by, or undefined if it isn't an input */
-export function inputPath(name: string): string | undefined {
-	try {
-		const ref = parseAnySourceRef(sourcePath(name, []))
-		return isAnyInputRef(ref) ? refToPath(ref) : undefined
-	} catch {
-		return undefined
-	}
-}
-
-/**
- * The protocol path for a source REST names, which is what the mixer accepts over TCP
- * @param scenes the scenes from REST, as a scene can be the source of a layer
- */
-export function sourcePath(name: string, scenes: { path: string; name: string }[]): string {
-	try {
-		return refToPath(parseAnySourceRef(name))
-	} catch {
-		// Not already a protocol path
-	}
-	const ramRecorder = REST_RAM_RECORDER.exec(name)
-	if (ramRecorder) return refToPath(refRamRecorder(Number(ramRecorder[1])))
-	const streamInput = REST_STREAM_INPUT.exec(name)
-	if (streamInput) return refToPath(refStreamInput(Number(streamInput[1])))
-	const lower = name.toLowerCase()
-	if (lower === 'black') return refToPath(refSourceBase(['BLACK']))
-	if (lower === 'white') return refToPath(refSourceBase(['WHITE']))
-	if (lower === 'colorbar') return refToPath(refSourceInt(['ColorBar']))
-	if (lower === 'colorcircle') return refToPath(refSourceInt(['ColorCircle']))
-	const scene = scenes.find((s) => s.name === name)
-	if (scene) return refToPath(sceneRef(scene.path, scene.name))
-	// Every other named source is a colour matte
-	return refToPath(refMatte([name]))
+	const parts = path.split('.').map(protocolDecode)
+	if (parts[0] === 'SCENES') return parts.slice(1).join('/')
+	return parts.at(-1) ?? path
 }

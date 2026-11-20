@@ -6,8 +6,8 @@ Controls a Panasonic KAIROS live production platform.
 
 The module uses two connections to the KAIROS, and needs both:
 
-- **TCP** (default port 3005) for transitions, players, audio and live state.
-- **REST API** (default port 1234) to read the scenes, layers, AUXes, macros, snapshots and multiviewers, and for the actions that use them. In KAIROS Creator, set the REST API mode to **Basic** and enter the same username and password here.
+- **TCP** (default port 3005) to list the scenes, layers, sources, AUXes, snapshots and macros, and for almost every action and all live state.
+- **REST API** (default port 1234) for the scene actions and multiviewers, which TCP doesn't offer, and to recognise buttons saved by older versions. In KAIROS Creator, set the REST API mode to **Basic** and enter the same username and password here.
 
 | Setting       | Default       |
 | ------------- | ------------- |
@@ -17,7 +17,7 @@ The module uses two connections to the KAIROS, and needs both:
 | Username      | `Kairos`      |
 | Password      | (empty)       |
 
-The connection turns green once both are connected, and lists in the actions fill in a few seconds later. Changes made on the KAIROS (new scenes, layers, macros…) appear within a few seconds.
+The connection turns green once both are connected, and lists in the actions fill in a few seconds later. Changes made on the KAIROS (new scenes, layers, macros…) appear within about ten seconds.
 
 > Avoid special characters in the names of scenes, layers and sources: some can't be used in actions or variables.
 
@@ -32,7 +32,7 @@ Actions are named by what they control, so related ones are listed together. Mos
 
 **AUX**
 
-- **AUX - Set Source**: set the source of an AUX. The source list includes every AUX's sources, but each AUX only accepts its own (see `AUX.<aux>.sources`), and the mixer refuses any other. AUXes are saved by their fixed name (e.g. `NDI-AUX1`), which keeps working if the AUX is renamed; their name and UUID are accepted too.
+- **AUX - Set Source**: set the source of an AUX. The source list includes every AUX's sources, but each AUX only accepts its own (see `AUX.<aux>.sources`), and the mixer refuses any other. AUXes are saved by their fixed name (e.g. `NDI-AUX1`), which keeps working if the AUX is renamed; their name is accepted too.
 
 **Scenes and transitions**
 
@@ -47,7 +47,7 @@ Actions are named by what they control, so related ones are listed together. Mos
 
 **Macros**
 
-- **Macros - Control Global Macro** and **Macros - Control Scene Macro**: play, stop, record or stop recording a macro.
+- **Macros - Control Global Macro**, **Macros - Control Scene Macro** and **Macros - Control Panel Macro**: play, stop, record or stop recording a macro. Panel macros are those on the control panel profiles.
 
 **Players**
 
@@ -81,6 +81,7 @@ Any option of an action or feedback can be switched to an expression, for exampl
 | Media still                         | `Folder/name`, e.g. `Logos/Intro.rr`                                    |
 | Scene action, scene macro, snapshot | `Scene/name`, e.g. `Main/show_logo`, `Main/Wipe`                        |
 | Global macro                        | `Folder/name`, e.g. `Show/Intro`, or `Intro` outside a folder           |
+| Panel macro                         | `Profiles/Profile/name`, e.g. `PANELPROFILES/Profile1/Rec-1`            |
 | AUX                                 | its fixed name, e.g. `IP-AUX1`, `NDI-AUX1`                              |
 | Multiviewer                         | its fixed name, `MV1`–`MV4`                                             |
 | Player                              | `RR1`–`RR8`, `CP1`–`CP2`, `AP1`–`AP16`                                  |
@@ -88,7 +89,7 @@ Any option of an action or feedback can be switched to an expression, for exampl
 
 Names are matched exactly, including the case. The lists show a renamed input as e.g. `Camera 1 (NDI1)`; its variable is `INPUT.NDI1`, which holds the name it is shown with.
 
-> KAIROS allows two macros with the same name in the same folder. The lists show the start of each one's UUID to tell them apart, and they are saved by UUID, so they only work on that KAIROS. Their **Playing** feedbacks stay off, as the mixer reports a single status for all macros of that name: give them different names to use those feedbacks.
+> KAIROS allows two macros (or snapshots) with the same name in the same folder, but controls them by name, so the lists show them once.
 
 ### Feedbacks
 
@@ -96,7 +97,7 @@ Names are matched exactly, including the case. The lists show a renamed input as
 - **AUX - Source Selected**: an AUX shows a given source.
 - **Audio - Master Muted** / **Audio - Channel Muted**: the master or a channel is muted.
 - **Players - Repeat On**: a player is in repeat mode.
-- **Macros - Global Macro Playing** / **Macros - Scene Macro Playing**: a macro is playing.
+- **Macros - Global Macro Playing** / **Macros - Scene Macro Playing** / **Macros - Panel Macro Playing**: a macro is playing.
 
 ### Variables
 

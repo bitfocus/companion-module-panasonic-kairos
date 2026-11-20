@@ -1,16 +1,19 @@
-import { layerPath, sceneFullName } from './refs.js'
-import { auxSlot, type MixerState } from './state.js'
+import { refSceneSnapshot, refToPath } from 'kairos-connection'
+import { isInputPath, layerPath, sceneFullName, sceneMacroPath, sceneRef, sourceId } from './refs.js'
+import type { MixerState } from './state.js'
 import { mediaStillLabel, sceneActionLabel } from './utils.js'
 
 /** Tooltips for options whose value is typed exactly as the list stores it */
 export const VALUE_TOOLTIPS = {
-	source: 'In an expression, give an input by its fixed name, e.g. `IP1`, `NDI1`, or any other source by its name',
+	source:
+		'In an expression, give an input by its fixed name, e.g. `IP1`, `NDI1`, or any other source as the list saves it',
 	layer: 'In an expression, give the layer as `Scene/Layer`, with any folder, e.g. `Templates/2Box/Background`',
 	transition: 'In an expression, give the transition as `Scene/Transition`, with any folder, e.g. `Main/BgdMix`',
 	mediaStill: 'In an expression, give the still as `Folder/name`, e.g. `Logos/Intro.rr`',
 	sceneAction: 'In an expression, give the action as `Scene/action name`, e.g. `Main/show_logo`',
 	macro: 'In an expression, give the macro as `Folder/name`, e.g. `Show/Intro`',
 	sceneMacro: 'In an expression, give the macro as `Scene/macro name`, e.g. `Main/Wipe`',
+	panelMacro: 'In an expression, give the macro as `Profiles/Profile/macro name`, e.g. `PANELPROFILES/Profile1/Rec-1`',
 	snapshot: 'In an expression, give the snapshot as `Scene/snapshot name`, e.g. `Main/Snap 1`',
 	multiviewer: 'In an expression, give the multiviewer by its fixed name, `MV1` to `MV4`',
 	aux: 'In an expression, give the AUX by its fixed name, e.g. `IP-AUX1`, `NDI-AUX1`',
@@ -23,6 +26,8 @@ type Item = {
 	/** What the mixer is sent, and what this option stored before it stored names */
 	target: string
 	label: string
+	/** The name it is shown with in variables, where that differs from `name` (a renamed input's) */
+	shown?: string
 	/** Other values that were stored for this item before, matched only where no other item has them */
 	aliases?: string[]
 }
@@ -44,8 +49,8 @@ export type Catalog = {
 	resolve: (value: string) => string
 	/** What a value is stored as now, so that two values can be compared */
 	idOf: (value: string) => string
-	/** What an item's target is stored as, for presets to store the same as the dropdowns */
-	storedId: (target: string) => string
+	/** The name a value's item is shown with in variables */
+	shownName: (value: string) => string
 }
 
 /** The UUID ending a target (`Main/macros/<uuid>`), shortened, to tell apart items with the same name */
@@ -73,7 +78,6 @@ const buildCatalog = (items: Item[]): Catalog => {
 	for (const entry of entries) byValue.set(entry.target, entry)
 	// What the list stores wins over anything else
 	for (const entry of entries) byValue.set(entry.id, entry)
-	const idByTarget = new Map(entries.map((entry) => [entry.target, entry.id]))
 
 	return {
 		choices: entries.map(({ id, target, label }) => ({
@@ -82,7 +86,10 @@ const buildCatalog = (items: Item[]): Catalog => {
 		})),
 		resolve: (value) => byValue.get(value)?.target ?? value,
 		idOf: (value) => byValue.get(value)?.id ?? value,
-		storedId: (target) => idByTarget.get(target) ?? target,
+		shownName: (value) => {
+			const entry = byValue.get(value)
+			return entry ? (entry.shown ?? entry.id) : value
+		},
 	}
 }
 
@@ -103,67 +110,59 @@ const cachedCatalog = <T extends object>(toItems: (source: T) => Item[]): ((sour
 }
 
 const sourceCache = new WeakMap<
-	MixerState['inputs'],
-	{ inputPaths: MixerState['inputPaths']; inputNames: MixerState['inputNames']; catalog: Catalog }
+	MixerState['layerSourceOptions'],
+	{ auxes: MixerState['auxes']; inputNames: MixerState['inputNames']; catalog: Catalog }
 >()
 
+/** Every source the layers and AUXes offer, by protocol path (`IP1`, `MATTES.ColA`) */
+export const sourcePaths = (state: MixerState): string[] => [
+	...new Set([...state.layerSourceOptions.values(), ...state.auxes.map((aux) => aux.sourceOptions)].flat()),
+]
+
 /**
- * Sources. Inputs are stored by their fixed name (`NDI1`), which stays the same when they are renamed, and are sent to
- * the mixer by the name they are shown with, as REST takes. The name they used to be stored by, and that routing tools
- * use, is accepted too. Other sources (mattes, scenes, players…) have no fixed name and are stored by their name.
+ * Sources, from the options TCP lists for each layer and AUX. They are sent to the mixer by protocol path, and stored as
+ * `sourceId` gives: inputs by their fixed name (`NDI1`), which stays the same when they are renamed. The name an input
+ * is shown with, and a scene's name without its folder, were stored before and are accepted too.
  */
 export const sourceCatalog = (state: MixerState): Catalog => {
-	const cached = sourceCache.get(state.inputs)
-	if (cached?.inputPaths === state.inputPaths && cached.inputNames === state.inputNames) return cached.catalog
-
-	// A name listed twice for one layer or AUX belongs to two sources, e.g. an input renamed like a matte. REST can't
-	// tell those apart, so such an input is sent by its fixed name (over TCP) and its name stays the other source's.
-	const shared = new Set(
-		[
-			...state.scenes.flatMap((scene) => (scene.layers ?? []).map((layer) => layer.sources ?? [])),
-			...state.auxes.map((aux) => aux.sources ?? []),
-		].flatMap((list) => list.filter((name, i) => list.indexOf(name) !== i)),
-	)
-	const inputs = state.inputPaths.map((path): Item => {
-		const name = state.inputNames.get(path)
-		if (name === undefined || shared.has(name))
-			return { name: path, target: path, label: name ? `${name} (${path})` : path }
-		return { name: path, target: name, label: name === path ? path : `${name} (${path})`, aliases: [name] }
-	})
-	const inputNames = new Set(inputs.flatMap((input) => [input.name, ...(input.aliases ?? [])]))
-	const others = state.inputs
-		.filter((input) => !inputNames.has(input.name))
-		.map((input): Item => ({ name: input.name, target: input.name, label: input.name }))
-	const catalog = buildCatalog([...inputs, ...others])
-	sourceCache.set(state.inputs, { inputPaths: state.inputPaths, inputNames: state.inputNames, catalog })
-	return catalog
-}
-
-const auxCache = new WeakMap<MixerState['auxes'], { auxNames: MixerState['auxNames']; catalog: Catalog }>()
-
-/**
- * AUXes, stored by their fixed name (`NDI-AUX1`), which stays the same when they are renamed, and sent to the mixer by
- * UUID. REST lists them by name only, so an AUX gets the fixed name of the one output TCP reports with that name; until
- * then it is stored by name. The name and UUID they used to be stored by, and that routing tools use, are accepted too.
- */
-export const auxCatalog = (state: MixerState): Catalog => {
-	const cached = auxCache.get(state.auxes)
-	if (cached?.auxNames === state.auxNames) return cached.catalog
+	const cached = sourceCache.get(state.layerSourceOptions)
+	if (cached?.auxes === state.auxes && cached.inputNames === state.inputNames) return cached.catalog
 
 	const catalog = buildCatalog(
-		state.auxes.map((aux): Item => {
-			const fixedName = auxSlot(state, aux)
-			return {
-				name: fixedName ?? aux.name,
-				target: aux.uuid,
-				label: fixedName && fixedName !== aux.name ? `${aux.name} (${fixedName})` : aux.name,
-				aliases: [aux.name],
+		sourcePaths(state).map((path): Item => {
+			const id = sourceId(path)
+			if (isInputPath(path)) {
+				const name = state.inputNames.get(path)
+				return {
+					name: id,
+					target: path,
+					label: name && name !== id ? `${name} (${id})` : id,
+					shown: name,
+					aliases: name ? [name] : [],
+				}
 			}
+			const sceneName = path.startsWith('SCENES.') ? id.split('/').at(-1) : undefined
+			return { name: id, target: path, label: id, aliases: sceneName ? [sceneName] : [] }
 		}),
 	)
-	auxCache.set(state.auxes, { auxNames: state.auxNames, catalog })
+	sourceCache.set(state.layerSourceOptions, { auxes: state.auxes, inputNames: state.inputNames, catalog })
 	return catalog
 }
+
+/**
+ * AUXes, from TCP, stored and sent to the mixer by their fixed name (`NDI-AUX1`), which stays the same when they are
+ * renamed. The name they were stored by before is accepted too.
+ */
+const auxes = cachedCatalog((list: MixerState['auxes']) =>
+	list.map((aux): Item => ({
+		name: aux.slot,
+		target: aux.slot,
+		label: aux.name !== aux.slot ? `${aux.name} (${aux.slot})` : aux.slot,
+		shown: aux.name,
+		aliases: [aux.name],
+	})),
+)
+export const auxCatalog = (state: MixerState): Catalog => auxes(state.auxes)
 
 /** A RAM recorder, clip player or audio player by its fixed name (`RR1`) */
 export const findPlayer = (players: MixerState['players'], value: string): MixerState['players'][number] | undefined =>
@@ -191,9 +190,9 @@ const layers = cachedCatalog((list: MixerState['layers']) =>
 		const path = layerPath(layer)
 		return {
 			name: path,
-			target: layer.uuid,
+			target: refToPath(layer.ref),
 			label: path,
-			aliases: [`/${path}`, `/${layer.sceneName}/${layer.layerName}`],
+			aliases: [`/${path}`, `/${layer.sceneName}/${layer.layerName}`, ...(layer.restId ? [layer.restId] : [])],
 		}
 	}),
 )
@@ -219,42 +218,84 @@ const mediaStills = cachedCatalog((list: MixerState['mediaStills']) =>
 )
 export const mediaStillCatalog = (state: MixerState): Catalog => mediaStills(state.mediaStills)
 
-const sceneActions = cachedCatalog((list: MixerState['scenes']) =>
-	list.flatMap((scene) => {
-		const sceneName = sceneFullName(scene.path, scene.name)
-		return scene.actions.map((action): Item => ({
+/** Scene actions, from REST, which runs them */
+const sceneActions = cachedCatalog((list: MixerState['sceneActions']) =>
+	list.map((action): Item => {
+		const sceneName = sceneFullName(action.path, action.sceneName)
+		return {
 			name: `${sceneName}/${action.name}`,
-			target: `/${scene.name}/actions/${action.uuid}`,
+			target: `/${action.sceneName}/actions/${action.uuid}`,
 			label: `${sceneName}/${sceneActionLabel(action.name)}`,
-		}))
+		}
 	}),
 )
-export const sceneActionCatalog = (state: MixerState): Catalog => sceneActions(state.scenes)
+export const sceneActionCatalog = (state: MixerState): Catalog => sceneActions(state.sceneActions)
+
+/**
+ * Items controlled over TCP by their protocol path. KAIROS allows two macros or snapshots with the same name in the same
+ * folder, which TCP can't tell apart, so those are listed once. The id REST gave them (`restId`), which they were stored
+ * by before, is accepted too.
+ */
+const byPath = <T>(
+	list: T[],
+	pathOf: (item: T) => string,
+	restId: (item: T) => string | undefined,
+	item: (entry: T) => Omit<Item, 'target' | 'aliases'>,
+) =>
+	list
+		.filter((entry, i) => list.findIndex((other) => pathOf(other) === pathOf(entry)) === i)
+		.map((entry): Item => {
+			const id = restId(entry)
+			return { ...item(entry), target: pathOf(entry), aliases: id ? [id] : [] }
+		})
+
+export const macroPath = (macro: MixerState['macros'][number]): string => refToPath(macro.ref)
+export const snapshotPath = (snapshot: MixerState['snapshots'][number]): string =>
+	refToPath(refSceneSnapshot(sceneRef(snapshot.path, snapshot.sceneName), [snapshot.name]))
 
 const macros = cachedCatalog((list: MixerState['macros']) =>
-	list.map((macro): Item => ({
-		name: `${macro.path}${macro.name}`,
-		target: macro.uuid,
-		label: `${macro.path}${macro.name}`,
-	})),
+	byPath(
+		list,
+		macroPath,
+		(macro) => macro.uuid,
+		(macro) => ({
+			name: `${macro.path}${macro.name}`,
+			label: `${macro.path}${macro.name}`,
+		}),
+	),
 )
 export const macroCatalog = (state: MixerState): Catalog => macros(state.macros)
 
 const sceneMacros = cachedCatalog((list: MixerState['sceneMacros']) =>
-	list.map((macro): Item => {
-		const name = `${sceneFullName(macro.path, macro.sceneName)}/${macro.macroName}`
-		return { name, target: `${macro.sceneName}/macros/${macro.uuid}`, label: name }
-	}),
+	byPath(
+		list,
+		sceneMacroPath,
+		(macro) => macro.uuid && `${macro.sceneName}/macros/${macro.uuid}`,
+		(macro) => {
+			const name = `${sceneFullName(macro.path, macro.sceneName)}/${macro.macroName}`
+			return { name, label: name }
+		},
+	),
 )
 export const sceneMacroCatalog = (state: MixerState): Catalog => sceneMacros(state.sceneMacros)
 
 const snapshots = cachedCatalog((list: MixerState['snapshots']) =>
-	list.map((snapshot): Item => {
-		const name = `${sceneFullName(snapshot.path, snapshot.sceneName)}/${snapshot.name}`
-		return { name, target: `${snapshot.sceneName}/snapshots/${snapshot.uuid}`, label: name }
-	}),
+	byPath(
+		list,
+		snapshotPath,
+		(snapshot) => snapshot.uuid && `${snapshot.sceneName}/snapshots/${snapshot.uuid}`,
+		(snapshot) => {
+			const name = `${sceneFullName(snapshot.path, snapshot.sceneName)}/${snapshot.name}`
+			return { name, label: name }
+		},
+	),
 )
 export const snapshotCatalog = (state: MixerState): Catalog => snapshots(state.snapshots)
+
+const panelMacros = cachedCatalog((list: MixerState['panelMacros']) =>
+	list.map((macro): Item => ({ name: macro.id, target: macro.path, label: macro.id })),
+)
+export const panelMacroCatalog = (state: MixerState): Catalog => panelMacros(state.panelMacros)
 
 /**
  * Multiviewers, stored by their fixed name (`MV1`), which stays the same when they are renamed. REST numbers them from

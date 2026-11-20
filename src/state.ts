@@ -1,87 +1,51 @@
 import { refToPath } from 'kairos-connection'
 import type {
 	AudioPlayerRef,
-	AuxRef,
 	ClipPlayerRef,
 	MacroRef,
 	RamRecorderRef,
 	SceneLayerRef,
 	SceneTransitionRef,
 } from 'kairos-connection'
-import { allPlayers, sourceName } from './refs.js'
-import { createInputWithName, parseMacroStatus, type SourceAB } from './utils.js'
+import { allPlayers } from './refs.js'
+import { parseMacroStatus, type SourceAB } from './utils.js'
 
 export type PlayerRef = RamRecorderRef | ClipPlayerRef | AudioPlayerRef
-
-export const INTERNAL_SOURCES = ['Black', 'White', 'ColorBar', 'ColorCircle'] as const
 
 export type MixerState = {
 	/** Current TCP readings by protocol path. REST source readings remain in the catalog below. */
 	live: Map<string, { value: string; uuid?: string }>
-	/** Every source the layers and AUXes list, by the name they show it with */
-	inputs: { index: number; name: string; tally: number; uuid: string; shortcut: string }[]
-	/** The inputs' fixed names (`IP1`, `NDI1`), which stay the same when they are renamed */
-	inputPaths: string[]
-	/** The name each input is shown with, by its fixed name, from TCP. Replaced, not changed, when one is renamed. */
+	/** Each layer's source options as protocol paths (`IP1`, `MATTES.ColA`), by the layer's protocol path, from TCP */
+	layerSourceOptions: ReadonlyMap<string, string[]>
+	/** The name each input is shown with, by its fixed name (`NDI1`), from TCP */
 	inputNames: ReadonlyMap<string, string>
-	/** Every AUX output's fixed name (`IP-AUX1`, `NDI-AUX1`), from TCP, whether or not it is in use */
-	auxSlots: string[]
-	/** The name each AUX output is shown with, by its fixed name, from TCP. Replaced, not changed, when one is renamed. */
-	auxNames: ReadonlyMap<string, string>
-	/**
-	 * Whether TCP has reported every input's and AUX output's name, or failed to connect. Until then inputs and AUXes may
-	 * still be known only by the name they are shown with, so presets and variables named after them wait.
-	 */
-	namesLoaded: boolean
 	mediaStills: Array<string>
-	scenes: {
-		layers: { name: string; sourceA?: string; sourceB?: string; sources: string[]; uuid: string }[]
-		name: string
-		tally: string
-		uuid: string
-		path: string
-		macros: { color: string; name: string; state: string; uuid: string }[]
-		snapshots: { name: string; state: string; uuid: string }[]
-		actions: { name: string; state: string; uuid: string }[]
-	}[]
-	/** Every layer of every scene */
+	/** Scenes, from TCP, with their folder path (`Templates/`) */
+	scenes: { name: string; path: string }[]
+	/** Scene actions, from REST, which TCP doesn't list */
+	sceneActions: { sceneName: string; path: string; name: string; uuid: string }[]
+	/** Every layer of every scene, from TCP. `restId` is what REST calls it, which older buttons stored. */
 	layers: {
 		path: string
 		sceneName: string
 		layerName: string
-		sourceA?: string
-		sourceB?: string
-		uuid: string
 		ref: SceneLayerRef
+		/** Whether the layer has a B (preset) bus */
+		hasSourceB: boolean
+		restId?: string
 	}[]
-	auxes: { index: string; name: string; source: string; sources: string[]; uuid: string; ref: AuxRef }[]
-	macros: {
-		color: string
-		name: string
-		path: string
-		state: string
-		uuid: string
-		ref: MacroRef
-	}[]
-	sceneMacros: {
-		sceneName: string
-		/** The scene's folder path, e.g. `Templates/` */
-		path: string
-		/** The macro's own name, where `name` also has the scene's */
-		macroName: string
-		color: string
-		name: string
-		state: string
-		uuid: string
-	}[]
-	snapshots: {
-		name: string
-		state: string
-		uuid: string
-		sceneName: string
-		/** The scene's folder path, e.g. `Templates/` */
-		path: string
-	}[]
+	/** Macros on the control panel profiles, from TCP: `id` is how options store them, e.g. `PANELPROFILES/Profile1/Rec-1` */
+	panelMacros: { id: string; path: string }[]
+	/** Every AUX output in use, by its fixed name (`NDI-AUX1`), with its source options as protocol paths, from TCP */
+	auxes: { slot: string; name: string; sourceOptions: string[] }[]
+	/** Global macros, from TCP, with their folder path (`Show/`). `uuid` is REST's, which older buttons stored. */
+	macros: { path: string; name: string; ref: MacroRef; uuid?: string }[]
+	/** Scene macros, from TCP */
+	sceneMacros: { sceneName: string; path: string; macroName: string; uuid?: string }[]
+	/** Scene snapshots, from TCP */
+	snapshots: { name: string; sceneName: string; path: string; uuid?: string }[]
+	/** What REST calls each layer, macro and snapshot, by full name (`Templates/2Box/Background`), merged into the above */
+	restIds: Record<'layers' | 'macros' | 'sceneMacros' | 'snapshots', ReadonlyMap<string, string>>
 	multiviewers: {
 		index: number
 		name: string
@@ -97,14 +61,13 @@ export type MixerState = {
 
 export const emptyMixerState = (): MixerState => ({
 	live: new Map(),
-	inputs: INTERNAL_SOURCES.map(createInputWithName),
-	inputPaths: [],
+	layerSourceOptions: new Map(),
+	panelMacros: [],
 	inputNames: new Map(),
-	auxSlots: [],
-	auxNames: new Map(),
-	namesLoaded: false,
 	mediaStills: [],
 	scenes: [],
+	sceneActions: [],
+	restIds: { layers: new Map(), macros: new Map(), sceneMacros: new Map(), snapshots: new Map() },
 	layers: [],
 	auxes: [],
 	macros: [],
@@ -131,36 +94,35 @@ function liveValue(state: MixerState, path: string, uuid: string): string | unde
 	return reading?.uuid === uuid ? reading.value : undefined
 }
 
-function liveSource(state: MixerState, path: string, uuid: string): string | undefined {
-	const value = liveValue(state, path, uuid)
-	return value === undefined
-		? undefined
-		: sourceName(
-				value,
-				state.inputs.map((input) => input.name),
-			)
+/** Gives each item of a list the id REST has for it, replacing the list only if one changed */
+function withIds<T extends object, K extends keyof T>(list: T[], field: K, idOf: (item: T) => T[K]): T[] {
+	if (list.every((item) => item[field] === idOf(item))) return list
+	return list.map((item) => ({ ...item, [field]: idOf(item) }))
 }
 
+/** Merges what REST calls each layer, macro and snapshot into the lists TCP gives */
+export function mergeRestIds(state: MixerState): void {
+	const { restIds } = state
+	const inScene = (item: { path: string; sceneName: string }, name: string) => `${item.path}${item.sceneName}/${name}`
+	state.layers = withIds(state.layers, 'restId', (layer) => restIds.layers.get(inScene(layer, layer.layerName)))
+	state.macros = withIds(state.macros, 'uuid', (macro) => restIds.macros.get(`${macro.path}${macro.name}`))
+	state.sceneMacros = withIds(state.sceneMacros, 'uuid', (macro) =>
+		restIds.sceneMacros.get(inScene(macro, macro.macroName)),
+	)
+	state.snapshots = withIds(state.snapshots, 'uuid', (snapshot) =>
+		restIds.snapshots.get(inScene(snapshot, snapshot.name)),
+	)
+}
+
+/** A layer's source, as its protocol path, from TCP */
 export function layerSource(state: MixerState, layer: MixerState['layers'][number], bus: SourceAB): string | undefined {
-	return liveSource(state, `${refToPath(layer.ref)}.${bus}`, layer.uuid) ?? layer[bus]
+	const path = refToPath(layer.ref)
+	return liveValue(state, `${path}.${bus}`, path)
 }
 
-/** The fixed name of the one AUX output TCP reports with this AUX's name, or undefined if there isn't exactly one */
-export function auxSlot(state: MixerState, aux: { name: string }): string | undefined {
-	const slots = [...state.auxNames].filter(([, name]) => name === aux.name).map(([slot]) => slot)
-	return slots.length === 1 ? slots[0] : undefined
-}
-
-/**
- * Where TCP reports an AUX's source. KAIROS only pushes changes to it at the AUX output's fixed name
- * (`NDI-AUX1.source`), not at `AUX.<name>.source`, which serves until the output is known.
- */
-export function auxSourcePath(state: MixerState, aux: MixerState['auxes'][number]): string {
-	return `${auxSlot(state, aux) ?? refToPath(aux.ref)}.source`
-}
-
-export function auxSource(state: MixerState, aux: MixerState['auxes'][number]): string {
-	return liveSource(state, auxSourcePath(state, aux), aux.uuid) ?? aux.source
+/** An AUX's source, as its protocol path, from TCP */
+export function auxSource(state: MixerState, aux: MixerState['auxes'][number]): string | undefined {
+	return liveValue(state, `${aux.slot}.source`, aux.slot)
 }
 
 export function macroStatus(state: MixerState, path: string, uuid: string): ReturnType<typeof parseMacroStatus> {

@@ -1,14 +1,6 @@
 import { combineRgb, type CompanionInputFieldDropdown } from '@companion-module/base'
 import { MacroStatus } from 'kairos-connection'
 
-interface input {
-	index: number
-	name: string
-	tally: number
-	uuid: string
-	shortcut: string
-}
-
 export enum updateFlags {
 	onlyVariables = 1,
 	All = 2,
@@ -134,26 +126,6 @@ export const options: Options = {
 			{ id: 'Channel 16', label: 'Channel 16' },
 		],
 	},
-}
-
-export const createUUID = (): string => {
-	let dt: number = new Date().getTime()
-	const uuid: string = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-		const r: number = ((dt + Math.random() * 16) % 16) | 0
-		dt = Math.floor(dt / 16)
-		return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
-	})
-	return uuid
-}
-
-export const createInputWithName = (name: string): input => {
-	return {
-		index: 999,
-		name: name,
-		tally: 0,
-		uuid: createUUID(),
-		shortcut: name,
-	}
 }
 
 /**

@@ -17,13 +17,14 @@ All notable changes to the Panasonic KAIROS module are documented in this file. 
 
 - Buttons work on any KAIROS running the same show, e.g. a main and a backup: change the connection's address and they carry on.
 - Every action and feedback option can be switched to an expression.
-- An `AUX.<aux>.sources` variable for each AUX, listing the sources it accepts, for routing tools. **AUX - Set Source** and **AUX - Source Selected** also take an AUX's name or UUID.
+- An `AUX.<aux>.sources` variable for each AUX, listing the sources it accepts, for routing tools. **AUX - Set Source** and **AUX - Source Selected** also take an AUX's name.
 - Playlist controls for RAM recorders, clip players, and audio players in **Players - Control**.
+- **Macros - Control Panel Macro** and **Macros - Panel Macro Playing**, for the macros on the control panel profiles.
 - Toggle options for master mute, channel mute, and player repeat, plus live feedback for player repeat and global and scene macro playback.
 
 ### Changed
 
-- Use `kairos-connection` for TCP control and live feedback. REST handles mixer discovery and UUID-based actions.
+- Use `kairos-connection` for TCP control and live feedback. TCP now lists the scenes, layers, sources, AUXes, snapshots and macros, and runs every action except **Scenes - Run Action** and **Multiviewers - Recall Preset**, which use REST, as TCP doesn't offer them. REST is also read to recognise buttons saved by older versions.
 - Default new connections to REST port `1234`. Existing connections keep their saved port.
 - Store the REST password as a secret instead of plaintext. Existing connection passwords migrate automatically.
 - Show layer variables as `Scene.<scene>.<layer>.sourceA` and `Scene.<scene>.<layer>.sourceB`.
@@ -32,7 +33,7 @@ All notable changes to the Panasonic KAIROS module are documented in this file. 
 - Name snapshots with their scene's folder, e.g. `Templates/2Box/Snap 1`.
 - Save transitions and still images with `/` between the parts, like everything else (`Templates/2Box/BgdMix`, `Logos/Intro.rr`), instead of as their protocol path (`Templates/2Box.BgdMix`, `MEDIA.stills.Logos.Intro&#46;rr`). Saved values are converted when upgrading; transitions saved before 5.0, without the scene's folder, become expressions holding the old value.
 - Default every dropdown to the first item in its list, instead of leaving it empty.
-- List macros with the same name in the same folder with the start of their UUID to tell them apart. Their **Playing** feedbacks stay off, as the KAIROS reports one status for all of them, and the log says so.
+- List macros and snapshots with the same name in the same folder once: KAIROS controls them by name, so it can't tell them apart.
 
 ### Fixed
 

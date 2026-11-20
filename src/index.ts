@@ -81,6 +81,7 @@ export default class KairosInstance extends InstanceBase<KairosTypes> {
 			FeedbackId.playerRepeat,
 			FeedbackId.macroPlaying,
 			FeedbackId.sceneMacroPlaying,
+			FeedbackId.panelMacroPlaying,
 		)
 	}
 

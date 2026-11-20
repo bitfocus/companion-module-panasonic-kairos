@@ -7,7 +7,9 @@ import {
 	findPlayer,
 	layerCatalog,
 	macroCatalog,
+	macroPath,
 	mediaStillCatalog,
+	panelMacroCatalog,
 	sceneMacroCatalog,
 	sourceCatalog,
 	VALUE_TOOLTIPS,
@@ -26,6 +28,7 @@ export enum FeedbackId {
 	playerRepeat = 'playerRepeat',
 	macroPlaying = 'macroPlaying',
 	sceneMacroPlaying = 'sceneMacroPlaying',
+	panelMacroPlaying = 'panelMacroPlaying',
 }
 
 export type FeedbacksSchema = {
@@ -37,6 +40,7 @@ export type FeedbacksSchema = {
 	[FeedbackId.playerRepeat]: { type: 'boolean'; options: { player: string } }
 	[FeedbackId.macroPlaying]: { type: 'boolean'; options: { macro: string } }
 	[FeedbackId.sceneMacroPlaying]: { type: 'boolean'; options: { macro: string } }
+	[FeedbackId.panelMacroPlaying]: { type: 'boolean'; options: { macro: string } }
 }
 
 // Dropdowns listing layers, sources and AUXes are filled from the mixer once it has been polled. Their stored values
@@ -52,7 +56,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 		{ layer: id, sourceAB, source }: { layer: string; sourceAB: SourceAB; source: string },
 	): boolean => {
 		const uuid = layerCatalog(instance.state).resolve(id)
-		const layer = instance.state.layers.find((entry) => entry.uuid === uuid)
+		const layer = instance.state.layers.find((entry) => refToPath(entry.ref) === uuid)
 		const current = layer && layerSource(instance.state, layer, sourceAB)
 		return current !== undefined && catalog.idOf(current) === catalog.idOf(source)
 	}
@@ -62,6 +66,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 	const layers = layerCatalog(instance.state)
 	const globalMacros = macroCatalog(instance.state)
 	const sceneMacros = sceneMacroCatalog(instance.state)
+	const panelMacros = panelMacroCatalog(instance.state)
 
 	const feedbacks: CompanionFeedbackDefinitions<FeedbacksSchema> = {
 		// Tally
@@ -186,11 +191,12 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			],
 			defaultStyle: { bgcolor: BLUE },
 			callback: (feedback): boolean => {
-				const uuid = auxCatalog(instance.state).resolve(feedback.options.aux)
-				const aux = instance.state.auxes.find((entry) => entry.uuid === uuid)
-				if (aux === undefined) return false
+				const slot = auxCatalog(instance.state).resolve(feedback.options.aux)
+				const aux = instance.state.auxes.find((entry) => entry.slot === slot)
+				const current = aux && auxSource(instance.state, aux)
+				if (current === undefined) return false
 				const sources = sourceCatalog(instance.state)
-				return sources.idOf(auxSource(instance.state, aux)) === sources.idOf(feedback.options.source)
+				return sources.idOf(current) === sources.idOf(feedback.options.source)
 			},
 		},
 		[FeedbackId.playerRepeat]: {
@@ -231,9 +237,10 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			],
 			defaultStyle: { bgcolor: GREEN },
 			callback: (feedback): boolean => {
-				const id = macroCatalog(instance.state).resolve(feedback.options.macro)
-				const macro = instance.state.macros.find((x) => x.uuid === id)
-				return macro !== undefined && isMacroPlaying(macroStatus(instance.state, refToPath(macro.ref), macro.uuid))
+				const target = macroCatalog(instance.state).resolve(feedback.options.macro)
+				const macro = instance.state.macros.find((x) => macroPath(x) === target || x.uuid === target)
+				const path = macro && macroPath(macro)
+				return path !== undefined && isMacroPlaying(macroStatus(instance.state, path, path))
 			},
 		},
 		[FeedbackId.sceneMacroPlaying]: {
@@ -254,9 +261,34 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			],
 			defaultStyle: { bgcolor: GREEN },
 			callback: (feedback): boolean => {
-				const id = sceneMacroCatalog(instance.state).resolve(feedback.options.macro)
-				const macro = instance.state.sceneMacros.find((x) => `${x.sceneName}/macros/${x.uuid}` === id)
-				return macro !== undefined && isMacroPlaying(macroStatus(instance.state, sceneMacroPath(macro), macro.uuid))
+				const target = sceneMacroCatalog(instance.state).resolve(feedback.options.macro)
+				const macro = instance.state.sceneMacros.find(
+					(x) => sceneMacroPath(x) === target || `${x.sceneName}/macros/${x.uuid}` === target,
+				)
+				const path = macro && sceneMacroPath(macro)
+				return path !== undefined && isMacroPlaying(macroStatus(instance.state, path, path))
+			},
+		},
+		[FeedbackId.panelMacroPlaying]: {
+			type: 'boolean',
+			name: 'Macros - Panel Macro Playing',
+			description: 'Shows while a macro on a control panel profile is playing',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Panel Macro',
+					id: 'macro',
+					default: panelMacros.choices[0]?.id ?? '',
+					choices: panelMacros.choices,
+					allowInvalidValues: true,
+					minChoicesForSearch: 8,
+					tooltip: VALUE_TOOLTIPS.panelMacro,
+				},
+			],
+			defaultStyle: { bgcolor: GREEN },
+			callback: (feedback): boolean => {
+				const path = panelMacroCatalog(instance.state).resolve(feedback.options.macro)
+				return isMacroPlaying(macroStatus(instance.state, path, path))
 			},
 		},
 	}

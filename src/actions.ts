@@ -8,6 +8,7 @@ import {
 	macroCatalog,
 	mediaStillCatalog,
 	multiviewerCatalog,
+	panelMacroCatalog,
 	VALUE_TOOLTIPS,
 	layerCatalog,
 	sceneActionCatalog,
@@ -19,7 +20,7 @@ import {
 } from './choices.js'
 import type KairosInstance from './index.js'
 import type { MixerState, PlayerRef } from './state.js'
-import { audioMutePath, masterMutePath, playerRepeatPath, sceneFullName, sceneRef, sourcePath } from './refs.js'
+import { audioMutePath, masterMutePath, playerRepeatPath, sceneFullName, sceneRef } from './refs.js'
 
 export enum ActionId {
 	runAction = 'runAction',
@@ -33,6 +34,7 @@ export enum ActionId {
 	playerControl = 'playerControl',
 	macroControl = 'macroControl',
 	macroSceneControl = 'macroSceneControl',
+	macroPanelControl = 'macroPanelControl',
 	mvRecall = 'mvRecall',
 	triggerSnapshot = 'triggerSnapshot',
 	muteMaster = 'muteMaster',
@@ -89,6 +91,7 @@ export type ActionsSchema = {
 	[ActionId.playerControl]: { options: { player: string; action: string } }
 	[ActionId.macroControl]: { options: { macro: string; action: string } }
 	[ActionId.macroSceneControl]: { options: { macro: string; action: string } }
+	[ActionId.macroPanelControl]: { options: { macro: string; action: string } }
 	[ActionId.mvRecall]: { options: { preset: string; mv: string } }
 	[ActionId.triggerSnapshot]: { options: { snapshot: string } }
 	[ActionId.muteMaster]: { options: { mute: MuteValue } }
@@ -112,24 +115,18 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 	// Preserve stored paths that aren't currently in the discovery catalog.
 	const sendLegacyCommand = async (command: string) => instance.tcp?.sendCommand(command)
 
-	const setLayerSource = async (layer: Layer, sourceAB: SourceAB, source: string) => {
-		return runTcp(`set ${layer.sceneName}/${layer.layerName} ${sourceAB} to ${source}`, async (kairos) => {
-			const path = sourcePath(source, instance.state.scenes)
+	/** Sets a layer's source A or B to a source's protocol path (`NDI1`, `MATTES.ColA`, a still's `MEDIA.stills…`) */
+	const setLayerSource = async (layer: Layer, sourceAB: SourceAB, path: string) => {
+		return runTcp(`set ${layer.sceneName}/${layer.layerName} ${sourceAB} to ${path}`, async (kairos) => {
 			return sourceAB === 'sourceA'
 				? kairos.updateSceneLayer(layer.ref, { sourceA: path })
 				: kairos.setAttribute(`${refToPath(layer.ref)}.sourceB`, path)
 		})
 	}
 
-	/**
-	 * REST takes an input only by the name it is shown with. The catalog sends one by its fixed name (`NDI1`), which REST
-	 * refuses, until TCP has reported its name, or when another source has that name too, so it goes over TCP instead.
-	 */
-	const unnamedInput = (source: string) =>
-		instance.state.inputPaths.includes(source) && instance.state.inputNames.get(source) !== source
-	/** An AUX output's fixed name (`NDI-AUX1`) that no AUX REST lists is known by yet, which REST refuses */
-	const unmatchedAuxSlot = (aux: string) =>
-		!instance.state.auxes.some((entry) => entry.uuid === aux) && /^[A-Z]+-AUX\d+$/i.test(aux)
+	/** Calls a function (`play`, `recall`…) on a macro or snapshot by its protocol path */
+	const runFunction = async (path: string, name: string) =>
+		runTcp(`${name} ${path}`, async (kairos) => kairos.executeFunction(`${path}.${name}`))
 
 	const scenes = sceneCatalog(instance.state)
 	const findScene = (id: string) => instance.state.scenes.find((scene) => sceneFullName(scene.path, scene.name) === id)
@@ -147,6 +144,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 	const sceneActions = sceneActionCatalog(instance.state)
 	const globalMacros = macroCatalog(instance.state)
 	const sceneMacros = sceneMacroCatalog(instance.state)
+	const panelMacros = panelMacroCatalog(instance.state)
 	const snapshots = snapshotCatalog(instance.state)
 	const multiviewers = multiviewerCatalog(instance.state)
 
@@ -154,7 +152,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		// Layer Source Assignment
 		[ActionId.setSource]: {
 			name: 'Layers - Set Source',
-			description: 'Sets a layer source through the REST API',
+			description: "Sets a layer's source A or B",
 			options: [
 				{
 					type: 'dropdown',
@@ -188,10 +186,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			],
 			callback: async ({ options: { layer: value, sourceAB, source } }) => {
 				const id = layerCatalog(instance.state).resolve(value)
-				const target = sourceCatalog(instance.state).resolve(source)
-				const layer = instance.state.layers.find((entry) => entry.uuid === id)
-				if (layer && unnamedInput(target)) return setLayerSource(layer, sourceAB, target)
-				return sendPatch('/scenes', id, { [sourceAB]: target })
+				const layer = instance.state.layers.find((entry) => refToPath(entry.ref) === id)
+				if (layer) return setLayerSource(layer, sourceAB, sourceCatalog(instance.state).resolve(source))
+				instance.log('error', `Cannot set KAIROS layer source: layer ${value || '(none selected)'} was not found`)
+				return
 			},
 		},
 		[ActionId.runAction]: {
@@ -249,7 +247,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 			],
 			callback: async ({ options: { layer: value, sourceAB, source } }) => {
 				const id = layerCatalog(instance.state).resolve(value)
-				const layer = instance.state.layers.find((entry) => entry.uuid === id)
+				const layer = instance.state.layers.find((entry) => refToPath(entry.ref) === id)
 				if (layer) return setLayerSource(layer, sourceAB, mediaStillCatalog(instance.state).resolve(source))
 				instance.log('error', `Cannot set KAIROS media still: layer ${value || '(none selected)'} was not found`)
 				return
@@ -366,18 +364,9 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 			],
 			callback: async ({ options: { aux, source } }) => {
-				const sources = sourceCatalog(instance.state)
-				const auxTarget = auxCatalog(instance.state).resolve(aux)
-				const sourceTarget = sources.resolve(source)
-				if (unmatchedAuxSlot(auxTarget) || unnamedInput(sourceTarget)) {
-					const entry = instance.state.auxes.find((item) => item.uuid === auxTarget)
-					const auxPath = entry ? refToPath(entry.ref) : auxTarget
-					const path = sourcePath(sources.idOf(source), instance.state.scenes)
-					return runTcp(`set ${auxPath} source to ${source}`, async (kairos) =>
-						kairos.setAttribute(`${auxPath}.source`, path),
-					)
-				}
-				return sendPatch('/aux/', encodeURIComponent(auxTarget), { source: sourceTarget })
+				const slot = auxCatalog(instance.state).resolve(aux)
+				const path = sourceCatalog(instance.state).resolve(source)
+				return runTcp(`set ${slot} source to ${path}`, async (kairos) => kairos.setAttribute(`${slot}.source`, path))
 			},
 		},
 		//Control
@@ -425,8 +414,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				options.macroStateControl,
 			],
 			callback: async ({ options: { macro, action } }) => {
-				const id = macroCatalog(instance.state).resolve(macro)
-				return sendPatch('/macros/', id, { state: action })
+				const target = macroCatalog(instance.state).resolve(macro)
+				return runFunction(target, action)
 			},
 		},
 		[ActionId.macroSceneControl]: {
@@ -445,9 +434,28 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				options.macroStateControl,
 			],
 			callback: async ({ options: { macro, action } }) => {
-				const id = sceneMacroCatalog(instance.state).resolve(macro)
-				return sendPatch('/scenes/', id, { state: action })
+				const target = sceneMacroCatalog(instance.state).resolve(macro)
+				return runFunction(target, action)
 			},
+		},
+		[ActionId.macroPanelControl]: {
+			name: 'Macros - Control Panel Macro',
+			description: 'Controls a macro on a control panel profile',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Panel Macro',
+					id: 'macro',
+					default: panelMacros.choices[0]?.id ?? '',
+					choices: panelMacros.choices,
+					allowInvalidValues: true,
+					minChoicesForSearch: 8,
+					tooltip: VALUE_TOOLTIPS.panelMacro,
+				},
+				options.macroStateControl,
+			],
+			callback: async ({ options: { macro, action } }) =>
+				runFunction(panelMacroCatalog(instance.state).resolve(macro), action),
 		},
 		// Recall MV presets
 		[ActionId.mvRecall]: {
@@ -492,8 +500,8 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 			],
 			callback: async ({ options: { snapshot } }) => {
-				const id = snapshotCatalog(instance.state).resolve(snapshot)
-				return sendPatch('/scenes/', id, { state: 'recall' })
+				const target = snapshotCatalog(instance.state).resolve(snapshot)
+				return runFunction(target, 'recall')
 			},
 		},
 		//Audio

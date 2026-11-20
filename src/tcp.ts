@@ -1,15 +1,30 @@
 import { InstanceStatus } from '@companion-module/base'
-import { KairosConnection, TerminateSubscriptionError, refSceneTransition, refToPath } from 'kairos-connection'
+import {
+	KairosConnection,
+	TerminateSubscriptionError,
+	protocolDecodeStr,
+	refSceneTransition,
+	refToPath,
+} from 'kairos-connection'
 import type KairosInstance from './index.js'
-import { auxSourcePath, parseBoolean } from './state.js'
+import { mergeRestIds, parseBoolean, type MixerState } from './state.js'
+import { discover } from './discovery.js'
+import { sourcePaths } from './choices.js'
 import { FeedbackId } from './feedback.js'
-import { masterMutePath, audioMutePath, playerRepeatPath, sceneMacroPath, sceneRef } from './refs.js'
+import { masterMutePath, audioMutePath, playerRepeatPath, sceneMacroPath, sceneRef, isInputPath } from './refs.js'
 import { updateFlags } from './utils.js'
 import { updateBasicVariables } from './variables.js'
 
 // The library suppresses connection-refused errors and retries in the background.
 const CONNECT_TIMEOUT_MS = 10000
 const SUBSCRIPTION_RETRY_MS = 5000
+const DISCOVERY_INTERVAL_MS = 10000
+
+/** Where KAIROS keeps the profiles of each kind of control panel, whose macros can be played */
+const PANEL_PROFILES = ['PANELPROFILES', 'CPANELPROFILES', 'SPANELPROFILES']
+
+/** A TCP list value (`BLACK,IP1,NDI1,`) as its items */
+const parseList = (value: string): string[] => value.split(',').filter((item) => item !== '')
 
 type ExpectedResponse = Parameters<KairosConnection['executeCommand']>[1]
 type SubscriptionTarget = {
@@ -33,7 +48,11 @@ export class TCP {
 	private generation = 0
 	private variablesPending = false
 	private definitionsPending = false
-	private sharedMacroPaths = ''
+	/** Every AUX output's fixed name, and what TCP has reported about it so far */
+	private auxSlots: string[] = []
+	private discoveryTimer: NodeJS.Timeout | undefined
+	private lastDiscovery = ''
+	private auxInfo = new Map<string, { available?: boolean; name?: string; sourceOptions?: string[] }>()
 
 	constructor(
 		private readonly instance: KairosInstance,
@@ -51,7 +70,6 @@ export class TCP {
 
 		this.connectTimer = setTimeout(() => {
 			this.instance.connectionStatus.set('tcp', InstanceStatus.ConnectionFailure, 'Unable to connect')
-			this.namesUnavailable()
 		}, CONNECT_TIMEOUT_MS)
 		this.connection.connect()
 	}
@@ -64,6 +82,7 @@ export class TCP {
 		if (this.destroyed) return
 		this.destroyed = true
 		clearTimeout(this.connectTimer)
+		clearTimeout(this.discoveryTimer)
 		this.connection.disconnect()
 		this.connection.discard()
 		this.invalidate()
@@ -139,7 +158,6 @@ export class TCP {
 		this.invalidate()
 		// The connection status logs the loss, with the socket error that caused it.
 		this.instance.connectionStatus.set('tcp', InstanceStatus.ConnectionFailure, this.lastErrorMessage ?? 'Disconnected')
-		this.namesUnavailable()
 		this.instance.updateInstance(updateFlags.All)
 		this.checkLiveFeedbacks()
 	}
@@ -155,6 +173,8 @@ export class TCP {
 	private invalidate(): void {
 		this.generation++
 		clearTimeout(this.retryTimer)
+		clearTimeout(this.discoveryTimer)
+		this.lastDiscovery = ''
 		this.retryTimer = undefined
 		this.failedSubscriptions.clear()
 		const subscriptions = [...this.subscriptions.values()]
@@ -165,7 +185,11 @@ export class TCP {
 		this.transitionRequest = undefined
 		this.instance.state.transitions = []
 		this.instance.state.mediaStills = []
-		this.instance.state.auxSlots = []
+		this.auxSlots = []
+		this.auxInfo.clear()
+		this.instance.state.auxes = []
+		this.instance.state.layerSourceOptions = new Map()
+		this.instance.state.panelMacros = []
 	}
 
 	private checkLiveFeedbacks(): void {
@@ -178,11 +202,13 @@ export class TCP {
 			FeedbackId.playerRepeat,
 			FeedbackId.macroPlaying,
 			FeedbackId.sceneMacroPlaying,
+			FeedbackId.panelMacroPlaying,
 		)
 	}
 
 	private refresh(): void {
 		const generation = this.generation
+		void this.rediscover(generation)
 		void this.connection
 			.listMediaStills(undefined, true)
 			.then((stills) => {
@@ -193,13 +219,21 @@ export class TCP {
 			.catch((error: Error) => {
 				if (generation === this.generation) this.instance.log('debug', `Unable to list media stills: ${error.message}`)
 			})
+		void this.listPanelMacros()
+			.then((macros) => {
+				if (generation !== this.generation) return
+				this.instance.state.panelMacros = macros
+				this.instance.updateInstance(updateFlags.All)
+			})
+			.catch((error: Error) => {
+				if (generation === this.generation) this.instance.log('debug', `Unable to list panel macros: ${error.message}`)
+			})
 		void this.connection
 			.listAuxes()
 			.then((auxes) => {
 				if (generation !== this.generation) return
-				this.instance.state.auxSlots = auxes.map((aux) => refToPath(aux))
+				this.auxSlots = auxes.map((aux) => refToPath(aux))
 				this.instance.updateInstance(updateFlags.All)
-				this.checkNamesLoaded()
 			})
 			.catch((error: Error) => {
 				if (generation === this.generation) this.instance.log('debug', `Unable to list AUXes: ${error.message}`)
@@ -216,7 +250,7 @@ export class TCP {
 
 	private syncTransitions(): void {
 		const scenes = this.instance.state.scenes
-		const key = JSON.stringify(scenes.map(({ uuid, path, name }) => [uuid, path, name]))
+		const key = JSON.stringify(scenes.map(({ path, name }) => [path, name]))
 		if (key === this.transitionRequest?.key) return
 		const request = { key }
 		this.transitionRequest = request
@@ -254,64 +288,65 @@ export class TCP {
 		for (const { name } of state.audioChannels)
 			wanted.set(audioMutePath(name), { feedbacks: [FeedbackId.audioMuteChannel] })
 		for (const { ref } of state.players) wanted.set(playerRepeatPath(ref), { feedbacks: [FeedbackId.playerRepeat] })
-		for (const aux of state.auxes)
-			wanted.set(auxSourcePath(state, aux), { uuid: aux.uuid, feedbacks: [FeedbackId.aux] })
-		// KAIROS allows macros with the same name in the same folder, but TCP addresses them by path and reports one status
-		// for all of them. Their feedbacks stay off rather than show another macro's status.
-		const macroTargets: { path: string; target: SubscriptionTarget }[] = []
-		for (const macro of state.macros)
-			macroTargets.push({
-				path: `${refToPath(macro.ref)}.status`,
-				target: { uuid: macro.uuid, feedbacks: [FeedbackId.macroPlaying] },
+		// Every AUX output reports whether it is in use; those that are, their name, source options and source
+		for (const slot of this.auxSlots) {
+			wanted.set(`${slot}.available`, {
+				feedbacks: [FeedbackId.aux],
+				onValue: (value) => this.updateAux(slot, { available: value === '1' }),
 			})
-		for (const macro of state.sceneMacros)
-			macroTargets.push({
-				path: `${sceneMacroPath(macro)}.status`,
-				target: { uuid: macro.uuid, feedbacks: [FeedbackId.sceneMacroPlaying] },
+			if (!this.auxInfo.get(slot)?.available) continue
+			wanted.set(`${slot}.name`, { feedbacks: [FeedbackId.aux], onValue: (name) => this.updateAux(slot, { name }) })
+			wanted.set(`${slot}.sourceOptions`, {
+				feedbacks: [FeedbackId.aux],
+				onValue: (value) => this.updateAux(slot, { sourceOptions: parseList(value) }),
 			})
-		const shared = new Set(macroTargets.map(({ path }) => path).filter((path, i, paths) => paths.indexOf(path) !== i))
-		for (const { path, target } of macroTargets) if (!shared.has(path)) wanted.set(path, target)
-		const sharedMacroPaths = [...shared].map((path) => path.replace(/\.status$/, '')).join(', ')
-		if (sharedMacroPaths !== this.sharedMacroPaths && sharedMacroPaths)
-			this.instance.log(
-				'warn',
-				`Several KAIROS macros share a name, so their feedbacks can't show whether they are playing: ${sharedMacroPaths}`,
-			)
-		this.sharedMacroPaths = sharedMacroPaths
+			wanted.set(`${slot}.source`, { uuid: slot, feedbacks: [FeedbackId.aux] })
+		}
+		for (const macro of state.macros) {
+			const path = refToPath(macro.ref)
+			wanted.set(`${path}.status`, { uuid: path, feedbacks: [FeedbackId.macroPlaying] })
+		}
+		for (const macro of state.sceneMacros) {
+			const path = sceneMacroPath(macro)
+			wanted.set(`${path}.status`, { uuid: path, feedbacks: [FeedbackId.sceneMacroPlaying] })
+		}
+		for (const { path } of state.panelMacros)
+			wanted.set(`${path}.status`, { uuid: path, feedbacks: [FeedbackId.panelMacroPlaying] })
 
 		// An input's name is how the lists, presets and variables show it, so a rename rebuilds them
-		for (const input of state.inputPaths)
+		for (const input of sourcePaths(state).filter(isInputPath))
 			wanted.set(`${input}.name`, {
 				feedbacks: [FeedbackId.inputSource, FeedbackId.aux],
 				onValue: (name) => {
 					if (this.instance.state.inputNames.get(input) === name) return
 					this.instance.state.inputNames = new Map(this.instance.state.inputNames).set(input, name)
 					this.scheduleDefinitions()
-					this.checkNamesLoaded()
-				},
-			})
-
-		// REST lists AUXes by name only, so each slot's name is how an AUX is matched to its fixed name
-		for (const slot of state.auxSlots)
-			wanted.set(`${slot}.name`, {
-				feedbacks: [FeedbackId.aux],
-				onValue: (name) => {
-					if (this.instance.state.auxNames.get(slot) === name) return
-					this.instance.state.auxNames = new Map(this.instance.state.auxNames).set(slot, name)
-					this.scheduleDefinitions()
-					this.checkNamesLoaded()
 				},
 			})
 
 		for (const layer of state.layers) {
 			const path = refToPath(layer.ref)
+			wanted.set(`${path}.sourceOptions`, {
+				feedbacks: [FeedbackId.inputSource],
+				onValue: (value) => {
+					const options = parseList(value)
+					const current = this.instance.state.layerSourceOptions.get(path)
+					if (current?.join() === options.join()) return
+					this.instance.state.layerSourceOptions = new Map(this.instance.state.layerSourceOptions).set(path, options)
+					this.scheduleDefinitions()
+				},
+			})
+		}
+
+		for (const layer of state.layers) {
+			const path = refToPath(layer.ref)
 			const target: SubscriptionTarget = {
-				uuid: layer.uuid,
+				uuid: path,
 				feedbacks: [FeedbackId.inputSource, FeedbackId.inputMediaStill],
 			}
 			wanted.set(`${path}.sourceA`, target)
 			// TCP can report BLACK for a B bus that doesn't exist on this layer.
-			if (layer.sourceB != null) wanted.set(`${path}.sourceB`, target)
+			if (layer.hasSourceB) wanted.set(`${path}.sourceB`, target)
 		}
 
 		for (const [path, subscription] of this.subscriptions) {
@@ -364,20 +399,66 @@ export class TCP {
 		}, SUBSCRIPTION_RETRY_MS)
 	}
 
-	/** Marks the names loaded once every input and AUX output has reported its name */
-	private checkNamesLoaded(): void {
-		const state = this.instance.state
-		if (state.namesLoaded || state.inputPaths.length === 0 || state.auxSlots.length === 0) return
-		if (!state.inputPaths.every((input) => state.inputNames.has(input))) return
-		if (!state.auxSlots.every((slot) => state.auxNames.has(slot))) return
-		state.namesLoaded = true
-		this.scheduleDefinitions()
+	/**
+	 * Lists the scenes, layers, snapshots and macros, and again every few seconds, as TCP doesn't report new ones. The
+	 * lists are only replaced, and the definitions rebuilt, when something has changed.
+	 */
+	private async rediscover(generation: number): Promise<void> {
+		try {
+			const found = await discover(this.connection)
+			if (generation !== this.generation) return
+			const json = JSON.stringify(found)
+			if (json !== this.lastDiscovery) {
+				this.lastDiscovery = json
+				Object.assign(this.instance.state, found)
+				mergeRestIds(this.instance.state)
+				this.instance.updateInstance(updateFlags.All)
+			}
+		} catch (error) {
+			if (generation === this.generation)
+				this.instance.log(
+					'debug',
+					`Unable to list scenes and macros: ${error instanceof Error ? error.message : String(error)}`,
+				)
+		} finally {
+			if (generation === this.generation && !this.destroyed)
+				this.discoveryTimer = setTimeout(() => void this.rediscover(generation), DISCOVERY_INTERVAL_MS)
+		}
 	}
 
-	/** Without TCP the names can't load, so presets and variables use the names REST gives rather than wait forever */
-	private namesUnavailable(): void {
-		if (this.instance.state.namesLoaded) return
-		this.instance.state.namesLoaded = true
+	/**
+	 * Every macro on the panel, compact panel and S panel profiles (`PANELPROFILES.Profile1.PanelMacros.Rec-1`). Folders
+	 * of macros are listed into; an item with nothing in it is a macro.
+	 */
+	private async listPanelMacros(): Promise<MixerState['panelMacros']> {
+		const list = async (path: string) => this.connection.getList(path).catch(() => [])
+		const macros: MixerState['panelMacros'] = []
+		const walk = async (path: string): Promise<void> => {
+			const items = await list(path)
+			if (items.length === 0) {
+				const [root, profile, , ...name] = path.split('.').map(protocolDecodeStr)
+				macros.push({ id: [root, profile, ...name].join('/'), path })
+			}
+			for (const item of items) await walk(item)
+		}
+		for (const root of PANEL_PROFILES)
+			for (const profile of await list(root)) for (const item of await list(`${profile}.PanelMacros`)) await walk(item)
+		return macros
+	}
+
+	/** Records what an AUX output reported, and publishes the AUXes in use once their name and source options are known */
+	private updateAux(slot: string, update: { available?: boolean; name?: string; sourceOptions?: string[] }): void {
+		this.auxInfo.set(slot, { ...this.auxInfo.get(slot), ...update })
+		const auxes = this.auxSlots.flatMap((entry) => {
+			const { available, name, sourceOptions } = this.auxInfo.get(entry) ?? {}
+			return available && name !== undefined && sourceOptions ? [{ slot: entry, name, sourceOptions }] : []
+		})
+		if (JSON.stringify(auxes) === JSON.stringify(this.instance.state.auxes)) {
+			// A newly available output still needs its name and source options subscribed
+			if (update.available) this.scheduleDefinitions()
+			return
+		}
+		this.instance.state.auxes = auxes
 		this.scheduleDefinitions()
 	}
 
