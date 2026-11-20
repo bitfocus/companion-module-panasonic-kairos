@@ -107,6 +107,7 @@ Names are matched exactly, including the case. The lists show a renamed input as
 | `Scene.<scene>.<layer>.sourceB` | Source B of the layer                                                                                                           |
 | `AUX.<aux>.source`              | Source shown on the AUX. AUXes use their fixed name (`AUX.NDI-AUX1.source`), so the variable stays the same when one is renamed |
 | `AUX.<aux>`                     | Name of the AUX                                                                                                                 |
+| `AUX.<aux>.sourceId`            | The AUX's source as the Source options save it, e.g. `NDI1` where `AUX.<aux>.source` shows its name                             |
 | `AUX.<aux>.sources`             | The sources the AUX accepts, as a JSON list of what the Source options save, e.g. `["Black","IP1","NDI1"]`                      |
 | `INPUT.<source>`                | The name a source is shown with. Inputs use their fixed name (`INPUT.NDI1`), so the variable stays the same when one is renamed |
 | `Audio.mute_master_audio`       | `muted` / `unmuted`                                                                                                             |

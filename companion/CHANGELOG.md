@@ -17,7 +17,7 @@ All notable changes to the Panasonic KAIROS module are documented in this file. 
 
 - Buttons work on any KAIROS running the same show, e.g. a main and a backup: change the connection's address and they carry on.
 - Every action and feedback option can be switched to an expression.
-- An `AUX.<aux>.sources` variable for each AUX, listing the sources it accepts, for routing tools. **AUX - Set Source** and **AUX - Source Selected** also take an AUX's name.
+- `AUX.<aux>.sources` and `AUX.<aux>.sourceId` variables for each AUX, listing the sources it accepts and giving its source as the Source options save it, for routing tools. **AUX - Set Source** and **AUX - Source Selected** also take an AUX's name.
 - Playlist controls for RAM recorders, clip players, and audio players in **Players - Control**.
 - **Macros - Control Panel Macro** and **Macros - Panel Macro Playing**, for the macros on the control panel profiles.
 - Toggle options for master mute, channel mute, and player repeat, plus live feedback for player repeat and global and scene macro playback.

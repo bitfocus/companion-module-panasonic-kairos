@@ -68,6 +68,10 @@ export function updateBasicVariables(instance: KairosInstance): void {
 	instance.state.auxes.forEach((AUX) => {
 		const id = AUX.slot
 		auxSources.push({ name: `AUX ${id} - Source`, variableId: `${auxVariableId(id)}.source` })
+		auxSources.push({
+			name: `AUX ${id} - Source ID`,
+			variableId: `${auxVariableId(id)}.sourceId`,
+		})
 		auxSources.push({ name: `AUX ${id} - Sources it accepts`, variableId: `${auxVariableId(id)}.sources` })
 		auxNames.push({ name: `AUX ${id} - Name`, variableId: auxVariableId(id) })
 	})
@@ -122,7 +126,9 @@ export function updateBasicVariables(instance: KairosInstance): void {
 	}
 	instance.state.auxes.forEach((AUX) => {
 		const id = auxVariableId(AUX.slot)
-		newVariables[`${id}.source`] = shownName(auxSource(instance.state, AUX))
+		const source = auxSource(instance.state, AUX)
+		newVariables[`${id}.source`] = shownName(source)
+		newVariables[`${id}.sourceId`] = source === undefined ? undefined : sources.idOf(source)
 		// The sources as the Source options store them, as a JSON string: Companion and Buttons flatten a list value to
 		// its items' text
 		newVariables[`${id}.sources`] = JSON.stringify(AUX.sourceOptions.map((path) => sources.idOf(path)))
