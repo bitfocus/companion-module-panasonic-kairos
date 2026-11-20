@@ -9,7 +9,7 @@ All notable changes to the Panasonic KAIROS module are documented in this file. 
 - This release requires Companion 5.0 or later and uses module API 2.1 and Node.js 26.
 - Layers, scene actions, global and scene macros and snapshots are saved by name (e.g. `Templates/2Box/Background`, `Show/Intro`) instead of by the KAIROS's internal ids, which differ on each KAIROS. Upgrading switches options saved by id to expressions holding the old id, so they keep working on the KAIROS they were made on; choose the item again from the list to save it by name. Layer feedbacks saved without the scene's folder become expressions too.
 - Renaming a scene, layer, scene action, macro, snapshot, transition or still image on the KAIROS breaks the buttons that use it, until it is chosen again.
-- Inputs and multiviewers are saved by their fixed name (`IP1`, `NDI1`, `MV1`), which survives renames. Input variables are named the same way, so a renamed input's `INPUT.<name>` variable becomes `INPUT.<fixed name>` (e.g. `INPUT.NDI1`), and holds the name the input is shown with. Inputs that were never renamed keep their variable.
+- Inputs, AUXes and multiviewers are saved by their fixed name (`IP1`, `NDI1`, `NDI-AUX1`, `MV1`), which survives renames. Input and AUX variables are named the same way, so `INPUT.<name>` and `AUX.<name>.source` become e.g. `INPUT.NDI1` and `AUX.NDI-AUX1.source`; inputs that were never renamed keep their variable. AUX buttons saved by name keep working.
 - An option switched to an expression must give exactly what its list saves, including the case. See **Using expressions** in the help.
 - **Force Source** is removed; use **Layers - Set Source**.
 
@@ -17,7 +17,7 @@ All notable changes to the Panasonic KAIROS module are documented in this file. 
 
 - Buttons work on any KAIROS running the same show, e.g. a main and a backup: change the connection's address and they carry on.
 - Every action and feedback option can be switched to an expression.
-- An `AUX_list` variable listing every AUX with its UUID, kind, sources and source variable, for routing tools. **AUX - Set Source** and **AUX - Source Selected** also take an AUX's UUID, which keeps working when the AUX is renamed.
+- An `AUX.<aux>.sources` variable for each AUX, listing the sources it accepts, for routing tools. **AUX - Set Source** and **AUX - Source Selected** also take an AUX's name or UUID.
 - Playlist controls for RAM recorders, clip players, and audio players in **Players - Control**.
 - Toggle options for master mute, channel mute, and player repeat, plus live feedback for player repeat and global and scene macro playback.
 
@@ -27,7 +27,7 @@ All notable changes to the Panasonic KAIROS module are documented in this file. 
 - Default new connections to REST port `1234`. Existing connections keep their saved port.
 - Store the REST password as a secret instead of plaintext. Existing connection passwords migrate automatically.
 - Show layer variables as `Scene.<scene>.<layer>.sourceA` and `Scene.<scene>.<layer>.sourceB`.
-- List renamed inputs and multiviewers by both names, e.g. `Camera 1 (NDI1)`.
+- List renamed inputs, AUXes and multiviewers by both names, e.g. `Camera 1 (NDI1)`.
 - Show scene actions with readable names, e.g. `Background: Show Layer` for `Background:show_layer`.
 - Name snapshots with their scene's folder, e.g. `Templates/2Box/Snap 1`.
 - Save transitions and still images with `/` between the parts, like everything else (`Templates/2Box/BgdMix`, `Logos/Intro.rr`), instead of as their protocol path (`Templates/2Box.BgdMix`, `MEDIA.stills.Logos.Intro&#46;rr`). Saved values are converted when upgrading; transitions saved before 5.0, without the scene's folder, become expressions holding the old value.

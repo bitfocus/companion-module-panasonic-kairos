@@ -2,6 +2,7 @@ import type { CompanionActionDefinitions } from '@companion-module/base'
 import { refToPath, type KairosConnection } from 'kairos-connection'
 import { multiviewerPresetChoices, options, type MuteValue, type SourceAB } from './utils.js'
 import {
+	auxCatalog,
 	findAudioChannel,
 	findPlayer,
 	macroCatalog,
@@ -130,6 +131,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 
 	const mvPresetChoices = multiviewerPresetChoices(instance.state.multiviewers)
 	const sources = sourceCatalog(instance.state)
+	const auxes = auxCatalog(instance.state)
 	const stills = mediaStillCatalog(instance.state)
 	const layers = layerCatalog(instance.state)
 	const sceneActions = sceneActionCatalog(instance.state)
@@ -335,10 +337,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					type: 'dropdown',
 					label: 'AUX',
 					id: 'aux',
-					default: instance.state.auxes[0]?.name ?? '',
-					choices: instance.state.auxes.map((item) => ({ id: item.name, label: item.name })),
+					default: auxes.choices[0]?.id ?? '',
+					choices: auxes.choices,
 					allowInvalidValues: true,
-					tooltip: "An AUX's UUID also works here, and keeps working if the AUX is renamed",
+					tooltip: VALUE_TOOLTIPS.aux,
 				},
 				{
 					type: 'dropdown',
@@ -351,7 +353,9 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 			],
 			callback: async ({ options: { aux, source } }) =>
-				sendPatch('/aux/', encodeURIComponent(aux), { source: sourceCatalog(instance.state).resolve(source) }),
+				sendPatch('/aux/', encodeURIComponent(auxCatalog(instance.state).resolve(aux)), {
+					source: sourceCatalog(instance.state).resolve(source),
+				}),
 		},
 		//Control
 		[ActionId.playerControl]: {

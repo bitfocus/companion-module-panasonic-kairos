@@ -24,6 +24,10 @@ export type MixerState = {
 	inputPaths: string[]
 	/** The name each input is shown with, by its fixed name, from TCP. Replaced, not changed, when one is renamed. */
 	inputNames: ReadonlyMap<string, string>
+	/** Every AUX output's fixed name (`IP-AUX1`, `NDI-AUX1`), from TCP, whether or not it is in use */
+	auxSlots: string[]
+	/** The name each AUX output is shown with, by its fixed name, from TCP. Replaced, not changed, when one is renamed. */
+	auxNames: ReadonlyMap<string, string>
 	mediaStills: Array<string>
 	scenes: {
 		layers: { name: string; sourceA?: string; sourceB?: string; sources: string[]; uuid: string }[]
@@ -91,6 +95,8 @@ export const emptyMixerState = (): MixerState => ({
 	inputs: INTERNAL_SOURCES.map(createInputWithName),
 	inputPaths: [],
 	inputNames: new Map(),
+	auxSlots: [],
+	auxNames: new Map(),
 	mediaStills: [],
 	scenes: [],
 	layers: [],
@@ -135,11 +141,6 @@ export function layerSource(state: MixerState, layer: MixerState['layers'][numbe
 
 export function auxSource(state: MixerState, aux: MixerState['auxes'][number]): string {
 	return liveSource(state, `${refToPath(aux.ref)}.source`, aux.uuid) ?? aux.source
-}
-
-/** Kairos only offers its audio mixer as a source on audio AUXes, so that is what marks one. */
-export function auxKind(aux: MixerState['auxes'][number]): 'audio' | 'video' {
-	return aux.sources?.includes('AudioMixer') ? 'audio' : 'video'
 }
 
 export function macroStatus(state: MixerState, path: string, uuid: string): ReturnType<typeof parseMacroStatus> {

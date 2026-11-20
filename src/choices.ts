@@ -13,6 +13,7 @@ export const VALUE_TOOLTIPS = {
 	sceneMacro: 'In an expression, give the macro as `Scene/macro name`, e.g. `Main/Wipe`',
 	snapshot: 'In an expression, give the snapshot as `Scene/snapshot name`, e.g. `Main/Snap 1`',
 	multiviewer: 'In an expression, give the multiviewer by its fixed name, `MV1` to `MV4`',
+	aux: 'In an expression, give the AUX by its fixed name, e.g. `IP-AUX1`, `NDI-AUX1`',
 } as const
 
 /** Something on the mixer an option can choose */
@@ -123,6 +124,38 @@ export const sourceCatalog = (state: MixerState): Catalog => {
 		.map((input): Item => ({ name: input.name, target: input.name, label: input.name }))
 	const catalog = buildCatalog([...inputs, ...others])
 	sourceCache.set(state.inputs, { inputPaths: state.inputPaths, inputNames: state.inputNames, catalog })
+	return catalog
+}
+
+/** The fixed name of the one AUX output TCP reports with this AUX's name, or undefined if there isn't exactly one */
+const auxFixedName = (state: MixerState, aux: { name: string }): string | undefined => {
+	const slots = [...state.auxNames].filter(([, name]) => name === aux.name).map(([slot]) => slot)
+	return slots.length === 1 ? slots[0] : undefined
+}
+
+const auxCache = new WeakMap<MixerState['auxes'], { auxNames: MixerState['auxNames']; catalog: Catalog }>()
+
+/**
+ * AUXes, stored by their fixed name (`NDI-AUX1`), which stays the same when they are renamed, and sent to the mixer by
+ * UUID. REST lists them by name only, so an AUX gets the fixed name of the one output TCP reports with that name; until
+ * then it is stored by name. The name and UUID they used to be stored by, and that routing tools use, are accepted too.
+ */
+export const auxCatalog = (state: MixerState): Catalog => {
+	const cached = auxCache.get(state.auxes)
+	if (cached?.auxNames === state.auxNames) return cached.catalog
+
+	const catalog = buildCatalog(
+		state.auxes.map((aux): Item => {
+			const fixedName = auxFixedName(state, aux)
+			return {
+				name: fixedName ?? aux.name,
+				target: aux.uuid,
+				label: fixedName && fixedName !== aux.name ? `${aux.name} (${fixedName})` : aux.name,
+				aliases: [aux.name],
+			}
+		}),
+	)
+	auxCache.set(state.auxes, { auxNames: state.auxNames, catalog })
 	return catalog
 }
 

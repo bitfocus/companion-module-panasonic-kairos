@@ -32,7 +32,7 @@ Actions are named by what they control, so related ones are listed together. Mos
 
 **AUX**
 
-- **AUX - Set Source**: set the source of an AUX. The source list includes every AUX's sources, but each AUX only accepts its own (see `AUX_list`), and the mixer refuses any other. The AUX can also be given by its UUID (from `AUX_list`), which keeps working if the AUX is renamed.
+- **AUX - Set Source**: set the source of an AUX. The source list includes every AUX's sources, but each AUX only accepts its own (see `AUX.<aux>.sources`), and the mixer refuses any other. AUXes are saved by their fixed name (e.g. `NDI-AUX1`), which keeps working if the AUX is renamed; their name and UUID are accepted too.
 
 **Scenes and transitions**
 
@@ -64,7 +64,7 @@ Actions are named by what they control, so related ones are listed together. Mos
 
 **Using more than one KAIROS**
 
-Actions and feedbacks save inputs and multiviewers by their fixed name (`IP1`, `NDI1`, `MV1`), and scenes, layers, macros, snapshots and the rest by name, not by the KAIROS's internal ids, so buttons work on any KAIROS running the same show, e.g. a main and a backup: change the connection's address and they carry on. Renaming an input or multiviewer changes nothing, as its fixed name stays the same; renaming anything else breaks the buttons that use it, until it is chosen again.
+Actions and feedbacks save inputs, AUXes and multiviewers by their fixed name (`IP1`, `NDI1`, `NDI-AUX1`, `MV1`), and scenes, layers, macros, snapshots and the rest by name, not by the KAIROS's internal ids, so buttons work on any KAIROS running the same show, e.g. a main and a backup: change the connection's address and they carry on. Renaming an input, AUX or multiviewer changes nothing, as its fixed name stays the same; renaming anything else breaks the buttons that use it, until it is chosen again.
 
 Buttons made with versions before 5.0 saved internal ids, which are different on each KAIROS. When upgrading, those options are switched to expressions holding the old id (e.g. `"87e882b3be-b406-826f-52b8-7ba17f64c4"`), so they keep working on the KAIROS they were made on. To make one work on any KAIROS, switch the option back to the list and choose the item again.
 
@@ -81,7 +81,7 @@ Any option of an action or feedback can be switched to an expression, for exampl
 | Media still                         | `Folder/name`, e.g. `Logos/Intro.rr`                                    |
 | Scene action, scene macro, snapshot | `Scene/name`, e.g. `Main/show_logo`, `Main/Wipe`                        |
 | Global macro                        | `Folder/name`, e.g. `Show/Intro`, or `Intro` outside a folder           |
-| AUX                                 | its name                                                                |
+| AUX                                 | its fixed name, e.g. `IP-AUX1`, `NDI-AUX1`                              |
 | Multiviewer                         | its fixed name, `MV1`–`MV4`                                             |
 | Player                              | `RR1`–`RR8`, `CP1`–`CP2`, `AP1`–`AP16`                                  |
 | Audio channel                       | `Channel 1`–`Channel 16`                                                |
@@ -100,16 +100,16 @@ Names are matched exactly, including the case. The lists show a renamed input as
 
 ### Variables
 
-| Variable                        | Value                                                                                                                                                                                                                                       |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Scene.<scene>.<layer>.sourceA` | Source A of the layer                                                                                                                                                                                                                       |
-| `Scene.<scene>.<layer>.sourceB` | Source B of the layer                                                                                                                                                                                                                       |
-| `AUX.<aux>.source`              | Source shown on the AUX                                                                                                                                                                                                                     |
-| `AUX.<aux>`                     | Name of the AUX                                                                                                                                                                                                                             |
-| `AUX_list`                      | Every AUX, as JSON: a list of `{ uuid, name, kind, sources, sourceVariable }`: `kind` is `video` or `audio`, `sources` the sources it accepts, `sourceVariable` the id of its source variable, and `uuid` stays the same when it is renamed |
-| `INPUT.<source>`                | The name a source is shown with. Inputs use their fixed name (`INPUT.NDI1`), so the variable stays the same when one is renamed                                                                                                             |
-| `Audio.mute_master_audio`       | `muted` / `unmuted`                                                                                                                                                                                                                         |
-| `Audio.mute_channel_1` … `_16`  | `muted` / `unmuted`                                                                                                                                                                                                                         |
-| `Player.<player>.repeat`        | `repeat on` / `repeat off`                                                                                                                                                                                                                  |
+| Variable                        | Value                                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `Scene.<scene>.<layer>.sourceA` | Source A of the layer                                                                                                           |
+| `Scene.<scene>.<layer>.sourceB` | Source B of the layer                                                                                                           |
+| `AUX.<aux>.source`              | Source shown on the AUX. AUXes use their fixed name (`AUX.NDI-AUX1.source`), so the variable stays the same when one is renamed |
+| `AUX.<aux>`                     | Name of the AUX                                                                                                                 |
+| `AUX.<aux>.sources`             | The sources the AUX accepts, as a JSON list of what the Source options save, e.g. `["Black","IP1","NDI1"]`                      |
+| `INPUT.<source>`                | The name a source is shown with. Inputs use their fixed name (`INPUT.NDI1`), so the variable stays the same when one is renamed |
+| `Audio.mute_master_audio`       | `muted` / `unmuted`                                                                                                             |
+| `Audio.mute_channel_1` … `_16`  | `muted` / `unmuted`                                                                                                             |
+| `Player.<player>.repeat`        | `repeat on` / `repeat off`                                                                                                      |
 
 In source and AUX names, spaces become `_`. Any other character a variable name can't contain is left out, including spaces in scene and layer names.

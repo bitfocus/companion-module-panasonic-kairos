@@ -163,6 +163,7 @@ export class TCP {
 		this.transitionRequest = undefined
 		this.instance.state.transitions = []
 		this.instance.state.mediaStills = []
+		this.instance.state.auxSlots = []
 	}
 
 	private checkLiveFeedbacks(): void {
@@ -189,6 +190,16 @@ export class TCP {
 			})
 			.catch((error: Error) => {
 				if (generation === this.generation) this.instance.log('debug', `Unable to list media stills: ${error.message}`)
+			})
+		void this.connection
+			.listAuxes()
+			.then((auxes) => {
+				if (generation !== this.generation) return
+				this.instance.state.auxSlots = auxes.map((aux) => refToPath(aux))
+				this.instance.updateInstance(updateFlags.All)
+			})
+			.catch((error: Error) => {
+				if (generation === this.generation) this.instance.log('debug', `Unable to list AUXes: ${error.message}`)
 			})
 		this.instance.updateInstance(updateFlags.All)
 	}
@@ -272,6 +283,17 @@ export class TCP {
 				onValue: (name) => {
 					if (this.instance.state.inputNames.get(input) === name) return
 					this.instance.state.inputNames = new Map(this.instance.state.inputNames).set(input, name)
+					this.scheduleDefinitions()
+				},
+			})
+
+		// REST lists AUXes by name only, so each slot's name is how an AUX is matched to its fixed name
+		for (const slot of state.auxSlots)
+			wanted.set(`${slot}.name`, {
+				feedbacks: [FeedbackId.aux],
+				onValue: (name) => {
+					if (this.instance.state.auxNames.get(slot) === name) return
+					this.instance.state.auxNames = new Map(this.instance.state.auxNames).set(slot, name)
 					this.scheduleDefinitions()
 				},
 			})

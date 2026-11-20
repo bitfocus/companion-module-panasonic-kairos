@@ -2,6 +2,7 @@ import type KairosInstance from './index.js'
 import { auxSource, booleanValue, layerSource, macroStatus } from './state.js'
 import { refToPath } from 'kairos-connection'
 import {
+	auxCatalog,
 	findAudioChannel,
 	findPlayer,
 	layerCatalog,
@@ -56,6 +57,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 		return current !== undefined && catalog.idOf(current) === catalog.idOf(source)
 	}
 	const sources = sourceCatalog(instance.state)
+	const auxes = auxCatalog(instance.state)
 	const stills = mediaStillCatalog(instance.state)
 	const layers = layerCatalog(instance.state)
 	const globalMacros = macroCatalog(instance.state)
@@ -167,9 +169,10 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'AUX',
 					id: 'aux',
-					default: instance.state.auxes[0] ? instance.state.auxes[0].name : '1',
-					choices: instance.state.auxes.map((id) => ({ id: id.name, label: id.name })),
+					default: auxes.choices[0]?.id ?? '',
+					choices: auxes.choices,
 					allowInvalidValues: true,
+					tooltip: VALUE_TOOLTIPS.aux,
 				},
 				{
 					type: 'dropdown',
@@ -183,9 +186,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			],
 			defaultStyle: { bgcolor: BLUE },
 			callback: (feedback): boolean => {
-				const aux = instance.state.auxes.find(
-					(entry) => entry.name === feedback.options.aux || entry.uuid === feedback.options.aux,
-				)
+				const uuid = auxCatalog(instance.state).resolve(feedback.options.aux)
+				const aux = instance.state.auxes.find((entry) => entry.uuid === uuid)
 				if (aux === undefined) return false
 				const sources = sourceCatalog(instance.state)
 				return sources.idOf(auxSource(instance.state, aux)) === sources.idOf(feedback.options.source)

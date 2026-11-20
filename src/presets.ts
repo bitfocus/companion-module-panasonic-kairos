@@ -4,6 +4,7 @@ import type { PlayerRef } from './state.js'
 import { ActionId } from './actions.js'
 import { sceneFullName } from './refs.js'
 import {
+	auxCatalog,
 	layerCatalog,
 	macroCatalog,
 	mediaStillCatalog,
@@ -89,6 +90,7 @@ export function getPresets(instance: KairosInstance): {
 	const snapshotId = snapshotCatalog(instance.state).storedId
 	const multiviewerId = multiviewerCatalog(instance.state).storedId
 	const sourceId = sourceCatalog(instance.state).idOf
+	const auxIdOf = auxCatalog(instance.state).storedId
 	const transitionId = transitionCatalog(instance.state).storedId
 	const stillId = mediaStillCatalog(instance.state).storedId
 	// section -> group -> preset ids, in the order they were added
@@ -185,16 +187,17 @@ export function getPresets(instance: KairosInstance): {
 	// AUX
 	for (const aux of instance.state.auxes) {
 		if (!aux.sources) continue
+		const auxId = auxIdOf(aux.uuid)
 		for (const source of aux.sources) {
 			const id = sourceId(source)
-			addPreset('AUX', aux.name, `${aux.name}.${id}.setAux`, {
+			addPreset('AUX', aux.name, `${auxId}.${id}.setAux`, {
 				name: `${aux.name} - ${source}`,
-				style: style(`$(kairos:${auxVariableId(aux.name)})\\n$(kairos:${inputVariableId(id)})`, 'auto', BLACK),
-				steps: onPress({ actionId: ActionId.setAUX, options: { aux: aux.name, source: id } }),
+				style: style(`$(kairos:${auxVariableId(auxId)})\\n$(kairos:${inputVariableId(id)})`, 'auto', BLACK),
+				steps: onPress({ actionId: ActionId.setAUX, options: { aux: auxId, source: id } }),
 				feedbacks: [
 					{
 						feedbackId: FeedbackId.aux,
-						options: { aux: aux.name, source: id },
+						options: { aux: auxId, source: id },
 						style: { bgcolor: BLUE },
 					},
 				],
