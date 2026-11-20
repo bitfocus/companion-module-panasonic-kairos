@@ -27,6 +27,7 @@ export class TCP {
 	private destroyed = false
 	private generation = 0
 	private variablesPending = false
+	private sharedMacroPaths = ''
 
 	constructor(
 		private readonly instance: KairosInstance,
@@ -235,10 +236,28 @@ export class TCP {
 		for (const { ref } of state.players) wanted.set(playerRepeatPath(ref), { feedbacks: [FeedbackId.playerRepeat] })
 		for (const { ref, uuid } of state.auxes)
 			wanted.set(`${refToPath(ref)}.source`, { uuid, feedbacks: [FeedbackId.aux] })
+		// KAIROS allows macros with the same name in the same folder, but TCP addresses them by path and reports one status
+		// for all of them. Their feedbacks stay off rather than show another macro's status.
+		const macroTargets: { path: string; target: SubscriptionTarget }[] = []
 		for (const macro of state.macros)
-			wanted.set(`${refToPath(macro.ref)}.status`, { uuid: macro.uuid, feedbacks: [FeedbackId.macroPlaying] })
+			macroTargets.push({
+				path: `${refToPath(macro.ref)}.status`,
+				target: { uuid: macro.uuid, feedbacks: [FeedbackId.macroPlaying] },
+			})
 		for (const macro of state.sceneMacros)
-			wanted.set(`${sceneMacroPath(macro)}.status`, { uuid: macro.uuid, feedbacks: [FeedbackId.sceneMacroPlaying] })
+			macroTargets.push({
+				path: `${sceneMacroPath(macro)}.status`,
+				target: { uuid: macro.uuid, feedbacks: [FeedbackId.sceneMacroPlaying] },
+			})
+		const shared = new Set(macroTargets.map(({ path }) => path).filter((path, i, paths) => paths.indexOf(path) !== i))
+		for (const { path, target } of macroTargets) if (!shared.has(path)) wanted.set(path, target)
+		const sharedMacroPaths = [...shared].map((path) => path.replace(/\.status$/, '')).join(', ')
+		if (sharedMacroPaths !== this.sharedMacroPaths && sharedMacroPaths)
+			this.instance.log(
+				'warn',
+				`Several KAIROS macros share a name, so their feedbacks can't show whether they are playing: ${sharedMacroPaths}`,
+			)
+		this.sharedMacroPaths = sharedMacroPaths
 
 		for (const layer of state.layers) {
 			const path = refToPath(layer.ref)

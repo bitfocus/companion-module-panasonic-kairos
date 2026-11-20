@@ -62,6 +62,25 @@ Actions are named by what they control, so related ones are listed together. Mos
 
 - **Advanced - Send Custom Command**: send a raw KAIROS TCP command, for example `SCENES.Main.cut` or `SCENES.Main.Layers.Background.sourceA=IP1`. Variables can be used in the command.
 
+**Using expressions**
+
+Any option of an action or feedback can be switched to an expression, for example to choose a source from a variable. Type the names as the lists show them:
+
+| Option                         | Give it as                                  |
+| ------------------------------ | ------------------------------------------- |
+| Scene, source, AUX, transition | its name, e.g. `Main`, `IP1`, `Main/BgdMix` |
+| Layer                          | `Scene/Layer`, e.g. `Main/Background`       |
+| Scene action                   | `Scene/action name`, e.g. `Main/show_logo`  |
+| Global macro                   | its name, e.g. `Intro`                      |
+| Scene macro, snapshot          | `Scene/name`, e.g. `Main/Wipe`              |
+| Multiviewer                    | its name                                    |
+| Player                         | `RR1`–`RR8`, `CP1`–`CP2`, `AP1`–`AP16`      |
+| Audio channel                  | its number, e.g. `3`                        |
+
+Scenes in folders include the folder, e.g. `Templates/2Box/Background`, and macros include theirs, e.g. `Show/Intro`. The folder can be left out when the name is unique; if a name could mean more than one thing (two macros called `test` in different folders), the action does nothing and the log lists the full names to use.
+
+> KAIROS allows two macros with the same name in the same folder. The lists show the start of each one's UUID to tell them apart, and in an expression they can only be given by UUID (the log lists them). Their **Playing** feedbacks stay off, as the mixer reports a single status for all macros of that name: give them different names to use those feedbacks.
+
 ### Feedbacks
 
 - **Layers - Source Selected** / **Layers - Media Still Selected**: a layer's source A or B is a given source or media still.

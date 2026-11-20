@@ -151,7 +151,7 @@ export class REST {
 			})),
 		)
 		const snapshots = scenes.flatMap((scene) =>
-			(scene.snapshots ?? []).map((snapshot) => ({ ...snapshot, sceneName: scene.name })),
+			(scene.snapshots ?? []).map((snapshot) => ({ ...snapshot, sceneName: scene.name, path: scene.path ?? '' })),
 		)
 		return { scenes, layers, sceneMacros, snapshots }
 	}

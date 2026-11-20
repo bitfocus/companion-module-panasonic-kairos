@@ -35,13 +35,6 @@ export const sceneFullName = (path: string | undefined, sceneName: string): stri
 export const layerFeedbackId = (layer: Layer): string =>
 	`/${sceneFullName(layer.path, layer.sceneName)}/${layer.layerName}`
 
-/**
- * Finds a layer by its feedback id, or by the id stored before scenes in folders were told apart (`/2Box/Background`)
- */
-export const findLayerByFeedbackId = (layers: Layer[], id: string): Layer | undefined =>
-	layers.find((layer) => layerFeedbackId(layer) === id) ??
-	layers.find((layer) => `/${layer.sceneName}/${layer.layerName}` === id)
-
 export const sceneRef = (path: string | undefined, sceneName: string): SceneRef =>
 	refScene([...folderParts(path), sceneName])
 

@@ -60,7 +60,14 @@ export type MixerState = {
 		state: string
 		uuid: string
 	}[]
-	snapshots: { name: string; state: string; uuid: string; sceneName: string }[]
+	snapshots: {
+		name: string
+		state: string
+		uuid: string
+		sceneName: string
+		/** The scene's folder path, e.g. `Templates/` */
+		path: string
+	}[]
 	multiviewers: {
 		index: number
 		name: string

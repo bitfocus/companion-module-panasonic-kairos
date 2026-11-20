@@ -2,13 +2,16 @@ import type KairosInstance from './index.js'
 import { auxSource, booleanValue, layerSource, macroStatus } from './state.js'
 import { refToPath } from 'kairos-connection'
 import {
-	audioMutePath,
-	findLayerByFeedbackId,
-	layerFeedbackId,
-	masterMutePath,
-	playerRepeatPath,
-	sceneMacroPath,
-} from './refs.js'
+	dropdownChoices,
+	findAudioChannel,
+	findPlayer,
+	layerChoices,
+	macroChoices,
+	matchedId,
+	resolveChoice,
+	sceneMacroChoices,
+} from './choices.js'
+import { audioMutePath, layerFeedbackId, masterMutePath, playerRepeatPath, sceneMacroPath } from './refs.js'
 import { BLUE, GREEN, RED, isMacroPlaying, mediaStillLabel, options, type SourceAB } from './utils.js'
 import type { CompanionFeedbackDefinitions } from '@companion-module/base'
 
@@ -47,13 +50,16 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 		sourceAB: SourceAB
 		source: string
 	}): boolean => {
-		const layer = findLayerByFeedbackId(instance.state.layers, id)
+		const uuid = matchedId(resolveChoice(layerChoices(instance.state), id))
+		const layer = instance.state.layers.find((entry) => entry.uuid === uuid)
 		return layer !== undefined && layerSource(instance.state, layer, sourceAB) === source
 	}
-	const sceneMacroChoices = instance.state.sceneMacros.map((item) => ({
-		id: `${item.sceneName}/macros/${item.uuid}`,
-		label: item.name,
+	const layerFeedbackChoices = instance.state.layers.map((layer) => ({
+		id: layerFeedbackId(layer),
+		label: layerFeedbackId(layer).slice(1),
 	}))
+	const globalMacros = macroChoices(instance.state)
+	const sceneMacros = sceneMacroChoices(instance.state)
 
 	const feedbacks: CompanionFeedbackDefinitions<FeedbacksSchema> = {
 		// Tally
@@ -66,11 +72,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: instance.state.layers[0] ? layerFeedbackId(instance.state.layers[0]) : '',
-					choices: instance.state.layers.map((item) => ({
-						id: layerFeedbackId(item),
-						label: layerFeedbackId(item).slice(1),
-					})),
+					default: layerFeedbackChoices[0]?.id ?? '',
+					choices: layerFeedbackChoices,
 					allowInvalidValues: true,
 				},
 				{
@@ -104,11 +107,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: instance.state.layers[0] ? layerFeedbackId(instance.state.layers[0]) : 'layer1',
-					choices: instance.state.layers.map((item) => ({
-						id: layerFeedbackId(item),
-						label: layerFeedbackId(item).slice(1),
-					})),
+					default: layerFeedbackChoices[0]?.id ?? '',
+					choices: layerFeedbackChoices,
 					allowInvalidValues: true,
 				},
 				{
@@ -150,7 +150,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 			options: [options.channel],
 			defaultStyle: { bgcolor: RED },
 			callback: (feedback): boolean => {
-				return booleanValue(instance.state, audioMutePath(feedback.options.channel)) === true
+				const channel = findAudioChannel(instance.state.audioChannels, feedback.options.channel)
+				return channel !== undefined && booleanValue(instance.state, audioMutePath(channel)) === true
 			},
 		},
 		[FeedbackId.aux]: {
@@ -192,11 +193,12 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					id: 'player',
 					default: instance.state.players[0]?.name ?? 'RR1',
 					choices: instance.state.players.map(({ name }) => ({ id: name, label: name })),
+					allowInvalidValues: true,
 				},
 			],
 			defaultStyle: { bgcolor: GREEN },
 			callback: (feedback): boolean => {
-				const player = instance.state.players.find((entry) => entry.name === feedback.options.player)
+				const player = findPlayer(instance.state.players, feedback.options.player)
 				return player !== undefined && booleanValue(instance.state, playerRepeatPath(player.ref)) === true
 			},
 		},
@@ -209,15 +211,17 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Macro',
 					id: 'macro',
-					default: instance.state.macros[0]?.uuid ?? '',
-					choices: instance.state.macros.map((item) => ({ id: item.uuid, label: `${item.path}${item.name}` })),
+					default: globalMacros[0]?.id ?? '',
+					choices: dropdownChoices(globalMacros),
 					allowInvalidValues: true,
 					minChoicesForSearch: 8,
+					tooltip: 'In an expression, a macro can also be given by its name',
 				},
 			],
 			defaultStyle: { bgcolor: GREEN },
 			callback: (feedback): boolean => {
-				const macro = instance.state.macros.find((x) => x.uuid === feedback.options.macro)
+				const id = matchedId(resolveChoice(macroChoices(instance.state), feedback.options.macro))
+				const macro = instance.state.macros.find((x) => x.uuid === id)
 				return macro !== undefined && isMacroPlaying(macroStatus(instance.state, refToPath(macro.ref), macro.uuid))
 			},
 		},
@@ -230,17 +234,17 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Scene Macro',
 					id: 'macro',
-					default: sceneMacroChoices[0]?.id ?? '',
-					choices: sceneMacroChoices,
+					default: sceneMacros[0]?.id ?? '',
+					choices: dropdownChoices(sceneMacros),
 					allowInvalidValues: true,
 					minChoicesForSearch: 8,
+					tooltip: 'In an expression, a scene macro can also be given as `Scene/macro name`',
 				},
 			],
 			defaultStyle: { bgcolor: GREEN },
 			callback: (feedback): boolean => {
-				const macro = instance.state.sceneMacros.find(
-					(x) => `${x.sceneName}/macros/${x.uuid}` === feedback.options.macro,
-				)
+				const id = matchedId(resolveChoice(sceneMacroChoices(instance.state), feedback.options.macro))
+				const macro = instance.state.sceneMacros.find((x) => `${x.sceneName}/macros/${x.uuid}` === id)
 				return macro !== undefined && isMacroPlaying(macroStatus(instance.state, sceneMacroPath(macro), macro.uuid))
 			},
 		},
