@@ -164,6 +164,16 @@ export const mediaStillLabel = (path: string): string =>
 		.map((part) => part.replace(/&#46;/g, '.'))
 		.join('/')
 
+/**
+ * A readable name for a scene action, e.g. `Background:show_layer` is `Background: Show Layer`
+ */
+export const sceneActionLabel = (name: string): string =>
+	name
+		.replace(/_+/g, ' ')
+		.replace(/\s*:\s*/g, ': ')
+		.replace(/(^|[\s:])(\w)/g, (_match, before: string, letter: string) => before + letter.toUpperCase())
+		.trim()
+
 export const WHITE = combineRgb(255, 255, 255)
 export const BLACK = combineRgb(0, 0, 0)
 export const RED = combineRgb(200, 0, 0)

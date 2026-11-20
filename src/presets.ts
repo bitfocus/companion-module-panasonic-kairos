@@ -5,7 +5,7 @@ import { ActionId } from './actions.js'
 import { layerFeedbackId, sceneFullName } from './refs.js'
 import { FeedbackId } from './feedback.js'
 import { auxVariableId, inputVariableId } from './variables.js'
-import { BLACK, BLUE, GREEN, PURPLE, RED, WHITE, YELLOW, mediaStillLabel } from './utils.js'
+import { BLACK, BLUE, GREEN, PURPLE, RED, WHITE, YELLOW, mediaStillLabel, sceneActionLabel } from './utils.js'
 import type {
 	CompanionButtonStyleProps,
 	CompanionPresetDefinitions,
@@ -280,8 +280,8 @@ export function getPresets(instance: KairosInstance): {
 	for (const scene of instance.state.scenes) {
 		for (const action of scene.actions) {
 			addPreset('Scene Actions', scene.name, action.uuid, {
-				name: `${scene.name}/${action.name}`,
-				style: style(action.name, 'auto', BLACK),
+				name: `${scene.name}/${sceneActionLabel(action.name)}`,
+				style: style(sceneActionLabel(action.name), 'auto', BLACK),
 				steps: onPress({
 					actionId: ActionId.runAction,
 					options: { action: `/${scene.name}/actions/${action.uuid}` },

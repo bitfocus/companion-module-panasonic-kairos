@@ -1,6 +1,13 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
 import { refToPath, type KairosConnection } from 'kairos-connection'
-import { mediaStillLabel, multiviewerPresetChoices, options, type MuteValue, type SourceAB } from './utils.js'
+import {
+	mediaStillLabel,
+	multiviewerPresetChoices,
+	sceneActionLabel,
+	options,
+	type MuteValue,
+	type SourceAB,
+} from './utils.js'
 import type KairosInstance from './index.js'
 import type { MixerState, PlayerRef } from './state.js'
 import { audioMutePath, masterMutePath, playerRepeatPath, sceneFullName, sceneRef, sourcePath } from './refs.js'
@@ -125,7 +132,10 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 	const actionChoices: { id: string; label: string }[] = []
 	instance.state.scenes.forEach((scene) => {
 		scene.actions.forEach((action) => {
-			actionChoices.push({ id: `/${scene.name}/actions/${action.uuid}`, label: `${scene.name}/${action.name}` })
+			actionChoices.push({
+				id: `/${scene.name}/actions/${action.uuid}`,
+				label: `${scene.name}/${sceneActionLabel(action.name)}`,
+			})
 		})
 	})
 
