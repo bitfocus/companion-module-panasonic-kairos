@@ -1,7 +1,7 @@
 import { InstanceStatus } from '@companion-module/base'
 import { KairosConnection, TerminateSubscriptionError, refSceneTransition, refToPath } from 'kairos-connection'
 import type KairosInstance from './index.js'
-import { parseBoolean } from './state.js'
+import { auxSourcePath, parseBoolean } from './state.js'
 import { FeedbackId } from './feedback.js'
 import { masterMutePath, audioMutePath, playerRepeatPath, sceneMacroPath, sceneRef } from './refs.js'
 import { updateFlags } from './utils.js'
@@ -254,8 +254,8 @@ export class TCP {
 		for (const { name } of state.audioChannels)
 			wanted.set(audioMutePath(name), { feedbacks: [FeedbackId.audioMuteChannel] })
 		for (const { ref } of state.players) wanted.set(playerRepeatPath(ref), { feedbacks: [FeedbackId.playerRepeat] })
-		for (const { ref, uuid } of state.auxes)
-			wanted.set(`${refToPath(ref)}.source`, { uuid, feedbacks: [FeedbackId.aux] })
+		for (const aux of state.auxes)
+			wanted.set(auxSourcePath(state, aux), { uuid: aux.uuid, feedbacks: [FeedbackId.aux] })
 		// KAIROS allows macros with the same name in the same folder, but TCP addresses them by path and reports one status
 		// for all of them. Their feedbacks stay off rather than show another macro's status.
 		const macroTargets: { path: string; target: SubscriptionTarget }[] = []

@@ -145,8 +145,22 @@ export function layerSource(state: MixerState, layer: MixerState['layers'][numbe
 	return liveSource(state, `${refToPath(layer.ref)}.${bus}`, layer.uuid) ?? layer[bus]
 }
 
+/** The fixed name of the one AUX output TCP reports with this AUX's name, or undefined if there isn't exactly one */
+export function auxSlot(state: MixerState, aux: { name: string }): string | undefined {
+	const slots = [...state.auxNames].filter(([, name]) => name === aux.name).map(([slot]) => slot)
+	return slots.length === 1 ? slots[0] : undefined
+}
+
+/**
+ * Where TCP reports an AUX's source. KAIROS only pushes changes to it at the AUX output's fixed name
+ * (`NDI-AUX1.source`), not at `AUX.<name>.source`, which serves until the output is known.
+ */
+export function auxSourcePath(state: MixerState, aux: MixerState['auxes'][number]): string {
+	return `${auxSlot(state, aux) ?? refToPath(aux.ref)}.source`
+}
+
 export function auxSource(state: MixerState, aux: MixerState['auxes'][number]): string {
-	return liveSource(state, `${refToPath(aux.ref)}.source`, aux.uuid) ?? aux.source
+	return liveSource(state, auxSourcePath(state, aux), aux.uuid) ?? aux.source
 }
 
 export function macroStatus(state: MixerState, path: string, uuid: string): ReturnType<typeof parseMacroStatus> {

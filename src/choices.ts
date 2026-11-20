@@ -1,5 +1,5 @@
 import { layerPath, sceneFullName } from './refs.js'
-import type { MixerState } from './state.js'
+import { auxSlot, type MixerState } from './state.js'
 import { mediaStillLabel, sceneActionLabel } from './utils.js'
 
 /** Tooltips for options whose value is typed exactly as the list stores it */
@@ -139,12 +139,6 @@ export const sourceCatalog = (state: MixerState): Catalog => {
 	return catalog
 }
 
-/** The fixed name of the one AUX output TCP reports with this AUX's name, or undefined if there isn't exactly one */
-const auxFixedName = (state: MixerState, aux: { name: string }): string | undefined => {
-	const slots = [...state.auxNames].filter(([, name]) => name === aux.name).map(([slot]) => slot)
-	return slots.length === 1 ? slots[0] : undefined
-}
-
 const auxCache = new WeakMap<MixerState['auxes'], { auxNames: MixerState['auxNames']; catalog: Catalog }>()
 
 /**
@@ -158,7 +152,7 @@ export const auxCatalog = (state: MixerState): Catalog => {
 
 	const catalog = buildCatalog(
 		state.auxes.map((aux): Item => {
-			const fixedName = auxFixedName(state, aux)
+			const fixedName = auxSlot(state, aux)
 			return {
 				name: fixedName ?? aux.name,
 				target: aux.uuid,
