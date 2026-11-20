@@ -28,6 +28,11 @@ export type MixerState = {
 	auxSlots: string[]
 	/** The name each AUX output is shown with, by its fixed name, from TCP. Replaced, not changed, when one is renamed. */
 	auxNames: ReadonlyMap<string, string>
+	/**
+	 * Whether TCP has reported every input's and AUX output's name, or failed to connect. Until then inputs and AUXes may
+	 * still be known only by the name they are shown with, so presets and variables named after them wait.
+	 */
+	namesLoaded: boolean
 	mediaStills: Array<string>
 	scenes: {
 		layers: { name: string; sourceA?: string; sourceB?: string; sources: string[]; uuid: string }[]
@@ -97,6 +102,7 @@ export const emptyMixerState = (): MixerState => ({
 	inputNames: new Map(),
 	auxSlots: [],
 	auxNames: new Map(),
+	namesLoaded: false,
 	mediaStills: [],
 	scenes: [],
 	layers: [],

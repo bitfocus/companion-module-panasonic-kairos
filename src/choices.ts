@@ -64,9 +64,11 @@ const buildCatalog = (items: Item[]): Catalog => {
 	type Entry = (typeof entries)[number]
 
 	const byValue = new Map<string, Entry>()
-	const aliasCount = countOf(entries.flatMap((entry) => entry.aliases ?? []))
+	// An item's aliases can repeat each other (a scene with no folder), which mustn't count as another item having them
+	const aliasesOf = (entry: Entry) => [...new Set(entry.aliases)]
+	const aliasCount = countOf(entries.flatMap(aliasesOf))
 	for (const entry of entries) {
-		for (const alias of entry.aliases ?? []) if (aliasCount(alias) === 1) byValue.set(alias, entry)
+		for (const alias of aliasesOf(entry)) if (aliasCount(alias) === 1) byValue.set(alias, entry)
 	}
 	for (const entry of entries) byValue.set(entry.target, entry)
 	// What the list stores wins over anything else
@@ -114,11 +116,21 @@ export const sourceCatalog = (state: MixerState): Catalog => {
 	const cached = sourceCache.get(state.inputs)
 	if (cached?.inputPaths === state.inputPaths && cached.inputNames === state.inputNames) return cached.catalog
 
+	// A name listed twice for one layer or AUX belongs to two sources, e.g. an input renamed like a matte. REST can't
+	// tell those apart, so such an input is sent by its fixed name (over TCP) and its name stays the other source's.
+	const shared = new Set(
+		[
+			...state.scenes.flatMap((scene) => (scene.layers ?? []).map((layer) => layer.sources ?? [])),
+			...state.auxes.map((aux) => aux.sources ?? []),
+		].flatMap((list) => list.filter((name, i) => list.indexOf(name) !== i)),
+	)
 	const inputs = state.inputPaths.map((path): Item => {
-		const name = state.inputNames.get(path) ?? path
+		const name = state.inputNames.get(path)
+		if (name === undefined || shared.has(name))
+			return { name: path, target: path, label: name ? `${name} (${path})` : path }
 		return { name: path, target: name, label: name === path ? path : `${name} (${path})`, aliases: [name] }
 	})
-	const inputNames = new Set(inputs.flatMap((input) => [input.name, input.target]))
+	const inputNames = new Set(inputs.flatMap((input) => [input.name, ...(input.aliases ?? [])]))
 	const others = state.inputs
 		.filter((input) => !inputNames.has(input.name))
 		.map((input): Item => ({ name: input.name, target: input.name, label: input.name }))

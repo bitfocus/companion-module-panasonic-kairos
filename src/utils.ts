@@ -114,7 +114,7 @@ export const options: Options = {
 		id: 'channel',
 		default: 'Channel 1',
 		allowInvalidValues: true,
-		tooltip: 'In an expression, a channel can also be given by its number',
+		tooltip: 'In an expression, give the channel as `Channel 1` to `Channel 16`',
 		choices: [
 			{ id: 'Channel 1', label: 'Channel 1' },
 			{ id: 'Channel 2', label: 'Channel 2' },

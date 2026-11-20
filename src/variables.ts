@@ -2,7 +2,7 @@ import type { CompanionVariableDefinitions, CompanionVariableValues } from '@com
 import type KairosInstance from './index.js'
 import { auxSource, booleanValue, layerSource } from './state.js'
 import { audioMutePath, masterMutePath, playerRepeatPath } from './refs.js'
-import { auxCatalog, sourceCatalog } from './choices.js'
+import { auxCatalog, mediaStillCatalog, sourceCatalog } from './choices.js'
 
 interface InstanceVariableDefinition {
 	name: string
@@ -50,10 +50,17 @@ export function updateBasicVariables(instance: KairosInstance): void {
 
 	// Inputs by their fixed name (`INPUT.NDI1`), so the variable stays the same when one is renamed
 	const sources = sourceCatalog(instance.state)
-	/** The name a source TCP or REST reports (`NDI1`, or the name it is shown with) is shown with */
-	const shownName = (source: string | undefined) =>
-		source === undefined ? undefined : sources.resolve(sources.idOf(source))
-	const inputSources = sources.choices.map(({ id }) => ({
+	const stills = mediaStillCatalog(instance.state)
+	/** The name a source TCP or REST reports (`NDI1`, or a still's TCP path) is shown with */
+	const shownName = (source: string | undefined) => {
+		if (source === undefined) return undefined
+		const still = stills.idOf(source)
+		return still !== source ? still : sources.resolve(sources.idOf(source))
+	}
+	// Input and AUX variables are named by fixed names, which aren't all known until TCP has reported the names
+	const { namesLoaded } = instance.state
+	const namedAuxes = namesLoaded ? instance.state.auxes : []
+	const inputSources = (namesLoaded ? sources.choices : []).map(({ id }) => ({
 		name: `Input ${id} - Name`,
 		variableId: inputVariableId(id),
 	}))
@@ -62,7 +69,7 @@ export function updateBasicVariables(instance: KairosInstance): void {
 	const auxIdOf = auxCatalog(instance.state).storedId
 	const auxSources: { name: string; variableId: string }[] = []
 	const auxNames: { name: string; variableId: string }[] = []
-	instance.state.auxes.forEach((AUX) => {
+	namedAuxes.forEach((AUX) => {
 		const id = auxIdOf(AUX.uuid)
 		auxSources.push({ name: `AUX ${id} - Source`, variableId: `${auxVariableId(id)}.source` })
 		auxSources.push({ name: `AUX ${id} - Sources it accepts`, variableId: `${auxVariableId(id)}.sources` })
@@ -117,7 +124,7 @@ export function updateBasicVariables(instance: KairosInstance): void {
 			legacyLayerValues[`Scene.${legacyName}.sourceB`] = sourceB
 		}
 	}
-	instance.state.auxes.forEach((AUX) => {
+	namedAuxes.forEach((AUX) => {
 		const id = auxVariableId(auxIdOf(AUX.uuid))
 		newVariables[`${id}.source`] = shownName(auxSource(instance.state, AUX))
 		// The sources as the Source options store them, as a JSON string: Companion and Buttons flatten a list value to
@@ -132,7 +139,7 @@ export function updateBasicVariables(instance: KairosInstance): void {
 			repeat === undefined ? undefined : repeat ? 'repeat on' : 'repeat off'
 	})
 	// INPUTS
-	for (const { id } of sources.choices) newVariables[inputVariableId(id)] = sources.resolve(id)
+	if (namesLoaded) for (const { id } of sources.choices) newVariables[inputVariableId(id)] = sources.resolve(id)
 	// AUDIO
 	newVariables['Audio.mute_master_audio'] = muteLabel(booleanValue(instance.state, masterMutePath))
 	for (const [index, channel] of instance.state.audioChannels.entries()) {

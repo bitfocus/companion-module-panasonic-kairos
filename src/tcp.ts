@@ -51,6 +51,7 @@ export class TCP {
 
 		this.connectTimer = setTimeout(() => {
 			this.instance.connectionStatus.set('tcp', InstanceStatus.ConnectionFailure, 'Unable to connect')
+			this.namesUnavailable()
 		}, CONNECT_TIMEOUT_MS)
 		this.connection.connect()
 	}
@@ -138,6 +139,7 @@ export class TCP {
 		this.invalidate()
 		// The connection status logs the loss, with the socket error that caused it.
 		this.instance.connectionStatus.set('tcp', InstanceStatus.ConnectionFailure, this.lastErrorMessage ?? 'Disconnected')
+		this.namesUnavailable()
 		this.instance.updateInstance(updateFlags.All)
 		this.checkLiveFeedbacks()
 	}
@@ -197,6 +199,7 @@ export class TCP {
 				if (generation !== this.generation) return
 				this.instance.state.auxSlots = auxes.map((aux) => refToPath(aux))
 				this.instance.updateInstance(updateFlags.All)
+				this.checkNamesLoaded()
 			})
 			.catch((error: Error) => {
 				if (generation === this.generation) this.instance.log('debug', `Unable to list AUXes: ${error.message}`)
@@ -284,6 +287,7 @@ export class TCP {
 					if (this.instance.state.inputNames.get(input) === name) return
 					this.instance.state.inputNames = new Map(this.instance.state.inputNames).set(input, name)
 					this.scheduleDefinitions()
+					this.checkNamesLoaded()
 				},
 			})
 
@@ -295,6 +299,7 @@ export class TCP {
 					if (this.instance.state.auxNames.get(slot) === name) return
 					this.instance.state.auxNames = new Map(this.instance.state.auxNames).set(slot, name)
 					this.scheduleDefinitions()
+					this.checkNamesLoaded()
 				},
 			})
 
@@ -357,6 +362,23 @@ export class TCP {
 			this.failedSubscriptions.clear()
 			this.sync()
 		}, SUBSCRIPTION_RETRY_MS)
+	}
+
+	/** Marks the names loaded once every input and AUX output has reported its name */
+	private checkNamesLoaded(): void {
+		const state = this.instance.state
+		if (state.namesLoaded || state.inputPaths.length === 0 || state.auxSlots.length === 0) return
+		if (!state.inputPaths.every((input) => state.inputNames.has(input))) return
+		if (!state.auxSlots.every((slot) => state.auxNames.has(slot))) return
+		state.namesLoaded = true
+		this.scheduleDefinitions()
+	}
+
+	/** Without TCP the names can't load, so presets and variables use the names REST gives rather than wait forever */
+	private namesUnavailable(): void {
+		if (this.instance.state.namesLoaded) return
+		this.instance.state.namesLoaded = true
+		this.scheduleDefinitions()
 	}
 
 	private scheduleDefinitions(): void {

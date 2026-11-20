@@ -121,6 +121,16 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		})
 	}
 
+	/**
+	 * REST takes an input only by the name it is shown with. The catalog sends one by its fixed name (`NDI1`), which REST
+	 * refuses, until TCP has reported its name, or when another source has that name too, so it goes over TCP instead.
+	 */
+	const unnamedInput = (source: string) =>
+		instance.state.inputPaths.includes(source) && instance.state.inputNames.get(source) !== source
+	/** An AUX output's fixed name (`NDI-AUX1`) that no AUX REST lists is known by yet, which REST refuses */
+	const unmatchedAuxSlot = (aux: string) =>
+		!instance.state.auxes.some((entry) => entry.uuid === aux) && /^[A-Z]+-AUX\d+$/i.test(aux)
+
 	const scenes = sceneCatalog(instance.state)
 	const findScene = (id: string) => instance.state.scenes.find((scene) => sceneFullName(scene.path, scene.name) === id)
 	const transitions = transitionCatalog(instance.state)
@@ -177,8 +187,11 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 			],
 			callback: async ({ options: { layer: value, sourceAB, source } }) => {
-				const layer = layerCatalog(instance.state).resolve(value)
-				return sendPatch('/scenes', layer, { [sourceAB]: sourceCatalog(instance.state).resolve(source) })
+				const id = layerCatalog(instance.state).resolve(value)
+				const target = sourceCatalog(instance.state).resolve(source)
+				const layer = instance.state.layers.find((entry) => entry.uuid === id)
+				if (layer && unnamedInput(target)) return setLayerSource(layer, sourceAB, target)
+				return sendPatch('/scenes', id, { [sourceAB]: target })
 			},
 		},
 		[ActionId.runAction]: {
@@ -352,10 +365,20 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: async ({ options: { aux, source } }) =>
-				sendPatch('/aux/', encodeURIComponent(auxCatalog(instance.state).resolve(aux)), {
-					source: sourceCatalog(instance.state).resolve(source),
-				}),
+			callback: async ({ options: { aux, source } }) => {
+				const sources = sourceCatalog(instance.state)
+				const auxTarget = auxCatalog(instance.state).resolve(aux)
+				const sourceTarget = sources.resolve(source)
+				if (unmatchedAuxSlot(auxTarget) || unnamedInput(sourceTarget)) {
+					const entry = instance.state.auxes.find((item) => item.uuid === auxTarget)
+					const auxPath = entry ? refToPath(entry.ref) : auxTarget
+					const path = sourcePath(sources.idOf(source), instance.state.scenes)
+					return runTcp(`set ${auxPath} source to ${source}`, async (kairos) =>
+						kairos.setAttribute(`${auxPath}.source`, path),
+					)
+				}
+				return sendPatch('/aux/', encodeURIComponent(auxTarget), { source: sourceTarget })
+			},
 		},
 		//Control
 		[ActionId.playerControl]: {

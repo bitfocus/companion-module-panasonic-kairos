@@ -150,7 +150,8 @@ const useSlashesForTransitionsAndStills: CompanionStaticUpgradeScript<config, se
 		if (action.actionId === 'autoTransition' || action.actionId === 'cutTransition') {
 			const value = storedString(action.options, 'layer')
 			const dot = value?.lastIndexOf('.') ?? -1
-			if (value === undefined || dot === -1) continue
+			// Already `Scene/Transition` if a `/` follows the last dot, which is then in a name (`Templates/Show.1/BgdMix`)
+			if (value === undefined || dot === -1 || value.includes('/', dot)) continue
 			const scene = value.slice(0, dot)
 			action.options.layer = scene.includes('/')
 				? { isExpression: false, value: `${scene}/${value.slice(dot + 1)}` }

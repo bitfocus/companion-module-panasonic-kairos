@@ -145,8 +145,11 @@ export function getPresets(instance: KairosInstance): {
 		})
 	}
 
+	// Sources and AUXes are named by their fixed names, which aren't all known until TCP has reported the names
+	const { namesLoaded } = instance.state
+
 	// Sources, with source A as program (red) and source B as preview (green)
-	for (const scene of instance.state.scenes) {
+	for (const scene of namesLoaded ? instance.state.scenes : []) {
 		const sceneId = sceneFullName(scene.path, scene.name)
 		for (const layer of scene.layers) {
 			if (!layer.sources) continue
@@ -185,7 +188,7 @@ export function getPresets(instance: KairosInstance): {
 	}
 
 	// AUX
-	for (const aux of instance.state.auxes) {
+	for (const aux of namesLoaded ? instance.state.auxes : []) {
 		if (!aux.sources) continue
 		const auxId = auxIdOf(aux.uuid)
 		for (const source of aux.sources) {
