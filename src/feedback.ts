@@ -50,6 +50,11 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 		const layer = findLayerByFeedbackId(instance.state.layers, id)
 		return layer !== undefined && layerSource(instance.state, layer, sourceAB) === source
 	}
+	const sceneMacroChoices = instance.state.sceneMacros.map((item) => ({
+		id: `${item.sceneName}/macros/${item.uuid}`,
+		label: item.name,
+	}))
+
 	const feedbacks: CompanionFeedbackDefinitions<FeedbacksSchema> = {
 		// Tally
 		[FeedbackId.inputSource]: {
@@ -61,7 +66,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Layer',
 					id: 'layer',
-					default: '',
+					default: instance.state.layers[0] ? layerFeedbackId(instance.state.layers[0]) : '',
 					choices: instance.state.layers.map((item) => ({
 						id: layerFeedbackId(item),
 						label: layerFeedbackId(item).slice(1),
@@ -82,7 +87,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: '',
+					default: instance.state.inputs[0]?.name ?? '',
 					choices: instance.state.inputs.map((item) => ({ id: item.name, label: item.name })),
 					allowInvalidValues: true,
 				},
@@ -165,7 +170,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Source',
 					id: 'source',
-					default: '',
+					default: instance.state.inputs[0]?.name ?? '',
 					choices: instance.state.inputs.map((id) => ({ id: id.name, label: id.name })),
 					allowInvalidValues: true,
 				},
@@ -225,11 +230,8 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 					type: 'dropdown',
 					label: 'Scene Macro',
 					id: 'macro',
-					default: '',
-					choices: instance.state.sceneMacros.map((item) => ({
-						id: `${item.sceneName}/macros/${item.uuid}`,
-						label: item.name,
-					})),
+					default: sceneMacroChoices[0]?.id ?? '',
+					choices: sceneMacroChoices,
 					allowInvalidValues: true,
 					minChoicesForSearch: 8,
 				},
