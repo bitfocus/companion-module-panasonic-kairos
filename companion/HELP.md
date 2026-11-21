@@ -1,13 +1,13 @@
 ## Panasonic KAIROS
 
-Controls a Panasonic KAIROS live production platform.
+Controls Panasonic KAIROS live production systems.
 
 ### Setup
 
 The module uses two connections to the KAIROS, and needs both:
 
 - **TCP** (default port 3005) to list the scenes, layers, sources, AUXes, snapshots and macros, and for almost every action and all live state.
-- **REST API** (default port 1234) for the scene actions and multiviewers, which TCP doesn't offer, and to recognise buttons saved by older versions. In KAIROS Creator, set the REST API mode to **Basic** and enter the same username and password here.
+- **REST API** (default port 1234) for the scene actions and multiviewers, which TCP doesn't offer, and to recognize buttons saved by older versions. In KAIROS Creator, set the REST API mode to **Basic** and enter the same username and password here.
 
 | Setting       | Default       |
 | ------------- | ------------- |
@@ -17,9 +17,7 @@ The module uses two connections to the KAIROS, and needs both:
 | Username      | `Kairos`      |
 | Password      | (empty)       |
 
-The connection turns green once both are connected, and lists in the actions fill in a few seconds later. Changes made on the KAIROS (new scenes, layers, transitions, macros, stills…) appear within about 15 seconds.
-
-> Avoid special characters in the names of scenes, layers and sources: some can't be used in actions or variables.
+The connection turns green once both are connected, and lists in the actions fill in a few seconds later. Changes made on the KAIROS (new scenes, layers, transitions, macros, stills…) automatically update the connection.
 
 ### Actions
 
