@@ -2,10 +2,24 @@ import type KairosInstance from './index.js'
 import type { KairosTypes } from './index.js'
 import type { PlayerRef } from './state.js'
 import { ActionId } from './actions.js'
-import { layerFeedbackId, sceneFullName } from './refs.js'
+import { sceneFullName, sceneMacroPath } from './refs.js'
+import { refToPath } from 'kairos-connection'
+import {
+	layerCatalog,
+	macroCatalog,
+	macroPath,
+	snapshotPath,
+	mediaStillCatalog,
+	multiviewerCatalog,
+	sceneActionCatalog,
+	sceneMacroCatalog,
+	snapshotCatalog,
+	sourceCatalog,
+	transitionCatalog,
+} from './choices.js'
 import { FeedbackId } from './feedback.js'
 import { auxVariableId, inputVariableId } from './variables.js'
-import { BLACK, BLUE, GREEN, PURPLE, RED, WHITE, YELLOW, mediaStillLabel } from './utils.js'
+import { BLACK, BLUE, GREEN, PURPLE, RED, WHITE, YELLOW, mediaStillLabel, sceneActionLabel } from './utils.js'
 import type {
 	CompanionButtonStyleProps,
 	CompanionPresetDefinitions,
@@ -71,6 +85,16 @@ export function getPresets(instance: KairosInstance): {
 	presets: CompanionPresetDefinitions<KairosTypes>
 } {
 	const presets: CompanionPresetDefinitions<KairosTypes> = {}
+	const layerId = layerCatalog(instance.state).idOf
+	const sceneActionId = sceneActionCatalog(instance.state).idOf
+	const macroId = macroCatalog(instance.state).idOf
+	const sceneMacroId = sceneMacroCatalog(instance.state).idOf
+	const snapshotId = snapshotCatalog(instance.state).idOf
+	const multiviewerId = multiviewerCatalog(instance.state).idOf
+	const sourceId = sourceCatalog(instance.state).idOf
+	const sourceName = sourceCatalog(instance.state).shownName
+	const transitionId = transitionCatalog(instance.state).idOf
+	const stillId = mediaStillCatalog(instance.state).idOf
 	// section -> group -> preset ids, in the order they were added
 	const layout = new Map<SectionName, Map<string | undefined, string[]>>(
 		SECTIONS.map((section) => [section.name, new Map()]),
@@ -114,65 +138,65 @@ export function getPresets(instance: KairosInstance): {
 		addPreset('Scenes', group, `${id}.cut`, {
 			name: `${sceneId}/${transition.name} Cut`,
 			style: style(`${transition.name}\\nCUT`, 'auto', BLACK),
-			steps: onPress({ actionId: ActionId.cutTransition, options: { layer: id } }),
+			steps: onPress({ actionId: ActionId.cutTransition, options: { layer: transitionId(id) } }),
 		})
 		addPreset('Scenes', group, `${id}.auto`, {
 			name: `${sceneId}/${transition.name} Auto`,
 			style: style(`${transition.name}\\nAUTO`, 'auto', BLACK),
-			steps: onPress({ actionId: ActionId.autoTransition, options: { layer: id } }),
+			steps: onPress({ actionId: ActionId.autoTransition, options: { layer: transitionId(id) } }),
 		})
 	}
 
 	// Sources, with source A as program (red) and source B as preview (green)
-	for (const scene of instance.state.scenes) {
-		const sceneId = sceneFullName(scene.path, scene.name)
-		for (const layer of scene.layers) {
-			if (!layer.sources) continue
-			const buses = layer.sourceB
-				? ([
-						['sourceA', 'Source A', 'PGM', RED],
-						['sourceB', 'Source B', 'PVW', GREEN],
-					] as const)
-				: ([['sourceA', 'Source A', 'PGM', RED]] as const)
-			for (const [sourceAB, busName, idSuffix, tally] of buses) {
-				for (const source of layer.sources) {
-					addPreset(
-						'Sources',
-						`${sceneId}/${layer.name} - ${busName}`,
-						`${presetIdPart(sceneId)}.${presetIdPart(layer.name)}.${presetIdPart(source)}.${idSuffix}`,
-						{
-							name: `${sceneId}/${layer.name} ${busName} - ${source}`,
-							style: style(`$(kairos:${inputVariableId(source)})`, 'auto', BLACK),
-							steps: onPress({
-								actionId: ActionId.setSource,
-								options: { layer: `/${scene.uuid}/${layer.uuid}`, sourceAB, source },
-							}),
-							feedbacks: [
-								{
-									feedbackId: FeedbackId.inputSource,
-									options: { layer: `/${sceneId}/${layer.name}`, sourceAB, source },
-									style: { bgcolor: tally },
-								},
-							],
-						},
-					)
-				}
+	for (const layer of instance.state.layers) {
+		const sceneId = sceneFullName(layer.path, layer.sceneName)
+		const options = instance.state.layerSourceOptions.get(refToPath(layer.ref)) ?? []
+		const buses = layer.hasSourceB
+			? ([
+					['sourceA', 'Source A', 'PGM', RED],
+					['sourceB', 'Source B', 'PVW', GREEN],
+				] as const)
+			: ([['sourceA', 'Source A', 'PGM', RED]] as const)
+		for (const [sourceAB, busName, idSuffix, tally] of buses) {
+			for (const path of options) {
+				const id = sourceId(path)
+				addPreset(
+					'Sources',
+					`${sceneId}/${layer.layerName} - ${busName}`,
+					`${presetIdPart(sceneId)}.${presetIdPart(layer.layerName)}.${presetIdPart(id)}.${idSuffix}`,
+					{
+						name: `${sceneId}/${layer.layerName} ${busName} - ${sourceName(path)}`,
+						style: style(`$(kairos:${inputVariableId(id)})`, 'auto', BLACK),
+						steps: onPress({
+							actionId: ActionId.setSource,
+							options: { layer: layerId(refToPath(layer.ref)), sourceAB, source: id },
+						}),
+						feedbacks: [
+							{
+								feedbackId: FeedbackId.inputSource,
+								options: { layer: layerId(refToPath(layer.ref)), sourceAB, source: id },
+								style: { bgcolor: tally },
+							},
+						],
+					},
+				)
 			}
 		}
 	}
 
 	// AUX
 	for (const aux of instance.state.auxes) {
-		if (!aux.sources) continue
-		for (const source of aux.sources) {
-			addPreset('AUX', aux.name, `${aux.name}.${source}.setAux`, {
-				name: `${aux.name} - ${source}`,
-				style: style(`$(kairos:${auxVariableId(aux.name)})\\n$(kairos:${inputVariableId(source)})`, 'auto', BLACK),
-				steps: onPress({ actionId: ActionId.setAUX, options: { aux: aux.name, source } }),
+		const auxId = aux.slot
+		for (const path of aux.sourceOptions) {
+			const id = sourceId(path)
+			addPreset('AUX', aux.name, `${auxId}.${id}.setAux`, {
+				name: `${aux.name} - ${sourceName(path)}`,
+				style: style(`$(kairos:${auxVariableId(auxId)})\\n$(kairos:${inputVariableId(id)})`, 'auto', BLACK),
+				steps: onPress({ actionId: ActionId.setAUX, options: { aux: auxId, source: id } }),
 				feedbacks: [
 					{
 						feedbackId: FeedbackId.aux,
-						options: { aux: aux.name, source },
+						options: { aux: auxId, source: id },
 						style: { bgcolor: BLUE },
 					},
 				],
@@ -182,43 +206,59 @@ export function getPresets(instance: KairosInstance): {
 
 	// Snapshots
 	for (const snapshot of instance.state.snapshots) {
-		addPreset('Snapshots', snapshot.sceneName, `${snapshot.uuid}.recall`, {
-			name: `${snapshot.sceneName}/${snapshot.name}`,
+		const path = snapshotPath(snapshot)
+		addPreset('Snapshots', snapshot.sceneName, `${path}.recall`, {
+			name: `${sceneFullName(snapshot.path, snapshot.sceneName)}/${snapshot.name}`,
 			style: style(snapshot.name, 'auto', BLACK),
-			steps: onPress({
-				actionId: ActionId.triggerSnapshot,
-				options: { snapshot: `${snapshot.sceneName}/snapshots/${snapshot.uuid}` },
-			}),
+			steps: onPress({ actionId: ActionId.triggerSnapshot, options: { snapshot: snapshotId(path) } }),
 		})
 	}
 
 	// Macros
 	for (const macro of instance.state.macros) {
 		const name = `${macro.path}${macro.name}`
-		addPreset('Macros', 'Global', `${macro.uuid}.play`, {
+		const path = macroPath(macro)
+		const id = macroId(path)
+		addPreset('Macros', 'Global', `${path}.play`, {
 			name: `${name} Play`,
 			style: style(`${name}\\nPLAY`, 'auto', BLACK),
-			steps: onPress({ actionId: ActionId.macroControl, options: { macro: macro.uuid, action: 'play' } }),
-			feedbacks: [{ feedbackId: FeedbackId.macroPlaying, options: { macro: macro.uuid }, style: { bgcolor: GREEN } }],
+			steps: onPress({ actionId: ActionId.macroControl, options: { macro: id, action: 'play' } }),
+			feedbacks: [{ feedbackId: FeedbackId.macroPlaying, options: { macro: id }, style: { bgcolor: GREEN } }],
 		})
-		addPreset('Macros', 'Global', `${macro.uuid}.stop`, {
+		addPreset('Macros', 'Global', `${path}.stop`, {
 			name: `${name} Stop`,
 			style: style(`${name}\\nSTOP`, 'auto', RED),
-			steps: onPress({ actionId: ActionId.macroControl, options: { macro: macro.uuid, action: 'stop' } }),
+			steps: onPress({ actionId: ActionId.macroControl, options: { macro: id, action: 'stop' } }),
 		})
 	}
 	for (const macro of instance.state.sceneMacros) {
-		const macroId = `${macro.sceneName}/macros/${macro.uuid}`
-		addPreset('Macros', 'Scene', `${macro.uuid}.play`, {
-			name: `${macro.name} Play`,
-			style: style(`${macro.name}\\nPLAY`, 'auto', BLACK),
-			steps: onPress({ actionId: ActionId.macroSceneControl, options: { macro: macroId, action: 'play' } }),
-			feedbacks: [{ feedbackId: FeedbackId.sceneMacroPlaying, options: { macro: macroId }, style: { bgcolor: GREEN } }],
+		const path = sceneMacroPath(macro)
+		const id = sceneMacroId(path)
+		const name = `${sceneFullName(macro.path, macro.sceneName)}/${macro.macroName}`
+		addPreset('Macros', 'Scene', `${path}.play`, {
+			name: `${name} Play`,
+			style: style(`${name}\\nPLAY`, 'auto', BLACK),
+			steps: onPress({ actionId: ActionId.macroSceneControl, options: { macro: id, action: 'play' } }),
+			feedbacks: [{ feedbackId: FeedbackId.sceneMacroPlaying, options: { macro: id }, style: { bgcolor: GREEN } }],
 		})
-		addPreset('Macros', 'Scene', `${macro.uuid}.stop`, {
-			name: `${macro.name} Stop`,
-			style: style(`${macro.name}\\nSTOP`, 'auto', RED),
-			steps: onPress({ actionId: ActionId.macroSceneControl, options: { macro: macroId, action: 'stop' } }),
+		addPreset('Macros', 'Scene', `${path}.stop`, {
+			name: `${name} Stop`,
+			style: style(`${name}\\nSTOP`, 'auto', RED),
+			steps: onPress({ actionId: ActionId.macroSceneControl, options: { macro: id, action: 'stop' } }),
+		})
+	}
+
+	for (const { id } of instance.state.panelMacros) {
+		addPreset('Macros', 'Panel', `${id}.play`, {
+			name: `${id} Play`,
+			style: style(`${id.split('/').at(-1)}\\nPLAY`, 'auto', BLACK),
+			steps: onPress({ actionId: ActionId.macroPanelControl, options: { macro: id, action: 'play' } }),
+			feedbacks: [{ feedbackId: FeedbackId.panelMacroPlaying, options: { macro: id }, style: { bgcolor: GREEN } }],
+		})
+		addPreset('Macros', 'Panel', `${id}.stop`, {
+			name: `${id} Stop`,
+			style: style(`${id.split('/').at(-1)}\\nSTOP`, 'auto', RED),
+			steps: onPress({ actionId: ActionId.macroPanelControl, options: { macro: id, action: 'stop' } }),
 		})
 	}
 
@@ -248,15 +288,19 @@ export function getPresets(instance: KairosInstance): {
 			style: style(mediaStillLabel(still), 'auto', PURPLE),
 			steps: onPress({
 				actionId: ActionId.setMediaStill,
-				options: { layer: firstLayer?.uuid ?? '', sourceAB: 'sourceA', source: still },
+				options: {
+					layer: firstLayer ? layerId(refToPath(firstLayer.ref)) : '',
+					sourceAB: 'sourceA',
+					source: stillId(still),
+				},
 			}),
 			feedbacks: [
 				{
 					feedbackId: FeedbackId.inputMediaStill,
 					options: {
-						layer: firstLayer ? layerFeedbackId(firstLayer) : '',
+						layer: firstLayer ? layerId(refToPath(firstLayer.ref)) : '',
 						sourceAB: 'sourceA',
-						source: still,
+						source: stillId(still),
 					},
 					style: { bgcolor: RED },
 				},
@@ -271,23 +315,24 @@ export function getPresets(instance: KairosInstance): {
 			addPreset('Multiviewers', multiviewer.name, `${multiviewer.uuid}${preset.id}`, {
 				name: `${multiviewer.name} - ${preset.name}`,
 				style: style(preset.name, 'auto', BLACK),
-				steps: onPress({ actionId: ActionId.mvRecall, options: { mv: multiviewer.uuid, preset: preset.id } }),
+				steps: onPress({
+					actionId: ActionId.mvRecall,
+					options: { mv: multiviewerId(multiviewer.uuid), preset: preset.id },
+				}),
 			})
 		}
 	}
 
 	// Scene actions
-	for (const scene of instance.state.scenes) {
-		for (const action of scene.actions) {
-			addPreset('Scene Actions', scene.name, action.uuid, {
-				name: `${scene.name}/${action.name}`,
-				style: style(action.name, 'auto', BLACK),
-				steps: onPress({
-					actionId: ActionId.runAction,
-					options: { action: `/${scene.name}/actions/${action.uuid}` },
-				}),
-			})
-		}
+	for (const action of instance.state.sceneActions) {
+		addPreset('Scene Actions', action.sceneName, action.uuid, {
+			name: `${sceneFullName(action.path, action.sceneName)}/${sceneActionLabel(action.name)}`,
+			style: style(sceneActionLabel(action.name), 'auto', BLACK),
+			steps: onPress({
+				actionId: ActionId.runAction,
+				options: { action: sceneActionId(`/${action.sceneName}/actions/${action.uuid}`) },
+			}),
+		})
 	}
 
 	// Audio: each press toggles mute, and the button is active while muted

@@ -1,13 +1,5 @@
 import { combineRgb, type CompanionInputFieldDropdown } from '@companion-module/base'
-import { MacroStatus } from 'kairos-connection'
-
-interface input {
-	index: number
-	name: string
-	tally: number
-	uuid: string
-	shortcut: string
-}
+import { MacroStatus, protocolDecodeStr } from 'kairos-connection'
 
 export enum updateFlags {
 	onlyVariables = 1,
@@ -113,6 +105,8 @@ export const options: Options = {
 		label: 'Channel',
 		id: 'channel',
 		default: 'Channel 1',
+		allowInvalidValues: true,
+		tooltip: 'In an expression, give the channel as `Channel 1` to `Channel 16`',
 		choices: [
 			{ id: 'Channel 1', label: 'Channel 1' },
 			{ id: 'Channel 2', label: 'Channel 2' },
@@ -134,26 +128,6 @@ export const options: Options = {
 	},
 }
 
-export const createUUID = (): string => {
-	let dt: number = new Date().getTime()
-	const uuid: string = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-		const r: number = ((dt + Math.random() * 16) % 16) | 0
-		dt = Math.floor(dt / 16)
-		return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
-	})
-	return uuid
-}
-
-export const createInputWithName = (name: string): input => {
-	return {
-		index: 999,
-		name: name,
-		tally: 0,
-		uuid: createUUID(),
-		shortcut: name,
-	}
-}
-
 /**
  * A readable name for a media still path, e.g. `MEDIA.stills.Logos.Intro&#46;rr` is `Logos/Intro.rr`
  */
@@ -161,8 +135,18 @@ export const mediaStillLabel = (path: string): string =>
 	path
 		.replace(/^MEDIA\.stills\./, '')
 		.split('.')
-		.map((part) => part.replace(/&#46;/g, '.'))
+		.map(protocolDecodeStr)
 		.join('/')
+
+/**
+ * A readable name for a scene action, e.g. `Background:show_layer` is `Background: Show Layer`
+ */
+export const sceneActionLabel = (name: string): string =>
+	name
+		.replace(/_+/g, ' ')
+		.replace(/\s*:\s*/g, ': ')
+		.replace(/(^|[\s:])(\w)/g, (_match, before: string, letter: string) => before + letter.toUpperCase())
+		.trim()
 
 export const WHITE = combineRgb(255, 255, 255)
 export const BLACK = combineRgb(0, 0, 0)

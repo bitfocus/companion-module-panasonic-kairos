@@ -1,11 +1,9 @@
 import type KairosInstance from './index.js'
-import { INTERNAL_SOURCES, type MixerState } from './state.js'
+import { mergeRestIds, type MixerState } from './state.js'
 import { InstanceStatus } from '@companion-module/base'
 import { FeedbackId } from './feedback.js'
 import type { SourceStatus } from './status.js'
-import { layerRef, macroRef } from './refs.js'
-import { createInputWithName, updateFlags } from './utils.js'
-import { refAuxName } from 'kairos-connection'
+import { updateFlags } from './utils.js'
 
 const POLL_INTERVAL_MS = 5000
 const REQUEST_TIMEOUT_MS = 4000
@@ -26,6 +24,20 @@ class RestHttpError extends Error {
 	) {
 		super(`HTTP ${status} ${statusText}${detail ? ` (${detail})` : ''}`)
 	}
+}
+
+/**
+ * A scene as REST lists it. TCP lists the scenes and what is in them; REST is read for the scene actions, which TCP
+ * doesn't list, and, like the macros and AUXes, for the UUIDs that older buttons stored.
+ */
+type RestScene = {
+	name: string
+	path?: string
+	uuid: string
+	layers?: { name: string; uuid: string }[]
+	macros?: { name: string; uuid: string }[]
+	snapshots?: { name: string; uuid: string }[]
+	actions?: { name: string; uuid: string }[]
 }
 
 export class REST {
@@ -59,38 +71,49 @@ export class REST {
 	}
 
 	private async pullState(): Promise<void> {
-		const [scenes, auxes, macros, multiviewers] = await Promise.allSettled([
-			this.readScenes(),
-			this.readList<Omit<MixerState['auxes'][number], 'ref'>>('/aux').then((list) =>
-				list.map((aux) => ({ ...aux, ref: refAuxName(aux.name) })),
-			),
-			this.readList<Omit<MixerState['macros'][number], 'ref'>>('/macros').then((list) =>
-				list.map((macro) => ({ ...macro, ref: macroRef(macro.path, macro.name) })),
-			),
+		const [scenes, macros, auxes, multiviewers] = await Promise.allSettled([
+			this.readList<RestScene>('/scenes'),
+			this.readList<{ name: string; path: string; uuid: string }>('/macros'),
+			this.readList<{ name: string; uuid: string }>('/aux'),
 			this.readList<MixerState['multiviewers'][number]>('/multiviewers'),
 		])
 		if (this.lifetime.signal.aborted) return
 
 		const state = this.instance.state
-		if (scenes.status === 'fulfilled') Object.assign(state, scenes.value)
-		if (auxes.status === 'fulfilled') state.auxes = auxes.value
-		if (macros.status === 'fulfilled') state.macros = macros.value
+		if (scenes.status === 'fulfilled') {
+			state.sceneActions = scenes.value.flatMap((scene) =>
+				(scene.actions ?? []).map((action) => ({ ...action, sceneName: scene.name, path: scene.path ?? '' })),
+			)
+			const inScene = (
+				scene: RestScene,
+				items: { name: string; uuid: string }[] | undefined,
+				id: (uuid: string) => string,
+			) =>
+				(items ?? []).map((item): [string, string] => [`${scene.path ?? ''}${scene.name}/${item.name}`, id(item.uuid)])
+			state.restIds = {
+				...state.restIds,
+				layers: new Map(
+					scenes.value.flatMap((scene) => inScene(scene, scene.layers, (uuid) => `/${scene.uuid}/${uuid}`)),
+				),
+				sceneMacros: new Map(scenes.value.flatMap((scene) => inScene(scene, scene.macros, (uuid) => uuid))),
+				snapshots: new Map(scenes.value.flatMap((scene) => inScene(scene, scene.snapshots, (uuid) => uuid))),
+			}
+		}
+		if (macros.status === 'fulfilled')
+			state.restIds = {
+				...state.restIds,
+				macros: new Map(macros.value.map((macro): [string, string] => [`${macro.path}${macro.name}`, macro.uuid])),
+			}
+		if (auxes.status === 'fulfilled')
+			state.restIds = {
+				...state.restIds,
+				auxes: new Map(auxes.value.map((aux): [string, string] => [aux.name, aux.uuid])),
+			}
 		if (multiviewers.status === 'fulfilled') state.multiviewers = multiviewers.value
+		mergeRestIds(state)
 
-		const pulls = { scenes, auxes, macros, multiviewers }
+		const pulls = { scenes, macros, auxes, multiviewers }
 		if (Object.values(pulls).some((result) => result.status === 'fulfilled')) {
-			// Source choices describe the current catalog. Keep the existing input objects for names that still exist.
-			const inputsByName = new Map(state.inputs.map((input) => [input.name, input]))
-			const names = new Set<string>(INTERNAL_SOURCES)
-			for (const scene of state.scenes) {
-				for (const layer of scene.layers ?? []) {
-					for (const source of layer.sources ?? []) names.add(source)
-				}
-			}
-			for (const aux of state.auxes) {
-				for (const source of aux.sources ?? []) names.add(source)
-			}
-			state.inputs = Array.from(names, (name) => inputsByName.get(name) ?? createInputWithName(name))
 			this.instance.updateInstance(updateFlags.All)
 			this.instance.checkFeedbacks(
 				FeedbackId.aux,
@@ -98,6 +121,7 @@ export class REST {
 				FeedbackId.inputMediaStill,
 				FeedbackId.macroPlaying,
 				FeedbackId.sceneMacroPlaying,
+				FeedbackId.panelMacroPlaying,
 			)
 		}
 
@@ -125,35 +149,6 @@ export class REST {
 			this.setStatus(InstanceStatus.BadConfig, 'Authentication failed, check the username and password')
 		else if (errors.length === Object.keys(pulls).length) this.setStatus(InstanceStatus.UnknownError, errors[0].message)
 		else this.setStatus(InstanceStatus.Ok, null)
-	}
-
-	private async readScenes(): Promise<Pick<MixerState, 'scenes' | 'layers' | 'sceneMacros' | 'snapshots'>> {
-		const data = await this.readList<MixerState['scenes'][number]>('/scenes')
-		const scenes = data.map((scene) => ({ ...scene, actions: scene.actions ?? [] }))
-		const layers = scenes.flatMap((scene) =>
-			(scene.layers ?? []).map((layer) => ({
-				path: scene.path,
-				sceneName: scene.name,
-				layerName: layer.name,
-				sourceA: layer.sourceA,
-				sourceB: layer.sourceB,
-				uuid: `/${scene.uuid}/${layer.uuid}`,
-				ref: layerRef(scene.path, scene.name, layer.name),
-			})),
-		)
-		const sceneMacros = scenes.flatMap((scene) =>
-			(scene.macros ?? []).map((macro) => ({
-				...macro,
-				name: `${scene.path ?? ''}${scene.name}-${macro.name}`,
-				macroName: macro.name,
-				sceneName: scene.name,
-				path: scene.path ?? '',
-			})),
-		)
-		const snapshots = scenes.flatMap((scene) =>
-			(scene.snapshots ?? []).map((snapshot) => ({ ...snapshot, sceneName: scene.name })),
-		)
-		return { scenes, layers, sceneMacros, snapshots }
 	}
 
 	private async readList<T>(path: string): Promise<T[]> {

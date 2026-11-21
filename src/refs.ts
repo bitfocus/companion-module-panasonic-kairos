@@ -1,17 +1,15 @@
 import {
+	isAnyInputRef,
 	parseAnySourceRef,
+	protocolDecodeStr,
 	protocolEncodeStr,
 	refAudioPlayer,
 	refAudioMixerChannel,
 	refClipPlayer,
 	refMacro,
-	refMatte,
 	refRamRecorder,
 	refScene,
 	refSceneLayer,
-	refSourceBase,
-	refSourceInt,
-	refStreamInput,
 	refToPath,
 	type MacroRef,
 	type SceneLayerRef,
@@ -31,16 +29,8 @@ const folderParts = (path: string | undefined): string[] => (path ?? '').split('
  */
 export const sceneFullName = (path: string | undefined, sceneName: string): string => `${path ?? ''}${sceneName}`
 
-/** The id the layer feedbacks use for a layer, e.g. `/Templates/2Box/Background` */
-export const layerFeedbackId = (layer: Layer): string =>
-	`/${sceneFullName(layer.path, layer.sceneName)}/${layer.layerName}`
-
-/**
- * Finds a layer by its feedback id, or by the id stored before scenes in folders were told apart (`/2Box/Background`)
- */
-export const findLayerByFeedbackId = (layers: Layer[], id: string): Layer | undefined =>
-	layers.find((layer) => layerFeedbackId(layer) === id) ??
-	layers.find((layer) => `/${layer.sceneName}/${layer.layerName}` === id)
+/** A layer's full name, with its scene's folder, e.g. `Templates/2Box/Background` */
+export const layerPath = (layer: Layer): string => `${sceneFullName(layer.path, layer.sceneName)}/${layer.layerName}`
 
 export const sceneRef = (path: string | undefined, sceneName: string): SceneRef =>
 	refScene([...folderParts(path), sceneName])
@@ -67,47 +57,35 @@ export const allPlayers = (): MixerState['players'] =>
 export const sceneMacroPath = (macro: SceneMacro): string =>
 	`${refToPath(sceneRef(macro.path, macro.sceneName))}.Macros.${protocolEncodeStr(macro.macroName)}`
 
-const protocolDecode = (value: string): string =>
-	value.replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))
+/** Whether a source's protocol path is an input's (`IP1`, `NDI1`, `STREAM1`…) */
+export function isInputPath(path: string): boolean {
+	try {
+		return isAnyInputRef(parseAnySourceRef(path))
+	} catch {
+		return false
+	}
+}
 
-// REST names the RAM recorders RAM1..8, TCP RR1..8
-const REST_RAM_RECORDER = /^RAM(\d+)$/
-const TCP_RAM_RECORDER = /^RR(\d+)$/
-const REST_STREAM_INPUT = /^Stream([1-8])$/i
-
-/**
- * TCP reports a source by its protocol path (`BLACK`, `MATTES.ColA`, `SCENES.Templates.2Box`) where REST, and so the
- * feedbacks and action options, use its name (`Black`, `ColA`, `2Box`)
- */
-export function sourceName(value: string, knownNames: string[]): string {
-	if (value.startsWith('MEDIA.')) return value
-	const ramRecorder = TCP_RAM_RECORDER.exec(value)
-	if (ramRecorder) return `RAM${ramRecorder[1]}`
-	const last = protocolDecode(value.split('.').at(-1) ?? value)
-	return knownNames.find((name) => name.toLowerCase() === last.toLowerCase()) ?? last
+/** Sources stored by the name REST gave them, which differs from their protocol path */
+const NAMED_SOURCES: Record<string, string> = {
+	BLACK: 'Black',
+	WHITE: 'White',
+	AUDIOMIXER: 'AudioMixer',
+	AUDIOMONITOR: 'MonitorOut',
 }
 
 /**
- * The protocol path for a source REST names, which is what the mixer accepts over TCP
- * @param scenes the scenes from REST, as a scene can be the source of a layer
+ * What the Source options store for a source TCP lists by its protocol path. Inputs keep their fixed name (`NDI1`);
+ * other sources the name they were stored by before (`BLACK` is `Black`, `RR1` is `RAM1`, `MATTES.ColA` is `ColA`),
+ * except scenes, which get their full name (`SCENES.Templates.2Box` is `Templates/2Box`).
  */
-export function sourcePath(name: string, scenes: { path: string; name: string }[]): string {
-	try {
-		return refToPath(parseAnySourceRef(name))
-	} catch {
-		// Not already a protocol path
-	}
-	const ramRecorder = REST_RAM_RECORDER.exec(name)
-	if (ramRecorder) return refToPath(refRamRecorder(Number(ramRecorder[1])))
-	const streamInput = REST_STREAM_INPUT.exec(name)
-	if (streamInput) return refToPath(refStreamInput(Number(streamInput[1])))
-	const lower = name.toLowerCase()
-	if (lower === 'black') return refToPath(refSourceBase(['BLACK']))
-	if (lower === 'white') return refToPath(refSourceBase(['WHITE']))
-	if (lower === 'colorbar') return refToPath(refSourceInt(['ColorBar']))
-	if (lower === 'colorcircle') return refToPath(refSourceInt(['ColorCircle']))
-	const scene = scenes.find((s) => s.name === name)
-	if (scene) return refToPath(sceneRef(scene.path, scene.name))
-	// Every other named source is a colour matte
-	return refToPath(refMatte([name]))
+export function sourceId(path: string): string {
+	if (isInputPath(path) || path.startsWith('MEDIA.')) return path
+	const named = NAMED_SOURCES[path]
+	if (named) return named
+	const ramRecorder = /^RR(\d+)$/.exec(path)
+	if (ramRecorder) return `RAM${ramRecorder[1]}`
+	const parts = path.split('.').map(protocolDecodeStr)
+	if (parts[0] === 'SCENES') return parts.slice(1).join('/')
+	return parts.at(-1) ?? path
 }
