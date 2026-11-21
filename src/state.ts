@@ -36,16 +36,22 @@ export type MixerState = {
 	}[]
 	/** Macros on the control panel profiles, from TCP: `id` is how options store them, e.g. `PANELPROFILES/Profile1/Rec-1` */
 	panelMacros: { id: string; path: string }[]
-	/** Every AUX output in use, by its fixed name (`NDI-AUX1`), with its source options as protocol paths, from TCP */
-	auxes: { slot: string; name: string; sourceOptions: string[] }[]
+	/**
+	 * Every AUX output in use, by its fixed name (`NDI-AUX1`), with its source options as protocol paths, from TCP.
+	 * `restId` is REST's UUID, which older buttons could store.
+	 */
+	auxes: { slot: string; name: string; sourceOptions: string[]; restId?: string }[]
 	/** Global macros, from TCP, with their folder path (`Show/`). `uuid` is REST's, which older buttons stored. */
 	macros: { path: string; name: string; ref: MacroRef; uuid?: string }[]
 	/** Scene macros, from TCP */
 	sceneMacros: { sceneName: string; path: string; macroName: string; uuid?: string }[]
 	/** Scene snapshots, from TCP */
 	snapshots: { name: string; sceneName: string; path: string; uuid?: string }[]
-	/** What REST calls each layer, macro and snapshot, by full name (`Templates/2Box/Background`), merged into the above */
-	restIds: Record<'layers' | 'macros' | 'sceneMacros' | 'snapshots', ReadonlyMap<string, string>>
+	/**
+	 * What REST calls each layer, macro and snapshot, by full name (`Templates/2Box/Background`), and each AUX, by its
+	 * name, merged into the above
+	 */
+	restIds: Record<'layers' | 'macros' | 'sceneMacros' | 'snapshots' | 'auxes', ReadonlyMap<string, string>>
 	multiviewers: {
 		index: number
 		name: string
@@ -67,7 +73,7 @@ export const emptyMixerState = (): MixerState => ({
 	mediaStills: [],
 	scenes: [],
 	sceneActions: [],
-	restIds: { layers: new Map(), macros: new Map(), sceneMacros: new Map(), snapshots: new Map() },
+	restIds: { layers: new Map(), macros: new Map(), sceneMacros: new Map(), snapshots: new Map(), auxes: new Map() },
 	layers: [],
 	auxes: [],
 	macros: [],
@@ -100,7 +106,7 @@ function withIds<T extends object, K extends keyof T>(list: T[], field: K, idOf:
 	return list.map((item) => ({ ...item, [field]: idOf(item) }))
 }
 
-/** Merges what REST calls each layer, macro and snapshot into the lists TCP gives */
+/** Merges what REST calls each layer, macro, snapshot and AUX into the lists TCP gives */
 export function mergeRestIds(state: MixerState): void {
 	const { restIds } = state
 	const inScene = (item: { path: string; sceneName: string }, name: string) => `${item.path}${item.sceneName}/${name}`
@@ -112,6 +118,19 @@ export function mergeRestIds(state: MixerState): void {
 	state.snapshots = withIds(state.snapshots, 'uuid', (snapshot) =>
 		restIds.snapshots.get(inScene(snapshot, snapshot.name)),
 	)
+	state.auxes = withIds(state.auxes, 'restId', (aux) => restIds.auxes.get(aux.name))
+}
+
+const layersByPath = new WeakMap<MixerState['layers'], ReadonlyMap<string, MixerState['layers'][number]>>()
+
+/** A layer by its protocol path, from a map built once per list of layers, as feedbacks look layers up often */
+export function findLayer(state: MixerState, path: string): MixerState['layers'][number] | undefined {
+	let byPath = layersByPath.get(state.layers)
+	if (!byPath) {
+		byPath = new Map(state.layers.map((layer) => [refToPath(layer.ref), layer]))
+		layersByPath.set(state.layers, byPath)
+	}
+	return byPath.get(path)
 }
 
 /** A layer's source, as its protocol path, from TCP */

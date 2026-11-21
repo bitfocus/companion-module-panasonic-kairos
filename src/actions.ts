@@ -1,5 +1,12 @@
 import type { CompanionActionDefinitions } from '@companion-module/base'
-import { refToPath, type KairosConnection } from 'kairos-connection'
+import {
+	refScene,
+	refSceneTransition,
+	refToPath,
+	type KairosConnection,
+	type SceneRef,
+	type SceneTransitionRef,
+} from 'kairos-connection'
 import { multiviewerPresetChoices, options, type MuteValue, type SourceAB } from './utils.js'
 import {
 	auxCatalog,
@@ -19,7 +26,7 @@ import {
 	transitionCatalog,
 } from './choices.js'
 import type KairosInstance from './index.js'
-import type { MixerState, PlayerRef } from './state.js'
+import { findLayer, type MixerState, type PlayerRef } from './state.js'
 import { audioMutePath, masterMutePath, playerRepeatPath, sceneFullName, sceneRef } from './refs.js'
 
 export enum ActionId {
@@ -129,12 +136,44 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 		runTcp(`${name} ${path}`, async (kairos) => kairos.executeFunction(`${path}.${name}`))
 
 	const scenes = sceneCatalog(instance.state)
-	const findScene = (id: string) => instance.state.scenes.find((scene) => sceneFullName(scene.path, scene.name) === id)
+	/** A scene, from its name (`Templates/2Box`) where it is not listed yet */
+	const findScene = (id: string): SceneRef => {
+		const scene = instance.state.scenes.find((entry) => sceneFullName(entry.path, entry.name) === id)
+		return scene ? sceneRef(scene.path, scene.name) : refScene(id.split('/'))
+	}
 	const transitions = transitionCatalog(instance.state)
-	const findTransition = (id: string) =>
-		instance.state.transitions.find(
-			(transition) => `${sceneFullName(transition.path, transition.sceneName)}.${transition.name}` === id,
+	/**
+	 * A transition, from its name (`Templates/2Box/BgdMix`, or `Main.BgdMix` as it was stored before) where it is not
+	 * listed yet
+	 */
+	const findTransition = (id: string): SceneTransitionRef | undefined => {
+		const transition = instance.state.transitions.find(
+			(entry) => `${sceneFullName(entry.path, entry.sceneName)}.${entry.name}` === id,
 		)
+		if (transition) return transition.ref
+		const split = id.includes('/') ? id.lastIndexOf('/') : id.lastIndexOf('.')
+		if (split <= 0) return undefined
+		return refSceneTransition(refScene(id.slice(0, split).split('/')), [id.slice(split + 1)])
+	}
+	const runTransition = async (value: string, kind: 'auto' | 'cut') => {
+		const ref = findTransition(transitionCatalog(instance.state).resolve(value))
+		if (!ref) {
+			instance.log('error', `Cannot run KAIROS transition: transition ${value || '(none selected)'} was not found`)
+			return
+		}
+		return runTcp(`${kind} transition ${value}`, async (kairos) =>
+			kind === 'auto' ? kairos.sceneTransitionTransitionAuto(ref) : kairos.sceneTransitionTransitionCut(ref),
+		)
+	}
+	const runScene = async (value: string, kind: 'auto' | 'cut') => {
+		const id = sceneCatalog(instance.state).resolve(value)
+		if (!id) {
+			instance.log('error', 'Cannot run KAIROS scene: no scene selected')
+			return
+		}
+		const ref = findScene(id)
+		return runTcp(`${kind} ${id}`, async (kairos) => (kind === 'auto' ? kairos.sceneAuto(ref) : kairos.sceneCut(ref)))
+	}
 
 	const mvPresetChoices = multiviewerPresetChoices(instance.state.multiviewers)
 	const sources = sourceCatalog(instance.state)
@@ -185,8 +224,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 			],
 			callback: async ({ options: { layer: value, sourceAB, source } }) => {
-				const id = layerCatalog(instance.state).resolve(value)
-				const layer = instance.state.layers.find((entry) => refToPath(entry.ref) === id)
+				const layer = findLayer(instance.state, layerCatalog(instance.state).resolve(value))
 				if (layer) return setLayerSource(layer, sourceAB, sourceCatalog(instance.state).resolve(source))
 				instance.log('error', `Cannot set KAIROS layer source: layer ${value || '(none selected)'} was not found`)
 				return
@@ -246,8 +284,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 				},
 			],
 			callback: async ({ options: { layer: value, sourceAB, source } }) => {
-				const id = layerCatalog(instance.state).resolve(value)
-				const layer = instance.state.layers.find((entry) => refToPath(entry.ref) === id)
+				const layer = findLayer(instance.state, layerCatalog(instance.state).resolve(value))
 				if (layer) return setLayerSource(layer, sourceAB, mediaStillCatalog(instance.state).resolve(source))
 				instance.log('error', `Cannot set KAIROS media still: layer ${value || '(none selected)'} was not found`)
 				return
@@ -266,13 +303,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: async (action) => {
-				const id = sceneCatalog(instance.state).resolve(action.options.scene)
-				const scene = findScene(id)
-				if (scene)
-					return runTcp(`cut ${scene.name}`, async (kairos) => kairos.sceneCut(sceneRef(scene.path, scene.name)))
-				return sendLegacyCommand(`SCENES.${id}.cut`)
-			},
+			callback: async (action) => runScene(action.options.scene, 'cut'),
 		},
 		[ActionId.programAuto]: {
 			name: 'Scenes - Auto Transition',
@@ -286,13 +317,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: async (action) => {
-				const id = sceneCatalog(instance.state).resolve(action.options.scene)
-				const scene = findScene(id)
-				if (scene)
-					return runTcp(`auto ${scene.name}`, async (kairos) => kairos.sceneAuto(sceneRef(scene.path, scene.name)))
-				return sendLegacyCommand(`SCENES.${id}.auto`)
-			},
+			callback: async (action) => runScene(action.options.scene, 'auto'),
 		},
 		[ActionId.autoTransition]: {
 			name: 'Transitions - Auto',
@@ -307,15 +332,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: async (action) => {
-				const id = transitionCatalog(instance.state).resolve(action.options.layer)
-				const transition = findTransition(id)
-				if (transition)
-					return runTcp(`auto transition ${transition.sceneName}/${transition.name}`, async (kairos) =>
-						kairos.sceneTransitionTransitionAuto(transition.ref),
-					)
-				return sendLegacyCommand(`SCENES.${id}.transition_auto`)
-			},
+			callback: async (action) => runTransition(action.options.layer, 'auto'),
 		},
 		[ActionId.cutTransition]: {
 			name: 'Transitions - Cut',
@@ -330,15 +347,7 @@ export function getActions(instance: KairosInstance): CompanionActionDefinitions
 					allowInvalidValues: true,
 				},
 			],
-			callback: async (action) => {
-				const id = transitionCatalog(instance.state).resolve(action.options.layer)
-				const transition = findTransition(id)
-				if (transition)
-					return runTcp(`cut transition ${transition.sceneName}/${transition.name}`, async (kairos) =>
-						kairos.sceneTransitionTransitionCut(transition.ref),
-					)
-				return sendLegacyCommand(`SCENES.${id}.transition_cut`)
-			},
+			callback: async (action) => runTransition(action.options.layer, 'cut'),
 		},
 		//AUX
 		[ActionId.setAUX]: {

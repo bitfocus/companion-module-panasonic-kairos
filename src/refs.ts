@@ -1,6 +1,7 @@
 import {
 	isAnyInputRef,
 	parseAnySourceRef,
+	protocolDecodeStr,
 	protocolEncodeStr,
 	refAudioPlayer,
 	refAudioMixerChannel,
@@ -56,9 +57,6 @@ export const allPlayers = (): MixerState['players'] =>
 export const sceneMacroPath = (macro: SceneMacro): string =>
 	`${refToPath(sceneRef(macro.path, macro.sceneName))}.Macros.${protocolEncodeStr(macro.macroName)}`
 
-const protocolDecode = (value: string): string =>
-	value.replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))
-
 /** Whether a source's protocol path is an input's (`IP1`, `NDI1`, `STREAM1`…) */
 export function isInputPath(path: string): boolean {
 	try {
@@ -87,7 +85,7 @@ export function sourceId(path: string): string {
 	if (named) return named
 	const ramRecorder = /^RR(\d+)$/.exec(path)
 	if (ramRecorder) return `RAM${ramRecorder[1]}`
-	const parts = path.split('.').map(protocolDecode)
+	const parts = path.split('.').map(protocolDecodeStr)
 	if (parts[0] === 'SCENES') return parts.slice(1).join('/')
 	return parts.at(-1) ?? path
 }

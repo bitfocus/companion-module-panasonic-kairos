@@ -1,5 +1,5 @@
 import { combineRgb, type CompanionInputFieldDropdown } from '@companion-module/base'
-import { MacroStatus } from 'kairos-connection'
+import { MacroStatus, protocolDecodeStr } from 'kairos-connection'
 
 export enum updateFlags {
 	onlyVariables = 1,
@@ -135,7 +135,7 @@ export const mediaStillLabel = (path: string): string =>
 	path
 		.replace(/^MEDIA\.stills\./, '')
 		.split('.')
-		.map((part) => part.replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code))))
+		.map(protocolDecodeStr)
 		.join('/')
 
 /**

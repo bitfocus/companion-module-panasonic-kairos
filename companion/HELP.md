@@ -17,7 +17,7 @@ The module uses two connections to the KAIROS, and needs both:
 | Username      | `Kairos`      |
 | Password      | (empty)       |
 
-The connection turns green once both are connected, and lists in the actions fill in a few seconds later. Changes made on the KAIROS (new scenes, layers, macros…) appear within about ten seconds.
+The connection turns green once both are connected, and lists in the actions fill in a few seconds later. Changes made on the KAIROS (new scenes, layers, transitions, macros, stills…) appear within about 15 seconds.
 
 > Avoid special characters in the names of scenes, layers and sources: some can't be used in actions or variables.
 

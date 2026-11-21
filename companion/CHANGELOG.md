@@ -7,7 +7,7 @@ All notable changes to the Panasonic KAIROS module are documented in this file. 
 ### Breaking changes
 
 - This release requires Companion 5.0 or later and uses module API 2.1 and Node.js 26.
-- Layers, scene actions, global and scene macros and snapshots are saved by name (e.g. `Templates/2Box/Background`, `Show/Intro`) instead of by the KAIROS's internal ids, which differ on each KAIROS. Upgrading switches options saved by id to expressions holding the old id, so they keep working on the KAIROS they were made on; choose the item again from the list to save it by name. Layer feedbacks saved without the scene's folder become expressions too.
+- Layers, scene actions, global and scene macros and snapshots are saved by name (e.g. `Templates/2Box/Background`, `Show/Intro`) instead of by the KAIROS's internal ids, which differ on each KAIROS. Upgrading switches options saved by id, including AUXes saved by UUID, to expressions holding the old id, so they keep working on the KAIROS they were made on; choose the item again from the list to save it by name.
 - Renaming a scene, layer, scene action, macro, snapshot, transition or still image on the KAIROS breaks the buttons that use it, until it is chosen again.
 - Inputs, AUXes and multiviewers are saved by their fixed name (`IP1`, `NDI1`, `NDI-AUX1`, `MV1`), which survives renames. Input and AUX variables are named the same way, so `INPUT.<name>` and `AUX.<name>.source` become e.g. `INPUT.NDI1` and `AUX.NDI-AUX1.source`; inputs that were never renamed keep their variable. AUX buttons saved by name keep working.
 - An option switched to an expression must give exactly what its list saves, including the case. See **Using expressions** in the help.
@@ -31,7 +31,7 @@ All notable changes to the Panasonic KAIROS module are documented in this file. 
 - List renamed inputs, AUXes and multiviewers by both names, e.g. `Camera 1 (NDI1)`.
 - Show scene actions with readable names, e.g. `Background: Show Layer` for `Background:show_layer`.
 - Name snapshots with their scene's folder, e.g. `Templates/2Box/Snap 1`.
-- Save transitions and still images with `/` between the parts, like everything else (`Templates/2Box/BgdMix`, `Logos/Intro.rr`), instead of as their protocol path (`Templates/2Box.BgdMix`, `MEDIA.stills.Logos.Intro&#46;rr`). Saved values are converted when upgrading; transitions saved before 5.0, without the scene's folder, become expressions holding the old value.
+- Save transitions and still images with `/` between the parts, like everything else (`Templates/2Box/BgdMix`, `Logos/Intro.rr`), instead of as their protocol path (`Templates/2Box.BgdMix`, `MEDIA.stills.Logos.Intro&#46;rr`). Saved values are converted when upgrading. Layers and transitions saved before 5.0, without the scene's folder, still find theirs where no other scene has the same name; choose them again to save the folder.
 - Default every dropdown to the first item in its list, instead of leaving it empty.
 - List macros and snapshots with the same name in the same folder once: KAIROS controls them by name, so it can't tell them apart.
 
@@ -41,6 +41,9 @@ All notable changes to the Panasonic KAIROS module are documented in this file. 
 - Update feedbacks quickly in shows with many layers and source buttons.
 - Address scenes and transitions inside folders using their full paths.
 - Keep retrying discovery when the mixer is offline at startup.
+- Keep the lists when the KAIROS is slow to answer, instead of emptying them until the next poll.
+- List new transitions, still images, panel macros and AUX outputs without reconnecting.
+- Run scenes, transitions, macros and snapshots that aren't listed yet, e.g. just after connecting.
 - Log a lost connection once instead of on every retry.
 - Report rejected REST writes and timeouts as action failures. Layer and AUX feedback follows the mixer’s reported state.
 - Migrate saved audio channel selections such as `Channel1` to `Channel 1`.

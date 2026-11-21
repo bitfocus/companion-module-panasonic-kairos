@@ -1,17 +1,11 @@
 import { InstanceStatus } from '@companion-module/base'
-import {
-	KairosConnection,
-	TerminateSubscriptionError,
-	protocolDecodeStr,
-	refSceneTransition,
-	refToPath,
-} from 'kairos-connection'
+import { KairosConnection, TerminateSubscriptionError, refToPath } from 'kairos-connection'
 import type KairosInstance from './index.js'
-import { mergeRestIds, parseBoolean, type MixerState } from './state.js'
-import { discover } from './discovery.js'
+import { mergeRestIds, parseBoolean } from './state.js'
+import { discover, type Discovered } from './discovery.js'
 import { sourcePaths } from './choices.js'
 import { FeedbackId } from './feedback.js'
-import { masterMutePath, audioMutePath, playerRepeatPath, sceneMacroPath, sceneRef, isInputPath } from './refs.js'
+import { masterMutePath, audioMutePath, playerRepeatPath, sceneMacroPath, isInputPath } from './refs.js'
 import { updateFlags } from './utils.js'
 import { updateBasicVariables } from './variables.js'
 
@@ -19,9 +13,8 @@ import { updateBasicVariables } from './variables.js'
 const CONNECT_TIMEOUT_MS = 10000
 const SUBSCRIPTION_RETRY_MS = 5000
 const DISCOVERY_INTERVAL_MS = 10000
-
-/** Where KAIROS keeps the profiles of each kind of control panel, whose macros can be played */
-const PANEL_PROFILES = ['PANELPROFILES', 'CPANELPROFILES', 'SPANELPROFILES']
+/** How long to gather changes, such as the names of every input arriving after connecting, before rebuilding the lists */
+const DEFINITIONS_DELAY_MS = 100
 
 /** A TCP list value (`BLACK,IP1,NDI1,`) as its items */
 const parseList = (value: string): string[] => value.split(',').filter((item) => item !== '')
@@ -42,16 +35,17 @@ export class TCP {
 	private readonly booleanWrites = new Map<string, Promise<void>>()
 	private connectTimer: NodeJS.Timeout | undefined
 	private retryTimer: NodeJS.Timeout | undefined
-	private transitionRequest: { key: string } | undefined
 	private lastErrorMessage: string | null = null
 	private destroyed = false
 	private generation = 0
 	private variablesPending = false
 	private definitionsPending = false
+	private readonly pendingFeedbacks = new Set<FeedbackId>()
 	/** Every AUX output's fixed name, and what TCP has reported about it so far */
 	private auxSlots: string[] = []
 	private discoveryTimer: NodeJS.Timeout | undefined
 	private lastDiscovery = ''
+	private lastDiscoveryErrors = ''
 	private auxInfo = new Map<string, { available?: boolean; name?: string; sourceOptions?: string[] }>()
 
 	constructor(
@@ -135,7 +129,6 @@ export class TCP {
 	public readonly sync = (): void => {
 		if (!this.connected) return
 		this.syncSubscriptions()
-		this.syncTransitions()
 	}
 
 	private readonly onConnect = (): void => {
@@ -170,11 +163,13 @@ export class TCP {
 		this.checkLiveFeedbacks()
 	}
 
+	/** Forgets what TCP reported live. What discovery listed is kept, and replaced by the next discovery. */
 	private invalidate(): void {
 		this.generation++
 		clearTimeout(this.retryTimer)
 		clearTimeout(this.discoveryTimer)
 		this.lastDiscovery = ''
+		this.lastDiscoveryErrors = ''
 		this.retryTimer = undefined
 		this.failedSubscriptions.clear()
 		const subscriptions = [...this.subscriptions.values()]
@@ -182,14 +177,10 @@ export class TCP {
 		this.instance.state.live.clear()
 		for (const { controller } of subscriptions) controller.abort()
 		this.booleanWrites.clear()
-		this.transitionRequest = undefined
-		this.instance.state.transitions = []
-		this.instance.state.mediaStills = []
-		this.auxSlots = []
+		this.pendingFeedbacks.clear()
 		this.auxInfo.clear()
 		this.instance.state.auxes = []
 		this.instance.state.layerSourceOptions = new Map()
-		this.instance.state.panelMacros = []
 	}
 
 	private checkLiveFeedbacks(): void {
@@ -207,37 +198,7 @@ export class TCP {
 	}
 
 	private refresh(): void {
-		const generation = this.generation
-		void this.rediscover(generation)
-		void this.connection
-			.listMediaStills(undefined, true)
-			.then((stills) => {
-				if (generation !== this.generation) return
-				this.instance.state.mediaStills = stills.map((still) => refToPath(still))
-				this.instance.updateInstance(updateFlags.All)
-			})
-			.catch((error: Error) => {
-				if (generation === this.generation) this.instance.log('debug', `Unable to list media stills: ${error.message}`)
-			})
-		void this.listPanelMacros()
-			.then((macros) => {
-				if (generation !== this.generation) return
-				this.instance.state.panelMacros = macros
-				this.instance.updateInstance(updateFlags.All)
-			})
-			.catch((error: Error) => {
-				if (generation === this.generation) this.instance.log('debug', `Unable to list panel macros: ${error.message}`)
-			})
-		void this.connection
-			.listAuxes()
-			.then((auxes) => {
-				if (generation !== this.generation) return
-				this.auxSlots = auxes.map((aux) => refToPath(aux))
-				this.instance.updateInstance(updateFlags.All)
-			})
-			.catch((error: Error) => {
-				if (generation === this.generation) this.instance.log('debug', `Unable to list AUXes: ${error.message}`)
-			})
+		void this.rediscover(this.generation)
 		this.instance.updateInstance(updateFlags.All)
 	}
 
@@ -246,39 +207,6 @@ export class TCP {
 		if (this.destroyed || error.message === this.lastErrorMessage) return
 		this.lastErrorMessage = error.message
 		this.instance.log('debug', `TCP connection error: ${error.message}`)
-	}
-
-	private syncTransitions(): void {
-		const scenes = this.instance.state.scenes
-		const key = JSON.stringify(scenes.map(({ path, name }) => [path, name]))
-		if (key === this.transitionRequest?.key) return
-		const request = { key }
-		this.transitionRequest = request
-		this.instance.state.transitions = []
-		if (scenes.length === 0) return
-
-		void Promise.all(
-			scenes.map(async (scene) => {
-				const ref = sceneRef(scene.path, scene.name)
-				const transitions = await this.connection.listSceneTransitions(ref)
-				return transitions.map((transition) => ({
-					sceneName: scene.name,
-					path: scene.path,
-					name: transition.name,
-					ref: refSceneTransition(ref, transition.transitionPath),
-				}))
-			}),
-		)
-			.then((transitions) => {
-				if (request !== this.transitionRequest) return
-				this.instance.state.transitions = transitions.flat()
-				this.instance.updateInstance(updateFlags.All)
-			})
-			.catch((error: Error) => {
-				if (request !== this.transitionRequest) return
-				this.transitionRequest = undefined
-				this.instance.log('debug', `Unable to list scene transitions: ${error.message}`)
-			})
 	}
 
 	private syncSubscriptions(): void {
@@ -372,7 +300,7 @@ export class TCP {
 				} else if (value !== null) {
 					if (target.onValue) target.onValue(value)
 					else this.instance.state.live.set(path, { value, uuid: target.uuid })
-					this.instance.checkFeedbacks(...target.feedbacks)
+					this.scheduleFeedbacks(target.feedbacks)
 					this.scheduleVariables()
 				}
 			})
@@ -390,7 +318,7 @@ export class TCP {
 			'debug',
 			`KAIROS TCP subscription to ${path} failed: ${error instanceof Error ? error.message : String(error)}`,
 		)
-		this.instance.checkFeedbacks(...subscription.feedbacks)
+		this.scheduleFeedbacks(subscription.feedbacks)
 		this.scheduleVariables()
 		this.retryTimer ??= setTimeout(() => {
 			this.retryTimer = undefined
@@ -399,26 +327,51 @@ export class TCP {
 		}, SUBSCRIPTION_RETRY_MS)
 	}
 
+	/** What discovery has listed so far, which a list that can't be read keeps */
+	private discovered(): Discovered {
+		const { scenes, layers, snapshots, sceneMacros, transitions, macros, mediaStills, panelMacros } =
+			this.instance.state
+		return {
+			scenes,
+			layers,
+			snapshots,
+			sceneMacros,
+			transitions,
+			macros,
+			mediaStills,
+			panelMacros,
+			auxSlots: this.auxSlots,
+		}
+	}
+
 	/**
-	 * Lists the scenes, layers, snapshots and macros, and again every few seconds, as TCP doesn't report new ones. The
-	 * lists are only replaced, and the definitions rebuilt, when something has changed.
+	 * Lists what is on the mixer, and again every few seconds, as TCP doesn't report new items. The lists are only
+	 * replaced, and the definitions rebuilt, when something has changed.
 	 */
 	private async rediscover(generation: number): Promise<void> {
 		try {
-			const found = await discover(this.connection)
+			const { found, errors } = await discover(this.connection, this.discovered())
 			if (generation !== this.generation) return
+			const errorText = errors.join('; ')
+			if (errorText !== this.lastDiscoveryErrors) {
+				this.lastDiscoveryErrors = errorText
+				for (const error of errors) this.instance.log('debug', error)
+			}
 			const json = JSON.stringify(found)
 			if (json !== this.lastDiscovery) {
 				this.lastDiscovery = json
-				Object.assign(this.instance.state, found)
+				const { auxSlots, ...lists } = found
+				Object.assign(this.instance.state, lists)
+				this.auxSlots = auxSlots
 				mergeRestIds(this.instance.state)
+				this.publishAuxes()
 				this.instance.updateInstance(updateFlags.All)
 			}
 		} catch (error) {
 			if (generation === this.generation)
 				this.instance.log(
 					'debug',
-					`Unable to list scenes and macros: ${error instanceof Error ? error.message : String(error)}`,
+					`Unable to list the mixer's contents: ${error instanceof Error ? error.message : String(error)}`,
 				)
 		} finally {
 			if (generation === this.generation && !this.destroyed)
@@ -426,48 +379,48 @@ export class TCP {
 		}
 	}
 
-	/**
-	 * Every macro on the panel, compact panel and S panel profiles (`PANELPROFILES.Profile1.PanelMacros.Rec-1`). Folders
-	 * of macros are listed into; an item with nothing in it is a macro.
-	 */
-	private async listPanelMacros(): Promise<MixerState['panelMacros']> {
-		const list = async (path: string) => this.connection.getList(path).catch(() => [])
-		const macros: MixerState['panelMacros'] = []
-		const walk = async (path: string): Promise<void> => {
-			const items = await list(path)
-			if (items.length === 0) {
-				const [root, profile, , ...name] = path.split('.').map(protocolDecodeStr)
-				macros.push({ id: [root, profile, ...name].join('/'), path })
-			}
-			for (const item of items) await walk(item)
-		}
-		for (const root of PANEL_PROFILES)
-			for (const profile of await list(root)) for (const item of await list(`${profile}.PanelMacros`)) await walk(item)
-		return macros
-	}
-
-	/** Records what an AUX output reported, and publishes the AUXes in use once their name and source options are known */
+	/** Records what an AUX output reported */
 	private updateAux(slot: string, update: { available?: boolean; name?: string; sourceOptions?: string[] }): void {
 		this.auxInfo.set(slot, { ...this.auxInfo.get(slot), ...update })
-		const auxes = this.auxSlots.flatMap((entry) => {
-			const { available, name, sourceOptions } = this.auxInfo.get(entry) ?? {}
-			return available && name !== undefined && sourceOptions ? [{ slot: entry, name, sourceOptions }] : []
+		// A newly available output still needs its name and source options subscribed
+		if (!this.publishAuxes() && update.available) this.scheduleDefinitions()
+	}
+
+	/**
+	 * Publishes the AUXes in use whose name and source options are known
+	 * @returns whether they changed
+	 */
+	private publishAuxes(): boolean {
+		const { restIds } = this.instance.state
+		const auxes = this.auxSlots.flatMap((slot) => {
+			const { available, name, sourceOptions } = this.auxInfo.get(slot) ?? {}
+			if (!available || name === undefined || !sourceOptions) return []
+			return [{ slot, name, sourceOptions, restId: restIds.auxes.get(name) }]
 		})
-		if (JSON.stringify(auxes) === JSON.stringify(this.instance.state.auxes)) {
-			// A newly available output still needs its name and source options subscribed
-			if (update.available) this.scheduleDefinitions()
-			return
-		}
+		if (JSON.stringify(auxes) === JSON.stringify(this.instance.state.auxes)) return false
 		this.instance.state.auxes = auxes
 		this.scheduleDefinitions()
+		return true
 	}
 
 	private scheduleDefinitions(): void {
 		if (this.definitionsPending) return
 		this.definitionsPending = true
-		setImmediate(() => {
+		setTimeout(() => {
 			this.definitionsPending = false
 			if (!this.destroyed) this.instance.updateInstance(updateFlags.All)
+		}, DEFINITIONS_DELAY_MS)
+	}
+
+	/** Checks the feedbacks a reading affects, together with those of every other reading that arrives with it */
+	private scheduleFeedbacks(feedbacks: FeedbackId[]): void {
+		const first = this.pendingFeedbacks.size === 0
+		for (const feedback of feedbacks) this.pendingFeedbacks.add(feedback)
+		if (!first) return
+		setImmediate(() => {
+			const [feedback, ...rest] = this.pendingFeedbacks
+			this.pendingFeedbacks.clear()
+			if (!this.destroyed && feedback) this.instance.checkFeedbacks(feedback, ...rest)
 		})
 	}
 

@@ -1,6 +1,5 @@
 import type KairosInstance from './index.js'
-import { auxSource, booleanValue, layerSource, macroStatus } from './state.js'
-import { refToPath } from 'kairos-connection'
+import { auxSource, booleanValue, findLayer, layerSource, macroStatus } from './state.js'
 import {
 	auxCatalog,
 	findAudioChannel,
@@ -55,8 +54,7 @@ export function getFeedbacks(instance: KairosInstance): CompanionFeedbackDefinit
 		catalog: Catalog,
 		{ layer: id, sourceAB, source }: { layer: string; sourceAB: SourceAB; source: string },
 	): boolean => {
-		const uuid = layerCatalog(instance.state).resolve(id)
-		const layer = instance.state.layers.find((entry) => refToPath(entry.ref) === uuid)
+		const layer = findLayer(instance.state, layerCatalog(instance.state).resolve(id))
 		const current = layer && layerSource(instance.state, layer, sourceAB)
 		return current !== undefined && catalog.idOf(current) === catalog.idOf(source)
 	}

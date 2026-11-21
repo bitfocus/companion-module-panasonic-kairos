@@ -28,7 +28,7 @@ class RestHttpError extends Error {
 
 /**
  * A scene as REST lists it. TCP lists the scenes and what is in them; REST is read for the scene actions, which TCP
- * doesn't list, and for the UUIDs that older buttons stored.
+ * doesn't list, and, like the macros and AUXes, for the UUIDs that older buttons stored.
  */
 type RestScene = {
 	name: string
@@ -71,9 +71,10 @@ export class REST {
 	}
 
 	private async pullState(): Promise<void> {
-		const [scenes, macros, multiviewers] = await Promise.allSettled([
+		const [scenes, macros, auxes, multiviewers] = await Promise.allSettled([
 			this.readList<RestScene>('/scenes'),
 			this.readList<{ name: string; path: string; uuid: string }>('/macros'),
+			this.readList<{ name: string; uuid: string }>('/aux'),
 			this.readList<MixerState['multiviewers'][number]>('/multiviewers'),
 		])
 		if (this.lifetime.signal.aborted) return
@@ -103,10 +104,15 @@ export class REST {
 				...state.restIds,
 				macros: new Map(macros.value.map((macro): [string, string] => [`${macro.path}${macro.name}`, macro.uuid])),
 			}
+		if (auxes.status === 'fulfilled')
+			state.restIds = {
+				...state.restIds,
+				auxes: new Map(auxes.value.map((aux): [string, string] => [aux.name, aux.uuid])),
+			}
 		if (multiviewers.status === 'fulfilled') state.multiviewers = multiviewers.value
 		mergeRestIds(state)
 
-		const pulls = { scenes, macros, multiviewers }
+		const pulls = { scenes, macros, auxes, multiviewers }
 		if (Object.values(pulls).some((result) => result.status === 'fulfilled')) {
 			this.instance.updateInstance(updateFlags.All)
 			this.instance.checkFeedbacks(

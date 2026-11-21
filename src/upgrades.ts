@@ -69,22 +69,24 @@ const ID_OPTIONS: Record<'actions' | 'feedbacks', Record<string, { option: strin
 		macroSceneControl: { option: 'macro', pattern: new RegExp(`^.+/macros/${UUID}$`, 'i') },
 		mvRecall: { option: 'mv', pattern: new RegExp(`^${UUID}$`, 'i') },
 		triggerSnapshot: { option: 'snapshot', pattern: new RegExp(`^.+/snapshots/${UUID}$`, 'i') },
+		setAUX: { option: 'aux', pattern: new RegExp(`^${UUID}$`, 'i') },
 	},
 	feedbacks: {
 		macroPlaying: { option: 'macro', pattern: new RegExp(`^${UUID}$`, 'i') },
 		sceneMacroPlaying: { option: 'macro', pattern: new RegExp(`^.+/macros/${UUID}$`, 'i') },
+		aux: { option: 'aux', pattern: new RegExp(`^${UUID}$`, 'i') },
 	},
 }
 
 /**
- * Layers, macros, snapshots etc are now stored by name, so a button works on any KAIROS running the same show. They
- * used to be stored by UUID, which no longer matches a dropdown choice, and an upgrade script can't look up the name
- * as it has no connection to the mixer. So those values move into expression mode, where they keep working as before
- * on the KAIROS they were made on, until the item is chosen again from the list.
+ * Layers, macros, snapshots, AUXes etc are now stored by name, so a button works on any KAIROS running the same show.
+ * They used to be stored by UUID (AUXes could be), which no longer matches a dropdown choice, and an upgrade script
+ * can't look up the name as it has no connection to the mixer. So those values move into expression mode, where they
+ * keep working as before on the KAIROS they were made on, until the item is chosen again from the list.
  *
- * The layer feedbacks stored the layer's path with a leading `/`. With the scene's folder
- * (`/Templates/2Box/Background`), dropping the `/` matches the list. Before 5.0 they left the folder out
- * (`/2Box/Background`), which still finds the layer but matches no choice, so those become expressions holding it.
+ * The layer feedbacks stored the layer's path with a leading `/`, which is dropped to match the list. Before 5.0 they
+ * left out the scene's folder (`/2Box/Background`), which can't be added back without the mixer; without the `/` it
+ * still finds the layer, where no other layer has that name.
  */
 const moveIdsToExpressions: CompanionStaticUpgradeScript<config, secrets> = (_context, props) => {
 	const result: CompanionStaticUpgradeResult<config, secrets> = {
@@ -116,11 +118,7 @@ const moveIdsToExpressions: CompanionStaticUpgradeScript<config, secrets> = (_co
 		if (feedback.feedbackId !== 'inputSource' && feedback.feedbackId !== 'inputMediaStill') continue
 		const layer = feedback.options.layer
 		if (!layer || layer.isExpression || typeof layer.value !== 'string' || !layer.value.startsWith('/')) continue
-		const path = layer.value.slice(1)
-		feedback.options.layer =
-			path.split('/').length > 2
-				? { isExpression: false, value: path }
-				: { isExpression: true, value: JSON.stringify(layer.value) }
+		feedback.options.layer = { isExpression: false, value: layer.value.slice(1) }
 		result.updatedFeedbacks.push(feedback)
 	}
 
@@ -131,8 +129,8 @@ const moveIdsToExpressions: CompanionStaticUpgradeScript<config, secrets> = (_co
  * Transitions and still images are now stored like everything else, with `/` between the parts (`Templates/2Box/BgdMix`,
  * `Logos/Intro.rr`), instead of as their TCP path (`Templates/2Box.BgdMix`, `MEDIA.stills.Logos.Intro&#46;rr`).
  *
- * Before 5.0 transitions left out the scene's folder (`2Box.BgdMix`), which can't be added back without the mixer, so
- * those become expressions holding the old value, which still finds the transition.
+ * Before 5.0 transitions left out the scene's folder (`2Box.BgdMix`), which can't be added back without the mixer;
+ * `2Box/BgdMix` still finds the transition, where no other transition has that name.
  */
 const useSlashesForTransitionsAndStills: CompanionStaticUpgradeScript<config, secrets> = (_context, props) => {
 	const result: CompanionStaticUpgradeResult<config, secrets> = {
@@ -152,10 +150,7 @@ const useSlashesForTransitionsAndStills: CompanionStaticUpgradeScript<config, se
 			const dot = value?.lastIndexOf('.') ?? -1
 			// Already `Scene/Transition` if a `/` follows the last dot, which is then in a name (`Templates/Show.1/BgdMix`)
 			if (value === undefined || dot === -1 || value.includes('/', dot)) continue
-			const scene = value.slice(0, dot)
-			action.options.layer = scene.includes('/')
-				? { isExpression: false, value: `${scene}/${value.slice(dot + 1)}` }
-				: { isExpression: true, value: JSON.stringify(value) }
+			action.options.layer = { isExpression: false, value: `${value.slice(0, dot)}/${value.slice(dot + 1)}` }
 			result.updatedActions.push(action)
 		} else if (action.actionId === 'setMediaStill') {
 			const value = storedString(action.options, 'source')
